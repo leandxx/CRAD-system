@@ -6,9 +6,11 @@
   <title>School Management System - Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gradient-to-r from-blue-300 to-blue-600 min-h-screen flex items-center justify-center font-sans">
+<body 
+  class="bg-cover bg-center bg-no-repeat min-h-screen flex items-center justify-center font-sans" 
+  style="background-image: linear-gradient(rgba(250, 250, 250, 0.937), rgba(8, 52, 117, 0.942)), url('../assets/img/img.jpg');"
+>
   <div class="bg-white bg-opacity-80 rounded-lg shadow-lg max-w-4xl w-full mx-4 flex flex-col md:flex-row overflow-hidden">
-    
     <!-- Left panel with welcome text and logo -->
     <div class="md:w-1/2 p-10 flex flex-col justify-center items-start relative bg-blue-50">
       <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-3">
@@ -23,7 +25,7 @@
       <button
         class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3 rounded-md shadow transition duration-300"
       >
-        Get Started
+        <a href="sms.html">SMS</a>
       </button>
       <div class="absolute right-8 bottom-6 w-32 h-32">
         <img
@@ -76,6 +78,7 @@
           >
             <option value="" disabled selected>Choose your role</option>
             <option value="admin">Admin</option>
+            <option value="student">Student</option>
             <option value="faculty">Faculty</option>
           </select>
         </div>
@@ -94,7 +97,7 @@
       <!-- Sign up link -->
       <p class="mt-6 text-center text-gray-600 text-sm">
         Don’t have an account?
-        <a href="#" class="text-blue-700 hover:underline">Sign up</a>
+        <a href="register.html" class="text-blue-700 hover:underline">Sign up</a>
       </p>
     </div>
   </div>

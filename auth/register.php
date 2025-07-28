@@ -1,3 +1,37 @@
+<?php
+include("../includes/connection.php");
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Get form data
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+    $confirmPassword = $_POST['confirmPassword'];
+    $role = $_POST['userType'];
+
+    // Validate passwords match
+    if ($password !== $confirmPassword) {
+        echo "<script>alert('Passwords do not match!');</script>";
+    } else {
+        // Hash password
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+        // Insert into database
+        $stmt = $conn->prepare("INSERT INTO login_tbl (username, password, role) VALUES (?, ?, ?)");
+        $stmt->bind_param("sss", $username, $hashedPassword, $role);
+
+        if ($stmt->execute()) {
+            echo "<script>alert('Registration successful!'); window.location.href='login.php';</script>";
+        } else {
+            echo "<script>alert('Registration failed: " . $stmt->error . "');</script>";
+        }
+
+        $stmt->close();
+    }
+
+    $conn->close();
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,7 +76,7 @@
     Create your account
   </h3>
   
-  <form id="registrationForm" class="space-y-6" novalidate>
+  <form id="registrationForm" class="space-y-6" method="POST" action="">
     <!-- Username / Email -->
     <div>
       <label for="username" class="block text-blue-900 font-semibold mb-1">Username or Email</label>

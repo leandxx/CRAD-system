@@ -94,10 +94,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       <p class="text-gray-700 mb-8 max-w-md">
         Efficiently manage research proposals, monitor statuses, assign advisers and panels, and explore AI-powered categorization — all in one place.
       </p>
-      <button
+      <button><a href="landing.php"
         class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3 rounded-md shadow transition duration-300"
       >
         SMS
+        </a>
       </button>
       <div class="absolute right-8 bottom-6 w-32 h-32">
         <img

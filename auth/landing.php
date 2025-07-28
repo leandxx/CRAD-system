@@ -74,7 +74,7 @@ include("../includes/connection.php");
 </section>
 
 <!-- Core Features Section -->
-<section id="features" class="py-5 text-white" style="background: linear-gradient(#ffffff7b, #011f4b65);">
+<section id="features" class="py-5 text-white" style="background: linear-gradient(#011f4b65, #011f4b65);">
   <div class="container">
     <div class="text-end mb-4">
       <h2 class="fw-bold text-primary">Core Features</h2>

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3308
--- Generation Time: Jul 28, 2025 at 08:38 AM
+-- Generation Time: Jul 28, 2025 at 08:58 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -31,15 +31,9 @@ CREATE TABLE `login_tbl` (
   `user_id` int(10) UNSIGNED NOT NULL,
   `username` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `role` varchar(50) NOT NULL
+  `role` varchar(50) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `login_tbl`
---
-
-INSERT INTO `login_tbl` (`user_id`, `username`, `password`, `role`) VALUES
-(1, 'faculty', '123456', 'faculty');
 
 --
 -- Indexes for dumped tables
@@ -49,7 +43,8 @@ INSERT INTO `login_tbl` (`user_id`, `username`, `password`, `role`) VALUES
 -- Indexes for table `login_tbl`
 --
 ALTER TABLE `login_tbl`
-  ADD PRIMARY KEY (`user_id`);
+  ADD PRIMARY KEY (`user_id`),
+  ADD UNIQUE KEY `username` (`username`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -59,7 +54,7 @@ ALTER TABLE `login_tbl`
 -- AUTO_INCREMENT for table `login_tbl`
 --
 ALTER TABLE `login_tbl`
-  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

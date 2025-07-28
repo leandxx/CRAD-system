@@ -1,7 +1,46 @@
 <?php
 session_start();
 include("../includes/connection.php");
-?>     
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $usernameOrEmail = $_POST['username'];
+    $password = $_POST['password'];
+    $userType = $_POST['userType']; // This is what you should use
+
+    // Use prepared statement
+    $stmt = $conn->prepare("SELECT * FROM login_tbl WHERE username = ? AND role = ?");
+    $stmt->bind_param("ss", $usernameOrEmail, $userType);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result && $result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+
+        if (password_verify($password, $user['password'])) {
+            // Set session variables
+            $_SESSION['user_id'] = $user['user_id']; // match DB column
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role']; // use correct column name
+
+            // Redirect based on role
+            if ($user['role'] === 'admin') {
+                header("Location: ../admin/dashboard.php");
+            } elseif ($user['role'] === 'faculty') {
+                header("Location: ../faculty/faculty.html");
+            } elseif ($user['role'] === 'student') {
+                header("Location: ../student/student.html");
+            } else {
+                echo "<script>alert('Unknown user role'); window.history.back();</script>";
+            }
+            exit();
+        } else {
+            echo "<script>alert('Incorrect password'); window.history.back();</script>";
+        }
+    } else {
+        echo "<script>alert('No account found or wrong role selected'); window.history.back();</script>";
+    }
+}
+?>
 
 
 <!DOCTYPE html>
@@ -49,7 +88,7 @@ include("../includes/connection.php");
         Log in to your account
       </h3>
       
-      <form id="loginForm" class="space-y-6" novalidate>
+      <form id="loginForm" action="login.php" method="POST" class="space-y-6">
         <!-- Username / Email -->
         <div>
           <label for="username" class="block text-blue-900 font-semibold mb-1">Username or Email</label>
@@ -57,7 +96,7 @@ include("../includes/connection.php");
             type="text"
             id="username"
             name="username"
-            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outliae-none focus:ring-2 focus:ring-blue-500"
             required
           />
         </div>
@@ -96,7 +135,7 @@ include("../includes/connection.php");
             type="submit"
             class="w-full bg-blue-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition duration-300"
           >
-            <a href="../faculty/faculty.html">Log In</a>
+            Log In
           </button>
         </div>
       </form>
@@ -104,7 +143,7 @@ include("../includes/connection.php");
       <!-- Sign up link -->
       <p class="mt-6 text-center text-gray-600 text-sm">
         Don’t have an account?
-        <a href="register.html" class="text-blue-700 hover:underline">Sign up</a>
+        <a href="register.php" class="text-blue-700 hover:underline">Sign up</a>
       </p>
     </div>
   </div>

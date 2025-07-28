@@ -2,10 +2,16 @@
 session_start();
 include("../includes/connection.php");
 
+// Check for success message
+$successMessage = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : '';
+if ($successMessage) {
+    unset($_SESSION['success_message']); // Unset the message after displaying it
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $usernameOrEmail = $_POST['username'];
     $password = $_POST['password'];
-    $userType = $_POST['userType']; // This is what you should use
+    $userType = $_POST['userType'];
 
     // Use prepared statement
     $stmt = $conn->prepare("SELECT * FROM login_tbl WHERE username = ? AND role = ?");
@@ -18,9 +24,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if (password_verify($password, $user['password'])) {
             // Set session variables
-            $_SESSION['user_id'] = $user['user_id']; // match DB column
+            $_SESSION['user_id'] = $user['user_id'];
             $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role']; // use correct column name
+            $_SESSION['role'] = $user['role'];
 
             // Redirect based on role
             if ($user['role'] === 'admin') {
@@ -41,7 +47,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -88,6 +93,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         Log in to your account
       </h3>
       
+      <!-- Success Message -->
+      <?php if ($successMessage): ?>
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+          <strong class="font-bold">Success!</strong>
+          <span class="block sm:inline"><?php echo $successMessage; ?></span>
+        </div>
+      <?php endif; ?>
+
       <form id="loginForm" action="login.php" method="POST" class="space-y-6">
         <!-- Username / Email -->
         <div>
@@ -96,7 +109,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             type="text"
             id="username"
             name="username"
-            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outliae-none focus:ring-2 focus:ring-blue-500"
+            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
         </div>

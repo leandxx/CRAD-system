@@ -1,3 +1,9 @@
+<?php
+session_start();
+include("../includes/connection.php");
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -40,7 +46,7 @@
       </ul>
       <ul class="navbar-nav">
         <li class="nav-item">
-          <a class="btn-get-started btn-primary px-4 py-2 rounded-pill fw-bold" href="../auth/login.html">Get Started</a>
+          <a class="btn-get-started btn-primary px-4 py-2 rounded-pill fw-bold" href="../auth/login.php">Get Started</a>
         </li>
       </ul>
     </div>
@@ -54,7 +60,7 @@
       <div class="col-md-6 hero-text">
         <h1>Welcome to <br><span class="text-primary">School Management System</span></h1>
         <p>Efficiently manage student records, faculty activities, and school operations — all in one place.</p>
-        <a href="../auth/login.html" class="btn-get-started">Get Started</a>
+        <a href="../auth/login.php" class="btn-get-started">Get Started</a>
       </div>
     </div>
   </div>

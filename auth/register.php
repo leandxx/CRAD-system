@@ -1,31 +1,60 @@
 <?php
+session_start();
 include("../includes/connection.php");
+
+$alertMessage = ''; // Variable to hold alert messages
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Get form data
-    $username = $_POST['username'];
+    $username = trim($_POST['username']);
     $password = $_POST['password'];
     $confirmPassword = $_POST['confirmPassword'];
     $role = $_POST['userType'];
 
+    // Email format validation
+    if (!filter_var($username, FILTER_VALIDATE_EMAIL)) {
+        $alertMessage = 'Please enter a valid email address!';
+    }
+    // Password strength validation
+    elseif (
+        strlen($password) < 8 ||
+        !preg_match('/[A-Z]/', $password) ||
+        !preg_match('/[a-z]/', $password) ||
+        !preg_match('/[0-9]/', $password) ||
+        !preg_match('/[\W]/', $password)
+    ) {
+        $alertMessage = 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
+    }
     // Validate passwords match
-    if ($password !== $confirmPassword) {
-        echo "<script>alert('Passwords do not match!');</script>";
-    } else {
-        // Hash password
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-
-        // Insert into database
-        $stmt = $conn->prepare("INSERT INTO login_tbl (username, password, role) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $username, $hashedPassword, $role);
-
-        if ($stmt->execute()) {
-            echo "<script>alert('Registration successful!'); window.location.href='login.php';</script>";
+    elseif ($password !== $confirmPassword) {
+        $alertMessage = 'Passwords do not match!';
+    }
+    else {
+        // Check if email already exists
+        $stmt = $conn->prepare("SELECT user_id FROM login_tbl WHERE username = ?");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $stmt->store_result();
+        if ($stmt->num_rows > 0) {
+            $alertMessage = 'Email is already registered!';
+            $stmt->close();
         } else {
-            echo "<script>alert('Registration failed: " . $stmt->error . "');</script>";
-        }
+            $stmt->close();
+            // Hash password
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-        $stmt->close();
+            // Insert into database
+            $stmt = $conn->prepare("INSERT INTO login_tbl (username, password, role) VALUES (?, ?, ?)");
+            $stmt->bind_param("sss", $username, $hashedPassword, $role);
+
+            if ($stmt->execute()) {
+                echo "<script>alert('Registration successful!'); window.location.href='login.php';</script>";
+            } else {
+                $alertMessage = 'Registration failed: ' . $stmt->error;
+            }
+
+            $stmt->close();
+        }
     }
 
     $conn->close();
@@ -37,8 +66,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>  System - Register</title>
+  <link rel="icon" type="image/png" href="../assets/img/sms-logo.png" />
+  <title>School Management System - Register</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <script>
+    function togglePasswordVisibility(id) {
+      const passwordField = document.getElementById(id);
+      const type = passwordField.type === 'password' ? 'text' : 'password';
+      passwordField.type = type;
+    }
+  </script>
 </head>
 <body 
   class="bg-cover bg-center bg-no-repeat min-h-screen flex items-center justify-center font-sans" 
@@ -71,81 +109,110 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 
     <!-- Right panel with full rectangular registration form -->
-<div class="md:w-1/2 bg-white p-10 flex flex-col justify-center">
-  <h3 class="text-2xl font-bold text-blue-900 mb-6 text-center">
-    Create your account
-  </h3>
-  
-  <form id="registrationForm" class="space-y-6" method="POST" action="">
-    <!-- Username / Email -->
-    <div>
-      <label for="username" class="block text-blue-900 font-semibold mb-1">Username or Email</label>
-      <input
-        type="text"
-        id="username"
-        name="username"
-        class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        required
-      />
-    </div>
+    <div class="md:w-1/2 bg-white p-10 flex flex-col justify-center">
+      <h3 class="text-2xl font-bold text-blue-900 mb-6 text-center">
+        Create your account
+      </h3>
+      
+      <form id="registrationForm" class="space-y-6" method="POST" action="">
+        <!-- Alert Message -->
+        <?php if ($alertMessage): ?>
+          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong class="font-bold">Error!</strong>
+            <span class="block sm:inline"><?php echo $alertMessage; ?></span>
+          </div>
+        <?php endif; ?>
 
-    <!-- Password -->
-    <div>
-      <label for="password" class="block text-blue-900 font-semibold mb-1">Password</label>
-      <input
-        type="password"
-        id="password"
-        name="password"
-        class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        required
-      />
-    </div>
+        <!-- Username / Email -->
+        <div>
+          <label for="username" class="block text-blue-900 font-semibold mb-1">Username or Email</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+        </div>
 
-    <!-- Confirm Password -->
-    <div>
-      <label for="confirmPassword" class="block text-blue-900 font-semibold mb-1">Confirm Password</label>
-      <input
-        type="password"
-        id="confirmPassword"
-        name="confirmPassword"
-        class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        required
-      />
-    </div>
+        <!-- Password -->
+        <div class="relative">
+          <label for="password" class="block text-blue-900 font-semibold mb-1">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+          <button type="button" onclick="togglePasswordVisibility('password')" class="absolute right-3 top-9">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
 
-    <!-- User Type -->
-    <div>
-      <label for="userType" class="block text-blue-900 font-semibold mb-1">Select User Type</label>
-      <select
-        id="userType"
-        name="userType"
-        class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        required
-      >
-        <option value="" disabled selected>Choose your role</option>
+        <!-- Confirm Password -->
+        <div class="relative">
+          <label for="confirmPassword" class="block text-blue-900 font-semibold mb-1">Confirm Password</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
+          <button type="button" onclick="togglePasswordVisibility('confirmPassword')" class="absolute right-3 top-9">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+        <p id="passwordMismatch" class="text-red-500 text-sm hidden">Passwords do not match!</p>
+
+        <!-- User Type -->
+        <div>
+          <label for="userType" class="block text-blue-900 font-semibold mb-1">Select User Type</label>
+          <select
+            id="userType"
+            name="userType"
+            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          >
+            <option value="" disabled selected>Choose your role</option>
             <option value="admin">Admin</option>
             <option value="student">Student</option>
             <option value="faculty">Faculty</option>
-      </select>
+          </select>
+        </div>
+
+        <!-- Submit -->
+        <div>
+          <button
+            type="submit"
+            class="w-full bg-blue-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition duration-300"
+          >
+            Register
+          </button>
+        </div>
+      </form>
+
+      <!-- Login link -->
+      <p class="mt-6 text-center text-gray-600 text-sm">
+        Already have an account?
+        <a href="login.php" class="text-blue-700 hover:underline">Log in</a>
+      </p>
     </div>
+  </div>
 
-    <!-- Submit -->
-    <div>
-      <button
-        type="submit"
-        class="w-full bg-blue-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition duration-300"
-      >
-        Register
-      </button>
-    </div>
-  </form>
+  <script>
+    const passwordField = document.getElementById('password');
+    const confirmPasswordField = document.getElementById('confirmPassword');
+    const passwordMismatchMessage = document.getElementById('passwordMismatch');
 
-  <!-- Login link -->
-  <p class="mt-6 text-center text-gray-600 text-sm">
-    Already have an account?
-    <a href="login.html" class="text-blue-700 hover:underline">Log in</a>
-  </p>
-</div>
-
+    confirmPasswordField.addEventListener('input', function() {
+      if (passwordField.value !== confirmPasswordField.value) {
+        passwordMismatchMessage.classList.remove('hidden');
+      } else {
+        passwordMismatchMessage.classList.add('hidden');
+      }
+    });
+  </script>
 </body>
 </html>

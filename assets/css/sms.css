@@ -7,7 +7,7 @@ body {
 }
 
 .stylish-navbar {
-  background: linear-gradient(to right, #ffffff, #cce0ff, #99c2ff, #66a3ff);
+  background: linear-gradient(to right, #ffffff, #cce0ff, #99c2ff, #004aad);
   padding: 12px 0;
   border-bottom: 1px solid #e6f0ff;
 }

@@ -57,7 +57,7 @@ $username = $_SESSION['username'] ?? ''; // ADD THIS
                 <p class="text-xs uppercase text-blue-300 font-semibold mb-2 sidebar-section">Adviser Tools</p>
                 <ul>
                     <li>
-                        <a href="/CRAD-system/faculty-pages/dashboard.php" class="flex items-center space-x-3 px-3 py-2 rounded <?= $current == 'dashboard' ? 'bg-blue-700 text-white' : 'hover:bg-blue-700' ?>">
+                        <a href="/CRAD-system/faculty-pages/faculty-dashboard.php" class="flex items-center space-x-3 px-3 py-2 rounded <?= $current == 'dashboard' ? 'bg-blue-700 text-white' : 'hover:bg-blue-700' ?>">
                             <i class="fas fa-tachometer-alt w-5"></i>
                             <span class="sidebar-text">Dashboard</span>
                         </a>
@@ -87,16 +87,13 @@ $username = $_SESSION['username'] ?? ''; // ADD THIS
                         </a>
                     </li>
                 </ul>
-            </div>
-        
-
-
+            </div>        
 
         <div class="px-4 py-3 border-t border-blue-700">
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 sidebar-section">Support Services</p>
             <ul>
-                <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-wallet w-5"></i><span class="sidebar-text">Payment Verification</span></a></li>
-                <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-flask w-5"></i><span class="sidebar-text">Research Facilities</span></a></li>
+                <li><a href="/CRAD-system/faculty-pages/payment-verification.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-wallet w-5"></i><span class="sidebar-text">Payment Verification</span></a></li>
+                <li><a href="/CRAD-system/faculty-pages/research-facilities.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-flask w-5"></i><span class="sidebar-text">Research Facilities</span></a></li>
             </ul>
         </div>
 

@@ -10,17 +10,16 @@ include('../includes/connection.php'); // Your DB connection
     <title>Proposal Submission</title>
     <link rel="icon" href="../assets/img/sms-logo.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../assets/css/student-siderbar.css">
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <div class="flex min-h-screen">
+    <div class="min-h-screen flex">
 
         <!-- Sidebar -->
-        <?php include('../student/student-sidebar.php'); ?>
+        <?php include('../includes/student-sidebar.php'); ?>
 
         <!-- Main Content with vertical scroll -->
-        <main class="flex-1 p-6 overflow-y-auto">
+        <main class="flex-1 p-6 overflow-y-auto h-screen">
 
             <!-- Header -->
             <div class="mb-6">

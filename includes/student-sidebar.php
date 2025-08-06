@@ -53,7 +53,7 @@ include("../includes/connection.php");
 <body class="bg-gray-50">
 
 <!-- Sidebar Container -->
-<div class="sidebar sidebar-transition bg-blue-800 text-white flex flex-col hidden md:flex h-screen" id="sidebar">
+<div class="sidebar sidebar-transition bg-blue-800 text-white flex flex-col hidden md:flex h-screen w-64" id="sidebar">
 
     <!-- Logo + Title -->
     <div class="p-4 flex items-center justify-between border-b border-blue-700">
@@ -82,31 +82,31 @@ include("../includes/connection.php");
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Research Process</p>
             <ul>
                 <li>
-                    <a href="student/student.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="student_pages/student.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-home nav-icon"></i>
                         <span class="nav-text">Dashboard</span>
                     </a>
                 </li>
                 <li>
-                    <a href="student/proposal.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="student_pages/proposal.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-file-upload nav-icon"></i>
                         <span class="nav-text">Proposal Submission</span>
                     </a>
                 </li>
                 <li>
-                    <a href="student/adviser.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="student_pages/adviser.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-user-tie nav-icon"></i>
                         <span class="nav-text">Adviser Assignment</span>
                     </a>
                 </li>
                 <li>
-                    <a href="student/defense.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="student_pages/defense.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-calendar-check nav-icon"></i>
                         <span class="nav-text">Defense Scheduling</span>
                     </a>
                 </li>
                 <li>
-                    <a href="student/documents.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="student_pages/documents.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-file-alt nav-icon"></i>
                         <span class="nav-text">Document Tracker</span>
                     </a>
@@ -119,19 +119,19 @@ include("../includes/connection.php");
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Support Services</p>
             <ul>
                 <li>
-                    <a href="student/payments.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="student_pages/payments.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-money-bill-wave nav-icon"></i>
                         <span class="nav-text">Payment Verification</span>
                     </a>
                 </li>
                 <li>
-                    <a href="student/facilities.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="student_pages/facilities.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-microscope nav-icon"></i>
                         <span class="nav-text">Research Facilities</span>
                     </a>
                 </li>
                 <li>
-                    <a href="student/analytics.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="student_pages/analytics.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-chart-line nav-icon"></i>
                         <span class="nav-text">Analytics</span>
                     </a>
@@ -144,13 +144,13 @@ include("../includes/connection.php");
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Events</p>
             <ul>
                 <li>
-                    <a href="student/seminars.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="student_pages/seminars.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-calendar-day nav-icon"></i>
                         <span class="nav-text">Seminars/Festivals</span>
                     </a>
                 </li>
                 <li>
-                    <a href="student/groups.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="student_pages/groups.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-users nav-icon"></i>
                         <span class="nav-text">Research Groups</span>
                     </a>

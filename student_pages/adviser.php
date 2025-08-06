@@ -15,12 +15,14 @@ include('../includes/connection.php'); // DB connection
     <div class="flex min-h-screen">
 
         <!-- Sidebar -->
-        <?php include('../student/student-sidebar.php'); ?>
+        <?php include('../includes/student-sidebar.php'); ?>
 
         <!-- Main Content -->
-        <main class="flex-1 p-6 overflow-y-auto">
-            <div class="max-w-7xl mx-auto">
-                <h1 class="text-3xl font-semibold mb-6">Adviser Information</h1>
+        <main class="flex-1 p-6 overflow-y-auto h-screen">
+            <div class="mb-6">
+                <h1 class="text-3xl font-bold text-blue-700">Adviser Assignment</h1>
+                <p class="text-gray-600">View or update your capstone adviser details</p>
+            </div>
 
                 <!-- Adviser Info Card -->
                 <div class="bg-white shadow-md rounded-lg p-6 mb-6">

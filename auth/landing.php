@@ -69,131 +69,107 @@
   </div>
 </section>
 
-<!-- Animated Gradient Features Section -->
+<!-- Modern Animated Glassmorphic Features Section -->
 <section id="features" class="py-5 text-white" style="background: linear-gradient( rgba(250, 250, 250, 0.05), #f7faff29);">
-  <div class="container position-relative">
+    <div class="container">
     <div class="text-center mb-5">
-<span class="badge bg-primary text-white px-4 py-2 rounded-pill fw-semibold animate__animated animate__fadeIn" style="font-size: 1.1rem;">Key Features</span>
-    <p class="text-muted mx-auto animate__animated animate__fadeIn" style="max-width: 600px;">
-        Essential features to streamline your school administration
+      <span class="badge bg-white text-dark px-4 py-2 rounded-pill fw-bold animate__animated animate__fadeIn" style="font-size: 1.2rem;">
+        ✨ Core Features
+      </span>
+      <p class="text-light mx-auto mt-3 animate__animated animate__fadeIn" style="max-width: 600px; font-size: 1rem;">
+        Powerful tools to transform school administration into a smart digital ecosystem.
       </p>
     </div>
 
     <div class="row g-4">
-      <!-- Feature 1 -->
-      <div class="col-md-4 animate__animated animate__fadeInUp">
-        <div class="card h-100 border-0 overflow-hidden feature-card">
-          <div class="card-body p-4 text-center position-relative z-1">
-            <div class="icon-md bg-white text-primary rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center">
-              <i class="fas fa-user-graduate fa-lg"></i>
-            </div>
-            <h5 class="fw-bold mb-2 text-white">Student Enrollment</h5>
-            <p class="text-white-50 small mb-0">Streamlined digital registration process</p>
+      <!-- Feature Loop -->
+      <div class="col-md-4 animate__animated animate__fadeInUp" style="animation-delay: 0s;">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box mb-3 bg-primary">
+            <i class="fas fa-user-graduate fa-2x"></i>
           </div>
+          <h4 class="fw-bold mb-2">Student Enrollment</h4>
+          <p class="text-light small">Streamlined digital registration process</p>
         </div>
       </div>
 
-      <!-- Feature 2 -->
-      <div class="col-md-4 animate__animated animate__fadeInUp animate__delay-1s">
-        <div class="card h-100 border-0 overflow-hidden feature-card">
-          <div class="card-body p-4 text-center position-relative z-1">
-            <div class="icon-md bg-white text-info rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center">
-              <i class="fas fa-book-open fa-lg"></i>
-            </div>
-            <h5 class="fw-bold mb-2 text-white">Curriculum</h5>
-            <p class="text-white-50 small mb-0">Manage courses and subjects</p>
+      <div class="col-md-4 animate__animated animate__fadeInUp" style="animation-delay: 0.1s;">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box mb-3 bg-info">
+            <i class="fas fa-book-open fa-2x"></i>
           </div>
+          <h4 class="fw-bold mb-2">Curriculum</h4>
+          <p class="text-light small">Manage courses and subjects</p>
         </div>
       </div>
 
-      <!-- Feature 3 -->
-      <div class="col-md-4 animate__animated animate__fadeInUp animate__delay-2s">
-        <div class="card h-100 border-0 overflow-hidden feature-card">
-          <div class="card-body p-4 text-center position-relative z-1">
-            <div class="icon-md bg-white text-success rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center">
-              <i class="fas fa-users fa-lg"></i>
-            </div>
-            <h5 class="fw-bold mb-2 text-white">Student Profiles</h5>
-            <p class="text-white-50 small mb-0">Complete academic records</p>
+      <div class="col-md-4 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box mb-3 bg-success">
+            <i class="fas fa-users fa-2x"></i>
           </div>
+          <h4 class="fw-bold mb-2">Student Profiles</h4>
+          <p class="text-light small">Complete academic records</p>
         </div>
       </div>
 
-      <!-- Feature 4 -->
-      <div class="col-md-4 animate__animated animate__fadeInUp">
-        <div class="card h-100 border-0 overflow-hidden feature-card">
-          <div class="card-body p-4 text-center position-relative z-1">
-            <div class="icon-md bg-white text-warning rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center">
-              <i class="fas fa-chalkboard-teacher fa-lg"></i>
-            </div>
-            <h5 class="fw-bold mb-2 text-white">Faculty</h5>
-            <p class="text-white-50 small mb-0">Teacher management tools</p>
+      <div class="col-md-4 animate__animated animate__fadeInUp" style="animation-delay: 0.3s;">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box mb-3 bg-warning">
+            <i class="fas fa-chalkboard-teacher fa-2x"></i>
           </div>
+          <h4 class="fw-bold mb-2">Faculty</h4>
+          <p class="text-light small">Teacher management tools</p>
         </div>
       </div>
 
-      <!-- Feature 5 -->
-      <div class="col-md-4 animate__animated animate__fadeInUp animate__delay-1s">
-        <div class="card h-100 border-0 overflow-hidden feature-card">
-          <div class="card-body p-4 text-center position-relative z-1">
-            <div class="icon-md bg-white text-danger rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center">
-              <i class="fas fa-calendar-alt fa-lg"></i>
-            </div>
-            <h5 class="fw-bold mb-2 text-white">Scheduling</h5>
-            <p class="text-white-50 small mb-0">Class timetable management</p>
+      <div class="col-md-4 animate__animated animate__fadeInUp" style="animation-delay: 0.4s;">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box mb-3 bg-danger">
+            <i class="fas fa-calendar-alt fa-2x"></i>
           </div>
+          <h4 class="fw-bold mb-2">Scheduling</h4>
+          <p class="text-light small">Class timetable management</p>
         </div>
       </div>
 
-      <!-- Feature 6 -->
-      <div class="col-md-4 animate__animated animate__fadeInUp animate__delay-2s">
-        <div class="card h-100 border-0 overflow-hidden feature-card">
-          <div class="card-body p-4 text-center position-relative z-1">
-            <div class="icon-md bg-white text-purple rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center">
-              <i class="fas fa-clipboard-list fa-lg"></i>
-            </div>
-            <h5 class="fw-bold mb-2 text-white">Grades</h5>
-            <p class="text-white-50 small mb-0">Performance tracking</p>
+      <div class="col-md-4 animate__animated animate__fadeInUp" style="animation-delay: 0.5s;">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box mb-3" style="background-color: #7b4397;">
+            <i class="fas fa-clipboard-list fa-2x"></i>
           </div>
+          <h4 class="fw-bold mb-2">Grades</h4>
+          <p class="text-light small">Performance tracking</p>
         </div>
       </div>
 
-      <!-- Feature 7 -->
-      <div class="col-md-4 animate__animated animate__fadeInUp">
-        <div class="card h-100 border-0 overflow-hidden feature-card">
-          <div class="card-body p-4 text-center position-relative z-1">
-            <div class="icon-md bg-white text-teal rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center">
-              <i class="fas fa-user-shield fa-lg"></i>
-            </div>
-            <h5 class="fw-bold mb-2 text-white">User Roles</h5>
-            <p class="text-white-50 small mb-0">Permission management</p>
+      <div class="col-md-4 animate__animated animate__fadeInUp" style="animation-delay: 0.6s;">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box mb-3" style="background-color: #1d976c;">
+            <i class="fas fa-user-shield fa-2x"></i>
           </div>
+          <h4 class="fw-bold mb-2">User Roles</h4>
+          <p class="text-light small">Permission management</p>
         </div>
       </div>
 
-      <!-- Feature 8 -->
-      <div class="col-md-4 animate__animated animate__fadeInUp animate__delay-1s">
-        <div class="card h-100 border-0 overflow-hidden feature-card">
-          <div class="card-body p-4 text-center position-relative z-1">
-            <div class="icon-md bg-white text-pink rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center">
-              <i class="fas fa-bell fa-lg"></i>
-            </div>
-            <h5 class="fw-bold mb-2 text-white">Notifications</h5>
-            <p class="text-white-50 small mb-0">Important alerts system</p>
+      <div class="col-md-4 animate__animated animate__fadeInUp" style="animation-delay: 0.7s;">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box mb-3" style="background-color: #ff758c;">
+            <i class="fas fa-bell fa-2x"></i>
           </div>
+          <h4 class="fw-bold mb-2">Notifications</h4>
+          <p class="text-light small">Important alerts system</p>
         </div>
       </div>
 
-      <!-- Feature 9 -->
-      <div class="col-md-4 animate__animated animate__fadeInUp animate__delay-2s">
-        <div class="card h-100 border-0 overflow-hidden feature-card">
-          <div class="card-body p-4 text-center position-relative z-1">
-            <div class="icon-md bg-white text-indigo rounded-circle mb-3 mx-auto d-flex align-items-center justify-content-center">
-              <i class="fas fa-chart-line fa-lg"></i>
-            </div>
-            <h5 class="fw-bold mb-2 text-white">Analytics</h5>
-            <p class="text-white-50 small mb-0">Performance insights</p>
+      <div class="col-md-4 animate__animated animate__fadeInUp" style="animation-delay: 0.8s;">
+        <div class="glass-card text-center p-4">
+          <div class="icon-box mb-3" style="background-color: #5f2c82;">
+            <i class="fas fa-chart-line fa-2x"></i>
           </div>
+          <h4 class="fw-bold mb-2">Analytics</h4>
+          <p class="text-light small">Performance insights</p>
         </div>
       </div>
     </div>
@@ -201,83 +177,42 @@
 </section>
 
 <style>
-  /* Gradient backgrounds for each feature */
-  .feature-card {
-    background: linear-gradient( #09387e4a, #06294c47);
-    transition: all 0.4s ease;
-    transform: translateY(0);
-  }
-  
-  .feature-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-  }
-  
-  /* Individual gradient colors */
-  .feature-card:nth-child(1) {
-    --gradient-start: #3a7bd5;
-    --gradient-end: #00d2ff;
-  }
-  .feature-card:nth-child(2) {
-    --gradient-start: #11998e;
-    --gradient-end: #38ef7d;
-  }
-  .feature-card:nth-child(3) {
-    --gradient-start: #8e2de2;
-    --gradient-end: #4a00e0;
-  }
-  .feature-card:nth-child(4) {
-    --gradient-start: #f46b45;
-    --gradient-end: #eea849;
-  }
-  .feature-card:nth-child(5) {
-    --gradient-start: #c31432;
-    --gradient-end: #240b36;
-  }
-  .feature-card:nth-child(6) {
-    --gradient-start: #7b4397;
-    --gradient-end: #dc2430;
-  }
-  .feature-card:nth-child(7) {
-    --gradient-start: #1d976c;
-    --gradient-end: #93f9b9;
-  }
-  .feature-card:nth-child(8) {
-    --gradient-start: #ff758c;
-    --gradient-end: #ff7eb3;
-  }
-  .feature-card:nth-child(9) {
-    --gradient-start: #5f2c82;
-    --gradient-end: #49a09d;
+  .glass-card {
+    background: rgba(5, 31, 92, 0.24);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    border-radius: 20px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
 
-  /* Icon styling */
-  .icon-md {
-    width: 60px;
-    height: 60px;
+  .glass-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+  }
+
+  .icon-box {
+    width: 70px;
+    height: 70px;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
     transition: transform 0.3s ease;
   }
-  
-  .feature-card:hover .icon-md {
+
+  .glass-card:hover .icon-box {
     transform: scale(1.1);
   }
-  
-  /* Text colors */
-  .text-white-50 {
-    color: rgba(255,255,255,0.7);
+
+  h4 {
+    color: #004aad;
   }
-  
-  /* Animation delays */
-  .animate__delay-1s {
-    animation-delay: 0.2s;
-  }
-  .animate__delay-2s {
-    animation-delay: 0.4s;
-  }
-  
-  /* Ensure content stays above gradient */
-  .z-1 {
-    z-index: 1;
+
+  p {
+    color: rgba(255, 255, 255, 0.8);
   }
 </style>
 

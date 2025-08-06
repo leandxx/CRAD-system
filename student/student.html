@@ -1,1496 +1,382 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" type="image/png" href="../assets/img/sms-logo.png" />
-  <title>Student Dashboard - School Management System</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://unpkg.com/flatpickr"></script>
-  <link rel="stylesheet" href="https://unpkg.com/flatpickr/dist/flatpickr.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-  <style>
-    :root {
-      --primary: #2563eb;
-      --primary-dark: #1d4ed8;
-      --secondary: #7c3aed;
-    }
-    
-    .card {
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      border-radius: 12px;
-      border: 1px solid rgba(0, 0, 0, 0.05);
-    }
-    
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-    }
-    
-    .sidebar-link {
-      transition: all 0.3s ease;
-      border-radius: 8px;
-    }
-    
-    .sidebar-link:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-      transform: translateX(5px);
-    }
-    
-    .sidebar-link.active {
-      background-color: rgba(255, 255, 255, 0.15);
-      font-weight: 500;
-    }
-    
-    .progress-ring__circle {
-      transition: stroke-dashoffset 0.5s ease;
-      transform: rotate(-90deg);
-      transform-origin: 50% 50%;
-    }
-    
-    .gradient-bg {
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
-    }
-    
-    .notification-dot {
-      position: absolute;
-      top: -2px;
-      right: -2px;
-      width: 12px;
-      height: 12px;
-      background-color: #ef4444;
-      border-radius: 50%;
-    }
-    
-    .dropdown-menu {
-      opacity: 0;
-      transform: translateY(-10px);
-      transition: all 0.2s ease;
-      pointer-events: none;
-    }
-    
-    .dropdown-menu.show {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .animate-fadeIn {
-      animation: fadeIn 0.3s ease forwards;
-    }
-  </style>
-</head>
-<body class="bg-gray-50 font-sans text-gray-800">
-  <div class="flex min-h-screen">
-    <!-- Sidebar -->
-    <div class="gradient-bg text-white w-64 flex flex-col justify-between p-5 fixed h-full">
-      <div>
-        <div class="flex items-center gap-3 mb-8">
-          <img src="../assets/img/sms-logo.png" alt="Logo" class="w-10 h-10">
-          <h1 class="text-2xl font-bold">Student Portal</h1>
-        </div>
-        <ul class="space-y-2">
-          <li>
-            <a href="#" onclick="showPanel('dashboard')" class="sidebar-link flex items-center gap-3 p-3 active">
-              <i data-lucide="layout-dashboard"></i>
-              <span>Dashboard</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" onclick="showPanel('proposal')" class="sidebar-link flex items-center gap-3 p-3">
-              <i data-lucide="file-text"></i>
-              <span>Proposal</span>
-              <span class="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full ml-auto">2</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" onclick="showPanel('adviser')" class="sidebar-link flex items-center gap-3 p-3">
-              <i data-lucide="users"></i>
-              <span>Adviser & Panel</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" onclick="showPanel('grants')" class="sidebar-link flex items-center gap-3 p-3">
-              <i data-lucide="dollar-sign"></i>
-              <span>Grants & Funding</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" onclick="showPanel('docs')" class="sidebar-link flex items-center gap-3 p-3">
-              <i data-lucide="book-open"></i>
-              <span>Documentation</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" onclick="showPanel('analytics')" class="sidebar-link flex items-center gap-3 p-3">
-              <i data-lucide="bar-chart-2"></i>
-              <span>Analytics</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" onclick="showPanel('defense')" class="sidebar-link flex items-center gap-3 p-3">
-              <i data-lucide="calendar"></i>
-              <span>Defense</span>
-              <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full ml-auto">1</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" onclick="showPanel('notifications')" class="sidebar-link flex items-center gap-3 p-3">
-              <i data-lucide="bell"></i>
-              <span>Notifications</span>
-              <div class="notification-dot"></div>
-            </a>
-          </li>
-        </ul>
-      </div>
-      <div class="mt-5">
-        <div class="relative">
-          <button onclick="toggleProfileDropdown()" class="flex items-center gap-3 p-3 w-full rounded-lg hover:bg-blue-700 transition">
-            <div class="w-10 h-10 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold">JS</div>
-            <div class="text-left">
-              <p class="font-medium">John Smith</p>
-              <p class="text-xs opacity-80">Computer Science</p>
-            </div>
-            <i data-lucide="chevron-down" class="ml-auto transform transition" id="profile-chevron"></i>
-          </button>
-          <div class="dropdown-menu absolute bottom-full mb-2 left-0 w-full bg-white text-gray-800 rounded-lg shadow-lg py-2 z-10">
-            <a href="#" onclick="showPanel('profile')" class="flex items-center gap-3 px-4 py-2 hover:bg-gray-100">
-              <i data-lucide="user" class="w-5 h-5"></i>
-              <span>Profile Settings</span>
-            </a>
-            <a href="#" class="flex items-center gap-3 px-4 py-2 hover:bg-gray-100">
-              <i data-lucide="settings" class="w-5 h-5"></i>
-              <span>Account Settings</span>
-            </a>
-            <div class="border-t my-1"></div>
-            <a href="../auth/logout.php" class="flex items-center gap-3 px-4 py-2 text-red-500 hover:bg-gray-100">
-              <i data-lucide="log-out" class="w-5 h-5"></i>
-              <span>Logout</span>
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="flex-1 ml-64 p-8">
-      <!-- Header -->
-      <div class="flex justify-between items-center mb-8">
-        <div>
-          <h2 class="text-2xl font-bold" id="panel-title">Dashboard Overview</h2>
-          <p class="text-gray-500" id="panel-subtitle">Welcome back, John! Here's what's happening with your project.</p>
-        </div>
-        <div class="flex items-center gap-4">
-          <div class="relative">
-            <button onclick="toggleNotificationDropdown()" class="p-2 rounded-full hover:bg-gray-100 relative">
-              <i data-lucide="bell"></i>
-              <div class="notification-dot"></div>
-            </button>
-            <div class="dropdown-menu absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg py-2 z-10">
-              <div class="px-4 py-3 border-b">
-                <h4 class="font-medium">Notifications</h4>
-              </div>
-              <div class="max-h-60 overflow-y-auto">
-                <a href="#" class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 border-b">
-                  <div class="bg-blue-100 p-2 rounded-full">
-                    <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i>
-                  </div>
-                  <div>
-                    <p class="font-medium">Proposal Review</p>
-                    <p class="text-sm text-gray-500">Your proposal has been reviewed by Dr. Smith</p>
-                    <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
-                  </div>
-                </a>
-                <a href="#" class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 border-b">
-                  <div class="bg-green-100 p-2 rounded-full">
-                    <i data-lucide="calendar" class="w-4 h-4 text-green-600"></i>
-                  </div>
-                  <div>
-                    <p class="font-medium">Defense Scheduled</p>
-                    <p class="text-sm text-gray-500">Your final defense is scheduled for Dec 15</p>
-                    <p class="text-xs text-gray-400 mt-1">1 day ago</p>
-                  </div>
-                </a>
-                <a href="#" class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50">
-                  <div class="bg-purple-100 p-2 rounded-full">
-                    <i data-lucide="dollar-sign" class="w-4 h-4 text-purple-600"></i>
-                  </div>
-                  <div>
-                    <p class="font-medium">Grant Approved</p>
-                    <p class="text-sm text-gray-500">Your research grant application has been approved</p>
-                    <p class="text-xs text-gray-400 mt-1">3 days ago</p>
-                  </div>
-                </a>
-              </div>
-              <div class="px-4 py-2 border-t text-center">
-                <a href="#" class="text-sm text-blue-600 font-medium">View All Notifications</a>
-              </div>
-            </div>
-          </div>
-          <div class="relative">
-            <button class="flex items-center gap-2 bg-white border rounded-full px-4 py-2 shadow-sm hover:shadow transition">
-              <i data-lucide="help-circle" class="w-5 h-5"></i>
-              <span>Help</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div id="content">
-        <!-- Dashboard Panel -->
-        <div id="dashboard" class="space-y-6">
-          <!-- Stats Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="card bg-white p-6">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-gray-500">Project Progress</p>
-                  <h3 class="text-2xl font-bold mt-1">75%</h3>
-                </div>
-                <div class="relative w-16 h-16">
-                  <svg class="w-full h-full" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e6e6e6" stroke-width="3"></circle>
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="#3b82f6" stroke-width="3" stroke-dasharray="75 100" stroke-linecap="round"></circle>
-                  </svg>
-                  <div class="absolute inset-0 flex items-center justify-center">
-                    <i data-lucide="trending-up" class="w-6 h-6 text-blue-500"></i>
-                  </div>
-                </div>
-              </div>
-              <div class="mt-4">
-                <div class="h-2 bg-gray-200 rounded-full">
-                  <div class="h-2 bg-blue-500 rounded-full" style="width: 75%"></div>
-                </div>
-                <p class="text-sm text-gray-500 mt-2">Last updated: Today</p>
-              </div>
-            </div>
-            
-            <div class="card bg-white p-6">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-gray-500">Days to Defense</p>
-                  <h3 class="text-2xl font-bold mt-1">14</h3>
-                </div>
-                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                  <i data-lucide="calendar" class="w-8 h-8 text-red-500"></i>
-                </div>
-              </div>
-              <div class="mt-4">
-                <p class="text-sm text-gray-500">Final Defense: <span class="font-medium">Dec 15, 2023</span></p>
-                <button class="mt-2 text-sm text-blue-600 font-medium flex items-center gap-1">
-                  <span>View Schedule</span>
-                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                </button>
-              </div>
-            </div>
-            
-            <div class="card bg-white p-6">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-gray-500">Adviser Feedback</p>
-                  <h3 class="text-2xl font-bold mt-1">3</h3>
-                </div>
-                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                  <i data-lucide="message-square" class="w-8 h-8 text-green-500"></i>
-                </div>
-              </div>
-              <div class="mt-4">
-                <p class="text-sm text-gray-500">Pending responses: <span class="font-medium">1</span></p>
-                <button class="mt-2 text-sm text-blue-600 font-medium flex items-center gap-1">
-                  <span>View Feedback</span>
-                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                </button>
-              </div>
-            </div>
-            
-            <div class="card bg-white p-6">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-gray-500">Grant Awarded</p>
-                  <h3 class="text-2xl font-bold mt-1">$2,500</h3>
-                </div>
-                <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
-                  <i data-lucide="dollar-sign" class="w-8 h-8 text-purple-500"></i>
-                </div>
-              </div>
-              <div class="mt-4">
-                <p class="text-sm text-gray-500">Available balance: <span class="font-medium">$1,200</span></p>
-                <button class="mt-2 text-sm text-blue-600 font-medium flex items-center gap-1">
-                  <span>View Details</span>
-                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Project Timeline -->
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="card bg-white p-6 lg:col-span-2">
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold">Project Timeline</h3>
-                <button class="text-sm text-blue-600 font-medium flex items-center gap-1">
-                  <span>View Full Timeline</span>
-                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                </button>
-              </div>
-              <div class="relative">
-                <div class="absolute left-4 h-full w-0.5 bg-gray-200"></div>
-                <div class="space-y-6">
-                  <div class="relative pl-10">
-                    <div class="absolute left-0 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
-                      <i data-lucide="check" class="w-4 h-4"></i>
-                    </div>
-                    <div class="p-4 border rounded-lg bg-white">
-                      <div class="flex justify-between items-start">
-                        <div>
-                          <h4 class="font-medium">Proposal Submission</h4>
-                          <p class="text-sm text-gray-500">Submitted and approved</p>
-                        </div>
-                        <span class="text-sm text-gray-500">Oct 15, 2023</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="relative pl-10">
-                    <div class="absolute left-0 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
-                      <i data-lucide="check" class="w-4 h-4"></i>
-                    </div>
-                    <div class="p-4 border rounded-lg bg-white">
-                      <div class="flex justify-between items-start">
-                        <div>
-                          <h4 class="font-medium">Initial Research</h4>
-                          <p class="text-sm text-gray-500">Completed data collection</p>
-                        </div>
-                        <span class="text-sm text-gray-500">Nov 5, 2023</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="relative pl-10">
-                    <div class="absolute left-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
-                      <i data-lucide="circle" class="w-4 h-4"></i>
-                    </div>
-                    <div class="p-4 border rounded-lg bg-blue-50 border-blue-100">
-                      <div class="flex justify-between items-start">
-                        <div>
-                          <h4 class="font-medium">Analysis Phase</h4>
-                          <p class="text-sm text-blue-600">In progress (75% complete)</p>
-                        </div>
-                        <span class="text-sm text-blue-600">Due Dec 1, 2023</span>
-                      </div>
-                      <div class="mt-2 h-2 bg-blue-200 rounded-full">
-                        <div class="h-2 bg-blue-500 rounded-full" style="width: 75%"></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="relative pl-10">
-                    <div class="absolute left-0 w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                      <i data-lucide="circle" class="w-4 h-4"></i>
-                    </div>
-                    <div class="p-4 border rounded-lg bg-gray-50">
-                      <div class="flex justify-between items-start">
-                        <div>
-                          <h4 class="font-medium">Final Defense</h4>
-                          <p class="text-sm text-gray-500">Scheduled for Dec 15</p>
-                        </div>
-                        <span class="text-sm text-gray-500">Dec 15, 2023</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Recent Activity -->
-            <div class="card bg-white p-6">
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold">Recent Activity</h3>
-                <button class="text-sm text-blue-600 font-medium flex items-center gap-1">
-                  <span>View All</span>
-                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                </button>
-              </div>
-              <div class="space-y-4">
-                <div class="flex items-start gap-3">
-                  <div class="bg-blue-100 p-2 rounded-full">
-                    <i data-lucide="message-square" class="w-4 h-4 text-blue-600"></i>
-                  </div>
-                  <div>
-                    <p class="font-medium">New feedback from adviser</p>
-                    <p class="text-sm text-gray-500">Dr. Smith commented on your latest submission</p>
-                    <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
-                  </div>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <div class="bg-green-100 p-2 rounded-full">
-                    <i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>
-                  </div>
-                  <div>
-                    <p class="font-medium">Document approved</p>
-                    <p class="text-sm text-gray-500">Chapter 3 has been approved by your panel</p>
-                    <p class="text-xs text-gray-400 mt-1">1 day ago</p>
-                  </div>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <div class="bg-purple-100 p-2 rounded-full">
-                    <i data-lucide="dollar-sign" class="w-4 h-4 text-purple-600"></i>
-                  </div>
-                  <div>
-                    <p class="font-medium">Grant disbursed</p>
-                    <p class="text-sm text-gray-500">$1,000 has been deposited to your account</p>
-                    <p class="text-xs text-gray-400 mt-1">3 days ago</p>
-                  </div>
-                </div>
-                
-                <div class="flex items-start gap-3">
-                  <div class="bg-yellow-100 p-2 rounded-full">
-                    <i data-lucide="alert-circle" class="w-4 h-4 text-yellow-600"></i>
-                  </div>
-                  <div>
-                    <p class="font-medium">Deadline reminder</p>
-                    <p class="text-sm text-gray-500">Next milestone due in 7 days</p>
-                    <p class="text-xs text-gray-400 mt-1">5 days ago</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Performance Charts -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="card bg-white p-6">
-              <h3 class="text-xl font-semibold mb-4">Project Progress</h3>
-              <canvas id="progressChart" height="250"></canvas>
-            </div>
-            <div class="card bg-white p-6">
-              <h3 class="text-xl font-semibold mb-4">Task Completion</h3>
-              <canvas id="taskChart" height="250"></canvas>
-            </div>
-          </div>
-        </div>
-
-        <!-- Proposal Submission Panel -->
-        <div id="proposal" class="hidden animate-fadeIn">
-          <div class="flex justify-between items-center mb-6">
-            <div>
-              <h2 class="text-2xl font-bold">Proposal Management</h2>
-              <p class="text-gray-500">Submit and track your research proposals</p>
-            </div>
-            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
-              <i data-lucide="plus" class="w-5 h-5"></i>
-              <span>New Proposal</span>
-            </button>
-          </div>
-          
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="card bg-white p-6 lg:col-span-2">
-              <h3 class="text-xl font-semibold mb-4">Submit New Proposal</h3>
-              <form class="space-y-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Title</label>
-                  <input type="text" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="Enter your project title">
-                </div>
-                
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Research Area</label>
-                  <select class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
-                    <option value="">Select research area</option>
-                    <option value="ai">Artificial Intelligence</option>
-                    <option value="ml">Machine Learning</option>
-                    <option value="cs">Computer Security</option>
-                    <option value="da">Data Analytics</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Abstract</label>
-                  <textarea class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition min-h-[120px]" placeholder="Provide a brief abstract of your research"></textarea>
-                </div>
-                
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Upload Documents</label>
-                  <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <div class="flex flex-col items-center justify-center">
-                      <i data-lucide="upload-cloud" class="w-10 h-10 text-gray-400 mb-2"></i>
-                      <p class="text-sm text-gray-500">Drag and drop files here or</p>
-                      <button type="button" class="mt-2 text-sm text-blue-600 font-medium">Browse Files</button>
-                    </div>
-                  </div>
-                  <p class="text-xs text-gray-500 mt-2">Accepted formats: PDF, DOCX (Max size: 10MB)</p>
-                </div>
-                
-                <div class="flex justify-end gap-3 pt-2">
-                  <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">Cancel</button>
-                  <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
-                    <i data-lucide="save" class="w-5 h-5"></i>
-                    <span>Submit Proposal</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-            
-            <div class="space-y-6">
-              <div class="card bg-white p-6">
-                <h3 class="text-xl font-semibold mb-4">Proposal Status</h3>
-                <div class="space-y-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <i data-lucide="file-text" class="w-5 h-5 text-blue-600"></i>
-                    </div>
-                    <div>
-                      <p class="font-medium">Initial Proposal</p>
-                      <div class="flex items-center gap-2">
-                        <span class="text-sm text-gray-500">Submitted: Oct 15, 2023</span>
-                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Approved</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                      <i data-lucide="file-text" class="w-5 h-5 text-yellow-600"></i>
-                    </div>
-                    <div>
-                      <p class="font-medium">Revised Proposal</p>
-                      <div class="flex items-center gap-2">
-                        <span class="text-sm text-gray-500">Submitted: Nov 2, 2023</span>
-                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Under Review</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="card bg-white p-6">
-                <h3 class="text-xl font-semibold mb-4">Adviser Feedback</h3>
-                <div class="space-y-4">
-                  <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                    <div class="flex justify-between items-start">
-                      <div class="font-medium">Dr. Jane Smith</div>
-                      <span class="text-xs text-gray-500">Oct 20, 2023</span>
-                    </div>
-                    <p class="text-sm text-gray-700 mt-2">The research objectives need to be more specific. Please revise section 2.3 to include measurable outcomes.</p>
-                  </div>
-                  
-                  <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div class="flex justify-between items-start">
-                      <div class="font-medium">Dr. Jane Smith</div>
-                      <span class="text-xs text-gray-500">Nov 5, 2023</span>
-                    </div>
-                    <p class="text-sm text-gray-700 mt-2">The methodology section looks much improved. I've approved this version for panel review.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Adviser & Panel Assignment Panel -->
-        <div id="adviser" class="hidden animate-fadeIn">
-          <div class="flex justify-between items-center mb-6">
-            <div>
-              <h2 class="text-2xl font-bold">Adviser & Panel</h2>
-              <p class="text-gray-500">View and communicate with your research team</p>
-            </div>
-            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
-              <i data-lucide="mail" class="w-5 h-5"></i>
-              <span>Contact All</span>
-            </button>
-          </div>
-          
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="card bg-white p-6">
-              <h3 class="text-xl font-semibold mb-4">Your Adviser</h3>
-              <div class="flex flex-col items-center text-center p-4">
-                <div class="w-20 h-20 rounded-full bg-blue-100 mb-4 flex items-center justify-center text-2xl font-bold text-blue-600">JS</div>
-                <h4 class="text-lg font-medium">Dr. Jane Smith</h4>
-                <p class="text-gray-500">Professor of Computer Science</p>
-                <div class="mt-4 flex gap-3">
-                  <a href="#" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
-                    <i data-lucide="mail" class="w-5 h-5 text-gray-600"></i>
-                  </a>
-                  <a href="#" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
-                    <i data-lucide="phone" class="w-5 h-5 text-gray-600"></i>
-                  </a>
-                  <a href="#" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
-                    <i data-lucide="calendar" class="w-5 h-5 text-gray-600"></i>
-                  </a>
-                </div>
-                <div class="mt-4 w-full">
-                  <button class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">View Full Profile</button>
-                </div>
-              </div>
-              
-              <div class="mt-6">
-                <h4 class="font-medium mb-2">Office Hours</h4>
-                <ul class="space-y-2">
-                  <li class="flex items-center gap-2 text-sm">
-                    <i data-lucide="clock" class="w-4 h-4 text-gray-500"></i>
-                    <span>Monday: 10:00 AM - 12:00 PM</span>
-                  </li>
-                  <li class="flex items-center gap-2 text-sm">
-                    <i data-lucide="clock" class="w-4 h-4 text-gray-500"></i>
-                    <span>Wednesday: 2:00 PM - 4:00 PM</span>
-                  </li>
-                  <li class="flex items-center gap-2 text-sm">
-                    <i data-lucide="clock" class="w-4 h-4 text-gray-500"></i>
-                    <span>Friday: 9:00 AM - 11:00 AM</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
-            <div class="card bg-white p-6 lg:col-span-2">
-              <h3 class="text-xl font-semibold mb-4">Panel Members</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="border rounded-lg p-4 hover:border-blue-300 transition">
-                  <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-lg font-bold text-purple-600">JD</div>
-                    <div>
-                      <h4 class="font-medium">Dr. John Doe</h4>
-                      <p class="text-sm text-gray-500">Associate Professor</p>
-                    </div>
-                  </div>
-                  <div class="mt-4 flex gap-2">
-                    <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Methodology</span>
-                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Data Analysis</span>
-                  </div>
-                  <div class="mt-4 flex gap-3">
-                    <a href="#" class="text-blue-600 text-sm font-medium flex items-center gap-1">
-                      <i data-lucide="mail" class="w-4 h-4"></i>
-                      <span>Contact</span>
-                    </a>
-                    <a href="#" class="text-blue-600 text-sm font-medium flex items-center gap-1">
-                      <i data-lucide="file-text" class="w-4 h-4"></i>
-                      <span>Feedback</span>
-                    </a>
-                  </div>
-                </div>
-                
-                <div class="border rounded-lg p-4 hover:border-blue-300 transition">
-                  <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-lg font-bold text-green-600">EJ</div>
-                    <div>
-                      <h4 class="font-medium">Dr. Emily Johnson</h4>
-                      <p class="text-sm text-gray-500">Assistant Professor</p>
-                    </div>
-                  </div>
-                  <div class="mt-4 flex gap-2">
-                    <span class="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">Literature</span>
-                    <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Writing</span>
-                  </div>
-                  <div class="mt-4 flex gap-3">
-                    <a href="#" class="text-blue-600 text-sm font-medium flex items-center gap-1">
-                      <i data-lucide="mail" class="w-4 h-4"></i>
-                      <span>Contact</span>
-                    </a>
-                    <a href="#" class="text-blue-600 text-sm font-medium flex items-center gap-1">
-                      <i data-lucide="file-text" class="w-4 h-4"></i>
-                      <span>Feedback</span>
-                    </a>
-                  </div>
-                </div>
-                
-                <div class="border rounded-lg p-4 hover:border-blue-300 transition">
-                  <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center text-lg font-bold text-yellow-600">MR</div>
-                    <div>
-                      <h4 class="font-medium">Dr. Michael Roberts</h4>
-                      <p class="text-sm text-gray-500">Professor</p>
-                    </div>
-                  </div>
-                  <div class="mt-4 flex gap-2">
-                    <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">Technical</span>
-                    <span class="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">Implementation</span>
-                  </div>
-                  <div class="mt-4 flex gap-3">
-                    <a href="#" class="text-blue-600 text-sm font-medium flex items-center gap-1">
-                      <i data-lucide="mail" class="w-4 h-4"></i>
-                      <span>Contact</span>
-                    </a>
-                    <a href="#" class="text-blue-600 text-sm font-medium flex items-center gap-1">
-                      <i data-lucide="file-text" class="w-4 h-4"></i>
-                      <span>Feedback</span>
-                    </a>
-                  </div>
-                </div>
-                
-                <div class="border rounded-lg p-4 hover:border-blue-300 transition">
-                  <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center text-lg font-bold text-pink-600">SL</div>
-                    <div>
-                      <h4 class="font-medium">Dr. Sarah Lee</h4>
-                      <p class="text-sm text-gray-500">Associate Professor</p>
-                    </div>
-                  </div>
-                  <div class="mt-4 flex gap-2">
-                    <span class="px-2 py-1 bg-teal-100 text-teal-800 text-xs rounded-full">Evaluation</span>
-                    <span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">General</span>
-                  </div>
-                  <div class="mt-4 flex gap-3">
-                    <a href="#" class="text-blue-600 text-sm font-medium flex items-center gap-1">
-                      <i data-lucide="mail" class="w-4 h-4"></i>
-                      <span>Contact</span>
-                    </a>
-                    <a href="#" class="text-blue-600 text-sm font-medium flex items-center gap-1">
-                      <i data-lucide="file-text" class="w-4 h-4"></i>
-                      <span>Feedback</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="mt-6">
-                <h4 class="font-medium mb-2">Panel Meeting Schedule</h4>
-                <div class="overflow-x-auto">
-                  <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                      <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purpose</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                      <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Nov 15, 2023</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">10:00 AM - 11:30 AM</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Proposal Review</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                          <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Completed</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Dec 5, 2023</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2:00 PM - 3:30 PM</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Progress Review</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                          <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Upcoming</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Dec 15, 2023</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">9:00 AM - 12:00 PM</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Final Defense</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                          <span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">Scheduled</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Grants & Funding Panel -->
-        <div id="grants" class="hidden animate-fadeIn">
-          <div class="flex justify-between items-center mb-6">
-            <div>
-              <h2 class="text-2xl font-bold">Grants & Funding</h2>
-              <p class="text-gray-500">Manage your research funding and applications</p>
-            </div>
-            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
-              <i data-lucide="plus" class="w-5 h-5"></i>
-              <span>New Application</span>
-            </button>
-          </div>
-          
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="card bg-white p-6 lg:col-span-2">
-              <h3 class="text-xl font-semibold mb-4">Funding Overview</h3>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="border rounded-lg p-4">
-                  <p class="text-sm text-gray-500">Total Awarded</p>
-                  <h4 class="text-2xl font-bold mt-1">$2,500</h4>
-                </div>
-                <div class="border rounded-lg p-4">
-                  <p class="text-sm text-gray-500">Available Balance</p>
-                  <h4 class="text-2xl font-bold mt-1">$1,200</h4>
-                </div>
-                <div class="border rounded-lg p-4">
-                  <p class="text-sm text-gray-500">Pending Requests</p>
-                  <h4 class="text-2xl font-bold mt-1">$350</h4>
-                </div>
-              </div>
-              
-              <h4 class="font-medium mb-2">Recent Transactions</h4>
-              <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">
-                    <tr>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Nov 10, 2023</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Research Materials</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-$250</td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Approved</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Nov 5, 2023</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Software License</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-$150</td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Approved</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Nov 1, 2023</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Initial Grant Disbursement</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">+$1,000</td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Completed</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Oct 25, 2023</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Conference Registration</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-$350</td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Pending</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            
-            <div class="space-y-6">
-              <div class="card bg-white p-6">
-                <h3 class="text-xl font-semibold mb-4">Available Grants</h3>
-                <div class="space-y-4">
-                  <div class="border rounded-lg p-4 hover:border-blue-300 transition">
-                    <div class="flex justify-between items-start">
-                      <h4 class="font-medium">Research Innovation Grant</h4>
-                      <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Open</span>
-                    </div>
-                    <p class="text-sm text-gray-500 mt-1">Up to $5,000 for innovative research projects</p>
-                    <div class="mt-3 flex justify-between items-center">
-                      <span class="text-sm font-medium">Deadline: Dec 15, 2023</span>
-                      <button class="text-sm text-blue-600 font-medium">Apply</button>
-                    </div>
-                  </div>
-                  
-                  <div class="border rounded-lg p-4 hover:border-blue-300 transition">
-                    <div class="flex justify-between items-start">
-                      <h4 class="font-medium">STEM Research Fund</h4>
-                      <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Open</span>
-                    </div>
-                    <p class="text-sm text-gray-500 mt-1">Funding for STEM-related research projects</p>
-                    <div class="mt-3 flex justify-between items-center">
-                      <span class="text-sm font-medium">Deadline: Jan 10, 2024</span>
-                      <button class="text-sm text-blue-600 font-medium">Apply</button>
-                    </div>
-                  </div>
-                  
-                  <div class="border rounded-lg p-4 hover:border-blue-300 transition">
-                    <div class="flex justify-between items-start">
-                      <h4 class="font-medium">Community Impact Grant</h4>
-                      <span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">Closed</span>
-                    </div>
-                    <p class="text-sm text-gray-500 mt-1">Projects with direct community benefits</p>
-                    <div class="mt-3 flex justify-between items-center">
-                      <span class="text-sm font-medium">Deadline: Oct 30, 2023</span>
-                      <button class="text-sm text-gray-500 font-medium" disabled>Closed</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="card bg-white p-6">
-                <h3 class="text-xl font-semibold mb-4">Request Funds</h3>
-                <form class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                    <div class="relative">
-                      <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                      <input type="number" class="w-full border border-gray-300 rounded-lg px-4 py-2 pl-8 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="0.00">
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
-                    <select class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
-                      <option value="">Select purpose</option>
-                      <option value="materials">Research Materials</option>
-                      <option value="software">Software Licenses</option>
-                      <option value="equipment">Equipment</option>
-                      <option value="travel">Travel Expenses</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition min-h-[80px]" placeholder="Provide details about your request"></textarea>
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supporting Documents</label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                      <div class="flex flex-col items-center justify-center">
-                        <i data-lucide="upload-cloud" class="w-8 h-8 text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500">Drag and drop files here or</p>
-                        <button type="button" class="mt-2 text-sm text-blue-600 font-medium">Browse Files</button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">Submit Request</button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Documentation & Publication Panel -->
-        <div id="docs" class="hidden animate-fadeIn">
-          <div class="flex justify-between items-center mb-6">
-            <div>
-              <h2 class="text-2xl font-bold">Documentation & Publication</h2>
-              <p class="text-gray-500">Manage your research documents and publications</p>
-            </div>
-            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
-              <i data-lucide="upload" class="w-5 h-5"></i>
-              <span>Upload Document</span>
-            </button>
-          </div>
-          
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="card bg-white p-6 lg:col-span-2">
-              <h3 class="text-xl font-semibold mb-4">Document Library</h3>
-              <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-3">
-                  <button class="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm">All</button>
-                  <button class="px-3 py-1 bg-white border rounded-lg text-sm hover:bg-gray-50">Proposal</button>
-                  <button class="px-3 py-1 bg-white border rounded-lg text-sm hover:bg-gray-50">Thesis</button>
-                  <button class="px-3 py-1 bg-white border rounded-lg text-sm hover:bg-gray-50">Reports</button>
-                </div>
-                <div class="relative">
-                  <input type="text" placeholder="Search documents..." class="border rounded-lg px-4 py-1 pl-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
-                  <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-                </div>
-              </div>
-              
-              <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document</th>
-                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
-                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">
-                    <tr class="hover:bg-gray-50">
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center gap-3">
-                          <i data-lucide="file-text" class="w-5 h-5 text-blue-500"></i>
-                          <div>
-                            <div class="font-medium">Research Proposal v3</div>
-                            <div class="text-sm text-gray-500">1.2 MB</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Proposal</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Nov 10, 2023</td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Approved</span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button class="text-blue-600 hover:text-blue-900">Download</button>
-                      </td>
-                    </tr>
-                    <tr class="hover:bg-gray-50">
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center gap-3">
-                          <i data-lucide="file-text" class="w-5 h-5 text-purple-500"></i>
-                          <div>
-                            <div class="font-medium">Chapter 1 - Introduction</div>
-                            <div class="text-sm text-gray-500">850 KB</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Thesis</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Nov 5, 2023</td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Under Review</span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button class="text-blue-600 hover:text-blue-900">Download</button>
-                      </td>
-                    </tr>
-                    <tr class="hover:bg-gray-50">
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center gap-3">
-                          <i data-lucide="file-text" class="w-5 h-5 text-green-500"></i>
-                          <div>
-                            <div class="font-medium">Literature Review</div>
-                            <div class="text-sm text-gray-500">1.5 MB</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Thesis</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Oct 28, 2023</td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Approved</span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button class="text-blue-600 hover:text-blue-900">Download</button>
-                      </td>
-                    </tr>
-                    <tr class="hover:bg-gray-50">
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center gap-3">
-                          <i data-lucide="file-text" class="w-5 h-5 text-yellow-500"></i>
-                          <div>
-                            <div class="font-medium">Progress Report - Nov</div>
-                            <div class="text-sm text-gray-500">950 KB</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Report</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Nov 15, 2023</td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Draft</span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button class="text-blue-600 hover:text-blue-900">Edit</button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              
-              <div class="mt-4 flex justify-between items-center">
-                <p class="text-sm text-gray-500">Showing 1 to 4 of 12 documents</p>
-                <div class="flex gap-1">
-                  <button class="w-8 h-8 flex items-center justify-center border rounded-lg hover:bg-gray-50">
-                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
-                  </button>
-                  <button class="w-8 h-8 flex items-center justify-center border rounded-lg bg-blue-600 text-white">1</button>
-                  <button class="w-8 h-8 flex items-center justify-center border rounded-lg hover:bg-gray-50">2</button>
-                  <button class="w-8 h-8 flex items-center justify-center border rounded-lg hover:bg-gray-50">3</button>
-                  <button class="w-8 h-8 flex items-center justify-center border rounded-lg hover:bg-gray-50">
-                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div class="space-y-6">
-              <div class="card bg-white p-6">
-                <h3 class="text-xl font-semibold mb-4">Upload New Document</h3>
-                <form class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
-                    <select class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
-                      <option value="">Select document type</option>
-                      <option value="proposal">Proposal</option>
-                      <option value="thesis">Thesis Chapter</option>
-                      <option value="report">Progress Report</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Document Title</label>
-                    <input type="text" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="Enter document title">
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition min-h-[80px]" placeholder="Provide a brief description"></textarea>
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Upload File</label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                      <div class="flex flex-col items-center justify-center">
-                        <i data-lucide="upload-cloud" class="w-10 h-10 text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500">Drag and drop files here or</p>
-                        <button type="button" class="mt-2 text-sm text-blue-600 font-medium">Browse Files</button>
-                      </div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2">Accepted formats: PDF, DOCX, PPTX (Max size: 25MB)</p>
-                  </div>
-                  
-                  <div class="flex items-center gap-2">
-                    <input type="checkbox" id="notify-adviser" class="rounded text-blue-600 focus:ring-blue-500">
-                    <label for="notify-adviser" class="text-sm text-gray-700">Notify adviser about this upload</label>
-                  </div>
-                  
-                  <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">Upload Document</button>
-                </form>
-              </div>
-              
-              <div class="card bg-white p-6">
-                <h3 class="text-xl font-semibold mb-4">Publication Resources</h3>
-                <div class="space-y-3">
-                  <a href="#" class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition">
-                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <i data-lucide="file-text" class="w-5 h-5 text-blue-600"></i>
-                    </div>
-                    <div>
-                      <p class="font-medium">Thesis Formatting Guidelines</p>
-                      <p class="text-sm text-gray-500">University standards for thesis formatting</p>
-                    </div>
-                  </a>
-                  
-                  <a href="#" class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition">
-                    <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                      <i data-lucide="file-text" class="w-5 h-5 text-purple-600"></i>
-                    </div>
-                    <div>
-                      <p class="font-medium">Citation Style Guide</p>
-                      <p class="text-sm text-gray-500">APA 7th edition citation examples</p>
-                    </div>
-                  </a>
-                  
-                  <a href="#" class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition">
-                    <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                      <i data-lucide="file-text" class="w-5 h-5 text-green-600"></i>
-                    </div>
-                    <div>
-                      <p class="font-medium">Publication Timeline</p>
-                      <p class="text-sm text-gray-500">Important dates for journal submissions</p>
-                    </div>
-                  </a>
-                  
-                  <a href="#" class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition">
-                    <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                      <i data-lucide="file-text" class="w-5 h-5 text-yellow-600"></i>
-                    </div>
-                    <div>
-                      <p class="font-medium">Research Ethics Policy</p>
-                      <p class="text-sm text-gray-500">University research ethics guidelines</p>
-                    </div>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Analytics & Reporting Panel -->
-        <div id="analytics" class="hidden animate-fadeIn">
-          <div class="flex justify-between items-center mb-6">
-            <div>
-              <h2 class="text-2xl font-bold">Analytics & Reporting</h2>
-              <p class="text-gray-500">Track your research progress and performance</p>
-            </div>
-            <div class="flex items-center gap-3">
-              <select class="border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
-                <option>Last 7 Days</option>
-                <option>Last 30 Days</option>
-                <option selected>Last 90 Days</option>
-                <option>All Time</option>
-              </select>
-              <button class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
-                <i data-lucide="download" class="w-5 h-5"></i>
-                <span>Export</span>
-              </button>
-            </div>
-          </div>
-          
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="card bg-white p-6">
-              <h3 class="text-xl font-semibold mb-4">Project Completion</h3>
-              <div class="flex justify-center">
-                <div class="relative w-48 h-48">
-                  <svg class="w-full h-full" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e6e6e6" stroke-width="3"></circle>
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="#3b82f6" stroke-width="3" stroke-dasharray="75 100" stroke-linecap="round"></circle>
-                  </svg>
-                  <div class="absolute inset-0 flex items-center justify-center flex-col">
-                    <span class="text-3xl font-bold">75%</span>
-                    <span class="text-sm text-gray-500">Complete</span>
-                  </div>
-                </div>
-              </div>
-              <div class="mt-6">
-                <div class="flex justify-between items-center mb-1">
-                  <span class="text-sm font-medium">Completed Tasks</span>
-                  <span class="text-sm font-medium">18/24</span>
-                </div>
-                <div class="h-2 bg-gray-200 rounded-full">
-                  <div class="h-2 bg-green-500 rounded-full" style="width: 75%"></div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="card bg-white p-6 lg:col-span-2">
-              <h3 class="text-xl font-semibold mb-4">Progress Timeline</h3>
-              <canvas id="progressTimelineChart" height="250"></canvas>
-            </div>
-          </div>
-        </div>
-
-        <!-- Defense Schedule Panel -->
-        <div id="defense" class="hidden animate-fadeIn">
-          <div class="flex justify-between items-center mb-6">
-            <div>
-              <h2 class="text-2xl font-bold">Defense Schedule</h2>
-              <p class="text-gray-500">View your upcoming defense dates and requirements</p>
-            </div>
-            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
-              <i data-lucide="calendar-plus" class="w-5 h-5"></i>
-              <span>Add to Calendar</span>
-            </button>
-          </div>
-          <div class="card bg-white p-6">
-            <h3 class="text-xl font-semibold mb-4">Upcoming Defenses</h3>
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Venue</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Dec 15, 2023</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">9:00 AM - 12:00 PM</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Room 301, Main Building</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Scheduled</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Jan 10, 2024</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1:00 PM - 3:00 PM</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Room 204, Science Annex</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Pending</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="mt-6">
-              <h4 class="font-medium mb-2">Requirements</h4>
-              <ul class="list-disc pl-6 text-gray-700 space-y-1">
-                <li>Bring printed copies of your thesis</li>
-                <li>Prepare a 15-minute presentation</li>
-                <li>Submit defense slides 2 days before schedule</li>
-                <li>Wear formal attire</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <!-- Notifications Panel -->
-        <div id="notifications" class="hidden animate-fadeIn">
-          <div class="flex justify-between items-center mb-6">
-            <div>
-              <h2 class="text-2xl font-bold">Notifications</h2>
-              <p class="text-gray-500">All your recent notifications</p>
-            </div>
-          </div>
-          <div class="card bg-white p-6">
-            <ul class="divide-y divide-gray-200">
-              <li class="py-4 flex items-start gap-3">
-                <div class="bg-blue-100 p-2 rounded-full">
-                  <i data-lucide="file-text" class="w-5 h-5 text-blue-600"></i>
-                </div>
-                <div>
-                  <p class="font-medium">Proposal Review</p>
-                  <p class="text-sm text-gray-500">Your proposal has been reviewed by Dr. Smith</p>
-                  <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
-                </div>
-              </li>
-              <li class="py-4 flex items-start gap-3">
-                <div class="bg-green-100 p-2 rounded-full">
-                  <i data-lucide="calendar" class="w-5 h-5 text-green-600"></i>
-                </div>
-                <div>
-                  <p class="font-medium">Defense Scheduled</p>
-                  <p class="text-sm text-gray-500">Your final defense is scheduled for Dec 15</p>
-                  <p class="text-xs text-gray-400 mt-1">1 day ago</p>
-                </div>
-              </li>
-              <li class="py-4 flex items-start gap-3">
-                <div class="bg-purple-100 p-2 rounded-full">
-                  <i data-lucide="dollar-sign" class="w-5 h-5 text-purple-600"></i>
-                </div>
-                <div>
-                  <p class="font-medium">Grant Approved</p>
-                  <p class="text-sm text-gray-500">Your research grant application has been approved</p>
-                  <p class="text-xs text-gray-400 mt-1">3 days ago</p>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Profile Panel -->
-        <div id="profile" class="hidden animate-fadeIn">
-          <div class="flex justify-between items-center mb-6">
-            <div>
-              <h2 class="text-2xl font-bold">Profile Settings</h2>
-              <p class="text-gray-500">Manage your personal information</p>
-            </div>
-          </div>
-          <div class="card bg-white p-6 max-w-xl mx-auto">
-            <form class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input type="text" class="w-full border border-gray-300 rounded-lg px-4 py-2" value="John Smith">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" class="w-full border border-gray-300 rounded-lg px-4 py-2" value="john.smith@email.com">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Course</label>
-                <input type="text" class="w-full border border-gray-300 rounded-lg px-4 py-2" value="Computer Science">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input type="password" class="w-full border border-gray-300 rounded-lg px-4 py-2" value="********">
-              </div>
-              <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">Save Changes</button>
-            </form>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- Scripts -->
-  <script>
-    // Sidebar panel switching
-    function showPanel(panelId) {
-      const panels = ['dashboard', 'proposal', 'adviser', 'grants', 'docs', 'analytics', 'defense', 'notifications', 'profile'];
-      panels.forEach(id => {
-        document.getElementById(id).classList.add('hidden');
-      });
-      document.getElementById(panelId).classList.remove('hidden');
-      // Update sidebar active state
-      document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
-      const sidebarLinks = document.querySelectorAll('.sidebar-link');
-      sidebarLinks.forEach(link => {
-        if (link.textContent.trim().toLowerCase().includes(panelId)) {
-          link.classList.add('active');
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../assets/img/sms-logo.png" />
+    <title>CRAD Student Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar-collapse {
+            transition: all 0.3s ease;
         }
-      });
-    }
+        .active-nav-item {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e5e7eb;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            background-color: #3b82f6;
+        }
 
-    // Profile dropdown
-    function toggleProfileDropdown() {
-      const menu = document.querySelector('.dropdown-menu');
-      menu.classList.toggle('show');
-      document.getElementById('profile-chevron').classList.toggle('rotate-180');
-    }
+        /* Hide scrollbar but keep scroll functionality */
+        .hide-scrollbar {
+            scrollbar-width: none;         /* Firefox */
+            -ms-overflow-style: none;      /* Internet Explorer 10+ */
+        } 
 
-    // Notification dropdown
-    function toggleNotificationDropdown() {
-      const dropdown = document.querySelectorAll('.dropdown-menu')[1];
-      dropdown.classList.toggle('show');
-    }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;                 /* Chrome, Safari, Edge */
+       }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="sidebar-collapse w-64 bg-blue-800 text-white flex flex-col">
+            <div class="p-4 flex items-center justify-between border-b border-blue-700">
+                <div class="flex items-center space-x-2">
+                    <img src="https://placehold.co/40x40" alt="CRAD logo - abstract graduation cap with atomic orbits symbolizing research" class="rounded">
+                    <span class="text-xl font-bold">CRAD Portal</span>
+                </div>
+                <button class="text-white focus:outline-none">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <div class="p-4 flex items-center space-x-3 bg-blue-900">
+                <img src="https://placehold.co/50x50" alt="Student profile picture - young academic with glasses smiling" class="rounded-full">
+                <div>
+                    <p class="font-medium">John D. Researcher</p>
+                    <p class="text-xs text-blue-200">PhD Candidate</p>
+                </div>
+            </div>
+            <nav class="flex-1 overflow-y-auto pb-4 hide-scrollbar">
+                <div class="px-4 py-3">
+                    <p class="text-xs uppercase text-blue-300 font-semibold mb-2">Research Process</p>
+                    <ul>
+                        <li><a href="#" class="active-nav-item flex items-center space-x-3 px-3 py-2 rounded"><i class="fas fa-home w-5"></i><span>Dashboard</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-file-upload w-5"></i><span>Proposal Submission</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-user-tie w-5"></i><span>Adviser Assignment</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-calendar-check w-5"></i><span>Defense Scheduling</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-file-alt w-5"></i><span>Document Tracker</span></a></li>
+                    </ul>
+                </div>
+                <div class="px-4 py-3 border-t border-blue-700">
+                    <p class="text-xs uppercase text-blue-300 font-semibold mb-2">Support Services</p>
+                    <ul>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-money-bill-wave w-5"></i><span>Payment Verification</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-microscope w-5"></i><span>Research Facilities</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-chart-line w-5"></i><span>Analytics</span></a></li>
+                    </ul>
+                </div>
+                <div class="px-4 py-3 border-t border-blue-700">
+                    <p class="text-xs uppercase text-blue-300 font-semibold mb-2">Events</p>
+                    <ul>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-calendar-day w-5"></i><span>Seminars/Festivals</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-users w-5"></i><span>Research Groups</span></a></li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
 
-    // Hide dropdowns on click outside
-    document.addEventListener('click', function(event) {
-      const profileBtn = document.querySelector('.flex.items-center.gap-3.p-3.w-full');
-      const profileMenu = document.querySelector('.dropdown-menu');
-      if (profileMenu && !profileMenu.contains(event.target) && !profileBtn.contains(event.target)) {
-        profileMenu.classList.remove('show');
-        document.getElementById('profile-chevron').classList.remove('rotate-180');
-      }
-      const notifBtn = document.querySelector('button[onclick="toggleNotificationDropdown()"]');
-      const notifMenu = document.querySelectorAll('.dropdown-menu')[1];
-      if (notifMenu && !notifMenu.contains(event.target) && !notifBtn.contains(event.target)) {
-        notifMenu.classList.remove('show');
-      }
-    });
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Bar -->
+            <header class="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-3">
+                <h1 class="text-2xl font-bold text-gray-800">Student Dashboard</h1>
+                <div class="flex items-center space-x-4">
+                    <button class="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200">
+                        <i class="fas fa-bell"></i>
+                        <span class="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500"></span>
+                    </button>
+                    <button class="flex items-center space-x-2 focus:outline-none">
+                        <img src="https://placehold.co/40x40" alt="Student profile picture thumbnail - same student as sidebar but cropped" class="rounded-full">
+                        <span class="hidden md:inline">John D. Researcher</span>
+                    </button>
+                </div>
+            </header>
 
-    // Chart.js example charts
-    window.addEventListener('DOMContentLoaded', () => {
-      if (window.Chart) {
-        // Project Progress Chart
-        new Chart(document.getElementById('progressChart').getContext('2d'), {
-          type: 'doughnut',
-          data: {
-            labels: ['Completed', 'Remaining'],
-            datasets: [{
-              data: [75, 25],
-              backgroundColor: ['#3b82f6', '#e5e7eb'],
-              borderWidth: 0
-            }]
-          },
-          options: {
-            cutout: '75%',
-            plugins: { legend: { display: false } }
-          }
+            <main class="flex-1 overflow-y-auto p-6">
+                <!-- Research Progress Summary -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold">Research Progress</h2>
+                        <span class="text-sm text-gray-500">Updated today</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <!-- Proposal Phase Card -->
+                        <div class="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-medium text-blue-800">Proposal</h3>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Completed</span>
+                            </div>
+                            <div class="progress-bar mb-2">
+                                <div class="progress-fill" style="width: 100%"></div>
+                            </div>
+                            <p class="text-xs text-blue-600">Submitted: 15 Jan 2024</p>
+                            <p class="text-xs text-blue-600">Status: Approved</p>
+                        </div>
+                        
+                        <!-- Adviser Phase Card -->
+                        <div class="bg-purple-50 border border-purple-100 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-medium text-purple-800">Adviser</h3>
+                                <span class="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">Completed</span>
+                            </div>
+                            <div class="progress-bar mb-2">
+                                <div class="progress-fill" style="width: 100%"></div>
+                            </div>
+                            <p class="text-xs text-purple-600">Dr. Smith</p>
+                            <p class="text-xs text-purple-600">Meetings: 4</p>
+                        </div>
+                        
+                        <!-- Documentation Phase Card -->
+                        <div class="bg-yellow-50 border border-yellow-100 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-medium text-yellow-800">Documents</h3>
+                                <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">In Progress</span>
+                            </div>
+                            <div class="progress-bar mb-2">
+                                <div class="progress-fill" style="width: 65%"></div>
+                            </div>
+                            <p class="text-xs text-yellow-600">3 of 5 chapters submitted</p>
+                            <p class="text-xs text-yellow-600">Next due: 15 Mar 2024</p>
+                        </div>
+                        
+                        <!-- Defense Phase Card -->
+                        <div class="bg-green-50 border border-green-100 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-medium text-green-800">Defense</h3>
+                                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Pending</span>
+                            </div>
+                            <div class="progress-bar mb-2">
+                                <div class="progress-fill" style="width: 10%"></div>
+                            </div>
+                            <p class="text-xs text-green-600">Panel: Not assigned</p>
+                            <p class="text-xs text-green-600">Schedule: TBD</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Notifications and Timeline -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <!-- Recent Notifications -->
+                    <div class="bg-white rounded-lg shadow-md p-6 lg:col-span-1">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-semibold">Notifications</h2>
+                            <button class="text-sm text-blue-600">View All</button>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex items-start space-x-3">
+                                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-800">
+                                    <i class="fas fa-file-alt"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium">Chapter 4 feedback received</p>
+                                    <p class="text-xs text-gray-500">Dr. Smith provided comments on your methodology section</p>
+                                    <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-800">
+                                    <i class="fas fa-calendar-check"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium">Seminar Reminder</p>
+                                    <p class="text-xs text-gray-500">Research Methodology Workshop on March 5</p>
+                                    <p class="text-xs text-gray-400 mt-1">Yesterday</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-800">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium">Payment Due</p>
+                                    <p class="text-xs text-gray-500">Defense fee payment deadline in 3 days</p>
+                                    <p class="text-xs text-gray-400 mt-1">2 days ago</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Research Timeline -->
+                    <div class="bg-white rounded-lg shadow-md p-6 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-semibold">Research Timeline</h2>
+                            <button class="text-sm text-blue-600">Full Timeline</button>
+                        </div>
+                        <div class="relative">
+                            <!-- Timeline connector -->
+                            <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                            
+                            <!-- Timeline items -->
+                            <div class="relative pl-8 pb-6">
+                                <div class="absolute left-0 w-3 h-3 bg-blue-600 rounded-full mt-1 border-4 border-white"></div>
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h3 class="font-medium">Proposal Submission</h3>
+                                        <p class="text-sm text-gray-600">Submitted your initial research proposal</p>
+                                    </div>
+                                    <span class="text-sm text-gray-500">Jan 15, 2024</span>
+                                </div>
+                            </div>
+                            
+                            <div class="relative pl-8 pb-6">
+                                <div class="absolute left-0 w-3 h-3 bg-blue-600 rounded-full mt-1 border-4 border-white"></div>
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h3 class="font-medium">Proposal Approval</h3>
+                                        <p class="text-sm text-gray-600">Proposal approved with minor revisions</p>
+                                    </div>
+                                    <span class="text-sm text-gray-500">Feb 2, 2024</span>
+                                </div>
+                            </div>
+                            
+                            <div class="relative pl-8 pb-6">
+                                <div class="absolute left-0 w-3 h-3 bg-purple-600 rounded-full mt-1 border-4 border-white"></div>
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h3 class="font-medium">Adviser Meeting</h3>
+                                        <p class="text-sm text-gray-600">First meeting with Dr. Smith</p>
+                                    </div>
+                                    <span class="text-sm text-gray-500">Feb 10, 2024</span>
+                                </div>
+                            </div>
+                            
+                            <div class="relative pl-8 pb-6">
+                                <div class="absolute left-0 w-3 h-3 bg-yellow-500 rounded-full mt-1 border-4 border-white"></div>
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h3 class="font-medium">Chapter 3 Submission</h3>
+                                        <p class="text-sm text-gray-600">Completed methodology section</p>
+                                    </div>
+                                    <span class="text-sm text-gray-500">Feb 28, 2024</span>
+                                </div>
+                            </div>
+                            
+                            <div class="relative pl-8">
+                                <div class="absolute left-0 w-3 h-3 bg-gray-300 rounded-full mt-1 border-4 border-white"></div>
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h3 class="font-medium text-gray-500">Final Defense</h3>
+                                        <p class="text-sm text-gray-400">Scheduled after document completion</p>
+                                    </div>
+                                    <span class="text-sm text-gray-400">TBD</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upcoming Tasks and AI Assistant -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Upcoming Tasks -->
+                    <div class="bg-white rounded-lg shadow-md p-6 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-semibold">Upcoming Tasks</h2>
+                            <button class="text-sm text-blue-600">View All</button>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex items-start space-x-3">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="font-medium">Revise Chapter 4</h3>
+                                        <span class="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">High Priority</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">Incorporate adviser's feedback on methodology</p>
+                                    <div class="flex items-center mt-1 text-xs text-gray-500">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        <span>Due: Mar 15, 2024</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="font-medium">Submit IRB Approval</h3>
+                                        <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">Medium Priority</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">Complete Institutional Review Board application</p>
+                                    <div class="flex items-center mt-1 text-xs text-gray-500">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        <span>Due: Mar 20, 2024</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <div class="flex-1">
+                                    <h3 class="font-medium">Research Seminar Attendance</h3>
+                                    <p class="text-sm text-gray-600">Advanced Data Analysis Techniques workshop</p>
+                                    <div class="flex items-center mt-1 text-xs text-gray-500">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        <span>Mar 5, 2024 • 2:00 PM</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Research Assistant -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-semibold">AI Research Assistant</h2>
+                            <span class="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Online</span>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="p-3 bg-blue-50 rounded-lg">
+                                <p class="text-sm font-medium text-blue-800 mb-1">Quick Actions</p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button class="text-xs p-2 bg-white rounded border border-blue-200 hover:bg-blue-100">Format Citations</button>
+                                    <button class="text-xs p-2 bg-white rounded border border-blue-200 hover:bg-blue-100">Plagiarism Check</button>
+                                    <button class="text-xs p-2 bg-white rounded border border-blue-200 hover:bg-blue-100">Generate Abstract</button>
+                                    <button class="text-xs p-2 bg-white rounded border border-blue-200 hover:bg-blue-100">Find Related Work</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="flex-1">
+                                    <input type="text" placeholder="Ask about research process..." class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                                <button class="p-2 bg-blue-600 text-white rounded-lg">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                <p>Try: "How to improve my literature review?" or "Suggest quantitative methods for social science research"</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Mobile sidebar toggle
+        document.querySelector('.fa-bars').addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar-collapse');
+            sidebar.classList.toggle('hidden');
         });
-        // Task Completion Chart
-        new Chart(document.getElementById('taskChart').getContext('2d'), {
-          type: 'bar',
-          data: {
-            labels: ['Proposal', 'Research', 'Analysis', 'Defense'],
-            datasets: [{
-              label: 'Tasks Completed',
-              data: [5, 7, 4, 2],
-              backgroundColor: '#2563eb'
-            }]
-          },
-          options: {
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, max: 10 } }
-          }
+
+        // Simulated AI assistant functionality
+        document.querySelectorAll('.progress-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.querySelector('.progress-details').classList.remove('hidden');
+            });
+            card.addEventListener('mouseleave', function() {
+                this.querySelector('.progress-details').classList.add('hidden');
+            });
         });
-        // Progress Timeline Chart
-        new Chart(document.getElementById('progressTimelineChart').getContext('2d'), {
-          type: 'line',
-          data: {
-            labels: ['Oct', 'Nov', 'Dec', 'Jan'],
-            datasets: [{
-              label: 'Progress (%)',
-              data: [20, 45, 75, 100],
-              borderColor: '#3b82f6',
-              backgroundColor: 'rgba(59,130,246,0.1)',
-              fill: true,
-              tension: 0.4
-            }]
-          },
-          options: {
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, max: 100 } }
-          }
-        });
-      }
-      // Lucide icons
-      if (window.lucide) lucide.createIcons();
-      // Flatpickr (if used)
-      if (window.flatpickr) flatpickr('.flatpickr');
-    });
-  </script>
+    </script>
 </body>
 </html>
-

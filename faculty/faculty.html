@@ -1,602 +1,384 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Faculty Dashboard - CRAD System</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    /* Custom scrollbar */
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background-color: rgba(59, 130, 246, 0.5);
-      border-radius: 4px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background-color: rgba(59, 130, 246, 0.8);
-    }
-    
-    /* Animation for cards */
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .animate-card {
-      animation: fadeIn 0.3s ease-out forwards;
-    }
-    
-    /* Smooth transitions */
-    .smooth-transition {
-      transition: all 0.2s ease-in-out;
-    }
-    
-    /* Status badges */
-    .status-badge {
-      @apply px-3 py-1 rounded-full text-xs font-semibold;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../assets/img/sms-logo.png" />
+    <title>CRAD Faculty Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar-collapse {
+            transition: all 0.3s ease;
+        }
+        .active-nav-item {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e5e7eb;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            background-color: #3b82f6;
+        }
+
+         .hide-scrollbar {
+            scrollbar-width: none;         /* Firefox */
+            -ms-overflow-style: none;      /* Internet Explorer 10+ */
+        } 
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;                 /* Chrome, Safari, Edge */
+       }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen font-sans text-gray-800 antialiased">
-
-  <!-- Header with improved navigation -->
-  <header class="bg-white shadow-sm sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between h-16 items-center">
-        <div class="flex items-center">
-          <div class="flex-shrink-0 flex items-center">
-            <i class="fas fa-book-open text-blue-600 text-2xl mr-2"></i>
-            <span class="text-blue-800 font-bold text-xl select-none tracking-tight">
-              CRAD <span class="font-normal">Faculty</span>
-            </span>
-          </div>
-          <nav class="hidden md:ml-8 md:flex md:space-x-8">
-            <a href="#" class="border-blue-600 text-blue-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-              <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
-            </a>
-            <a href="#" class="border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-800 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-              <i class="fas fa-file-alt mr-2"></i> Proposals
-            </a>
-            <a href="#" class="border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-800 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-              <i class="fas fa-users mr-2"></i> Advisers & Panels
-            </a>
-            <a href="#" class="border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-800 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-              <i class="fas fa-chart-line mr-2"></i> Research Progress
-            </a>
-          </nav>
-        </div>
-        <div class="hidden md:ml-4 md:flex md:items-center md:pr-0">
-          <div class="ml-3 relative">
-            <div class="flex items-center space-x-4">
-              <div class="relative">
-                <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
-                <i class="fas fa-bell text-gray-600 hover:text-blue-600 cursor-pointer text-xl"></i>
-              </div>
-              <div class="flex items-center">
-                <img class="h-8 w-8 rounded-full" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="">
-                <span class="ml-2 text-gray-700 text-sm font-medium hidden lg:inline">Dr. Sarah Johnson</span>
-              </div>
+<body class="bg-gray-50 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="sidebar-collapse w-64 bg-blue-800 text-white flex flex-col">
+            <div class="p-4 flex items-center justify-between border-b border-blue-700">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xl font-bold">CRAD Faculty Portal</span>
+                </div>
+                <button class="text-white focus:outline-none">
+                    <i class="fas fa-bars"></i>
+                </button>
             </div>
-          </div>
+            <div class="p-4 flex items-center space-x-3 bg-blue-900">
+                <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+                <div>
+                    <p class="font-medium">Dr. Samantha A. Smith</p>
+                    <p class="text-xs text-blue-200">Professor & Research Adviser</p>
+                </div>
+            </div>
+            <nav class="flex-1 overflow-y-auto pb-4 hide-scrollbar">
+                <div class="px-4 py-3">
+                    <p class="text-xs uppercase text-blue-300 font-semibold mb-2">Adviser Tools</p>
+                    <ul>
+                        <li><a href="#" class="active-nav-item flex items-center space-x-3 px-3 py-2 rounded"><i class="fas fa-home w-5"></i><span>Dashboard</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-users w-5"></i><span>Student Supervision</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-file-edit w-5"></i><span>Proposal Review</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-calendar-check w-5"></i><span>Panel Scheduling</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-check-circle w-5"></i><span>Requirements Tracking</span></a></li>
+                    </ul>
+                </div>
+                <div class="px-4 py-3 border-t border-blue-700">
+                    <p class="text-xs uppercase text-blue-300 font-semibold mb-2">Support Services</p>
+                    <ul>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-money-bill-wave w-5"></i><span>Payment Verification</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-microscope w-5"></i><span>Research Facilities</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-chart-line w-5"></i><span>Analytics</span></a></li>
+                    </ul>
+                </div>
+                <div class="px-4 py-3 border-t border-blue-700">
+                    <p class="text-xs uppercase text-blue-300 font-semibold mb-2">Events</p>
+                    <ul>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-calendar-day w-5"></i><span>Seminars/Festivals</span></a></li>
+                        <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-users w-5"></i><span>Research Groups</span></a></li>
+                    </ul>
+                </div>
+            </nav>
         </div>
-        <div class="-mr-2 flex items-center md:hidden">
-          <button type="button" id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500" aria-controls="mobile-menu" aria-expanded="false">
-            <span class="sr-only">Open main menu</span>
-            <i class="fas fa-bars text-xl"></i>
-          </button>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Bar -->
+            <header class="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-3">
+                <h1 class="text-2xl font-bold text-gray-800">Faculty Dashboard</h1>
+                <div class="flex items-center space-x-4">
+                    <button class="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200">
+                        <i class="fas fa-bell"></i>
+                        <span class="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500"></span>
+                    </button>
+                    <button class="flex items-center space-x-2 focus:outline-none">
+                        <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span class="hidden md:inline">John D. Researcher</span>
+                    </button>
+                </div>
+            </header>
+
+            <main class="flex-1 overflow-y-auto p-6">
+                <!-- Supervision Summary -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold">Student Supervision</h2>
+                        <span class="text-sm text-gray-500">Updated today</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Proposal Phase Card -->
+                        <div class="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-medium text-blue-800">Proposal</h3>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Completed</span>
+                            </div>
+                            <div class="progress-bar mb-2">
+                                <div class="progress-fill" style="width: 100%"></div>
+                            </div>
+                            <p class="text-xs text-blue-600">Submitted: 15 Jan 2024</p>
+                            <p class="text-xs text-blue-600">Status: Approved</p>
+                        </div>
+                        
+                        <!-- Adviser Phase Card -->
+                        <div class="bg-purple-50 border border-purple-100 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-medium text-purple-800">Adviser</h3>
+                                <span class="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">Completed</span>
+                            </div>
+                            <div class="progress-bar mb-2">
+                                <div class="progress-fill" style="width: 100%"></div>
+                            </div>
+                            <p class="text-xs text-purple-600">Dr. Smith</p>
+                            <p class="text-xs text-purple-600">Meetings: 4</p>
+                        </div>
+                        
+                        <!-- Documentation Phase Card -->
+                        <div class="bg-yellow-50 border border-yellow-100 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-medium text-yellow-800">Documents</h3>
+                                <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">In Progress</span>
+                            </div>
+                            <div class="progress-bar mb-2">
+                                <div class="progress-fill" style="width: 65%"></div>
+                            </div>
+                            <p class="text-xs text-yellow-600">3 of 5 chapters submitted</p>
+                            <p class="text-xs text-yellow-600">Next due: 15 Mar 2024</p>
+                        </div>
+                        
+                        <!-- Defense Phase Card -->
+                        <div class="bg-green-50 border border-green-100 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-medium text-green-800">Defense</h3>
+                                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Pending</span>
+                            </div>
+                            <div class="progress-bar mb-2">
+                                <div class="progress-fill" style="width: 10%"></div>
+                            </div>
+                            <p class="text-xs text-green-600">Panel: Not assigned</p>
+                            <p class="text-xs text-green-600">Schedule: TBD</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Notifications and Timeline -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <!-- Recent Notifications -->
+                    <div class="bg-white rounded-lg shadow-md p-6 lg:col-span-1">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-semibold">Notifications</h2>
+                            <button class="text-sm text-blue-600">View All</button>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex items-start space-x-3">
+                                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-800">
+                                    <i class="fas fa-file-alt"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium">Feedback requested</p>
+                                    <p class="text-xs text-gray-500">John Doe has submitted Chapter 4 for your review</p>
+                                    <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-800">
+                                    <i class="fas fa-calendar-check"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium">Seminar Reminder</p>
+                                    <p class="text-xs text-gray-500">Research Methodology Workshop on March 5</p>
+                                    <p class="text-xs text-gray-400 mt-1">Yesterday</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-800">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium">Payment Due</p>
+                                    <p class="text-xs text-gray-500">Defense fee payment deadline in 3 days</p>
+                                    <p class="text-xs text-gray-400 mt-1">2 days ago</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Research Timeline -->
+                    <div class="bg-white rounded-lg shadow-md p-6 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-semibold">Research Timeline</h2>
+                            <button class="text-sm text-blue-600">Full Timeline</button>
+                        </div>
+                        <div class="relative">
+                            <!-- Timeline connector -->
+                            <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                            
+                            <!-- Timeline items -->
+                            <div class="relative pl-8 pb-6">
+                                <div class="absolute left-0 w-3 h-3 bg-blue-600 rounded-full mt-1 border-4 border-white"></div>
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h3 class="font-medium">Proposal Submission</h3>
+                                        <p class="text-sm text-gray-600">Submitted your initial research proposal</p>
+                                    </div>
+                                    <span class="text-sm text-gray-500">Jan 15, 2024</span>
+                                </div>
+                            </div>
+                            
+                            <div class="relative pl-8 pb-6">
+                                <div class="absolute left-0 w-3 h-3 bg-blue-600 rounded-full mt-1 border-4 border-white"></div>
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h3 class="font-medium">Proposal Approval</h3>
+                                        <p class="text-sm text-gray-600">Proposal approved with minor revisions</p>
+                                    </div>
+                                    <span class="text-sm text-gray-500">Feb 2, 2024</span>
+                                </div>
+                            </div>
+                            
+                            <div class="relative pl-8 pb-6">
+                                <div class="absolute left-0 w-3 h-3 bg-purple-600 rounded-full mt-1 border-4 border-white"></div>
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h3 class="font-medium">Adviser Meeting</h3>
+                                        <p class="text-sm text-gray-600">First meeting with Dr. Smith</p>
+                                    </div>
+                                    <span class="text-sm text-gray-500">Feb 10, 2024</span>
+                                </div>
+                            </div>
+                            
+                            <div class="relative pl-8 pb-6">
+                                <div class="absolute left-0 w-3 h-3 bg-yellow-500 rounded-full mt-1 border-4 border-white"></div>
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h3 class="font-medium">Chapter 3 Submission</h3>
+                                        <p class="text-sm text-gray-600">Completed methodology section</p>
+                                    </div>
+                                    <span class="text-sm text-gray-500">Feb 28, 2024</span>
+                                </div>
+                            </div>
+                            
+                            <div class="relative pl-8">
+                                <div class="absolute left-0 w-3 h-3 bg-gray-300 rounded-full mt-1 border-4 border-white"></div>
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h3 class="font-medium text-gray-500">Final Defense</h3>
+                                        <p class="text-sm text-gray-400">Scheduled after document completion</p>
+                                    </div>
+                                    <span class="text-sm text-gray-400">TBD</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upcoming Tasks and AI Assistant -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Upcoming Tasks -->
+                    <div class="bg-white rounded-lg shadow-md p-6 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-semibold">Upcoming Tasks</h2>
+                            <button class="text-sm text-blue-600">View All</button>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex items-start space-x-3">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="font-medium">Revise Chapter 4</h3>
+                                        <span class="text-xs px-2 py-1 bg-red-100 text-red-800 rounded-full">High Priority</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">Incorporate adviser's feedback on methodology</p>
+                                    <div class="flex items-center mt-1 text-xs text-gray-500">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        <span>Due: Mar 15, 2024</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="font-medium">Submit IRB Approval</h3>
+                                        <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">Medium Priority</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">Complete Institutional Review Board application</p>
+                                    <div class="flex items-center mt-1 text-xs text-gray-500">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        <span>Due: Mar 20, 2024</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <input type="checkbox" class="mt-1 rounded text-blue-600 focus:ring-blue-500">
+                                <div class="flex-1">
+                                    <h3 class="font-medium">Research Seminar Attendance</h3>
+                                    <p class="text-sm text-gray-600">Advanced Data Analysis Techniques workshop</p>
+                                    <div class="flex items-center mt-1 text-xs text-gray-500">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        <span>Mar 5, 2024 • 2:00 PM</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Research Assistant -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-semibold">AI Research Assistant</h2>
+                            <span class="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Online</span>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="p-3 bg-blue-50 rounded-lg">
+                                <p class="text-sm font-medium text-blue-800 mb-1">Quick Actions</p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button class="text-xs p-2 bg-white rounded border border-blue-200 hover:bg-blue-100">Format Citations</button>
+                                    <button class="text-xs p-2 bg-white rounded border border-blue-200 hover:bg-blue-100">Plagiarism Check</button>
+                                    <button class="text-xs p-2 bg-white rounded border border-blue-200 hover:bg-blue-100">Generate Abstract</button>
+                                    <button class="text-xs p-2 bg-white rounded border border-blue-200 hover:bg-blue-100">Find Related Work</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="flex-1">
+                                    <input type="text" placeholder="Ask about research process..." class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                                <button class="p-2 bg-blue-600 text-white rounded-lg">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                <p>Try: "Review this methodology section" or "Suggest improvements for this literature review"</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
         </div>
-      </div>
     </div>
 
-    <!-- Mobile menu -->
-    <div class="hidden md:hidden" id="mobile-menu">
-      <div class="pt-2 pb-3 space-y-1">
-        <a href="#" class="bg-blue-50 border-blue-600 text-blue-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
-          <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
-        </a>
-        <a href="#" class="border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
-          <i class="fas fa-file-alt mr-2"></i> Proposals
-        </a>
-        <a href="#" class="border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
-          <i class="fas fa-users mr-2"></i> Advisers & Panels
-        </a>
-        <a href="#" class="border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">
-          <i class="fas fa-chart-line mr-2"></i> Research Progress
-        </a>
-      </div>
-      <div class="pt-4 pb-3 border-t border-gray-200">
-        <div class="flex items-center px-4">
-          <div class="flex-shrink-0">
-            <img class="h-10 w-10 rounded-full" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="">
-          </div>
-          <div class="ml-3">
-            <div class="text-base font-medium text-gray-800">Dr. Sarah Johnson</div>
-            <div class="text-sm font-medium text-gray-500">Professor</div>
-          </div>
-          <button type="button" class="ml-auto flex-shrink-0 bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-            <span class="sr-only">View notifications</span>
-            <i class="fas fa-bell text-xl"></i>
-          </button>
-        </div>
-        <div class="mt-3 space-y-1">
-          <a href="#" class="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">
-            <i class="fas fa-user mr-2"></i> Your Profile
-          </a>
-          <a href="#" class="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">
-            <i class="fas fa-cog mr-2"></i> Settings
-          </a>
-          <a href="#" class="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">
-            <i class="fas fa-sign-out-alt mr-2"></i> Sign out
-          </a>
-        </div>
-      </div>
-    </div>
-  </header>
+    <script>
+        // Mobile sidebar toggle
+        document.querySelector('.fa-bars').addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar-collapse');
+            sidebar.classList.toggle('hidden');
+        });
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-
-    <!-- Welcome section with quick stats -->
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="bg-white overflow-hidden shadow rounded-lg lg:col-span-2">
-        <div class="p-6">
-          <div class="flex items-center">
-            <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
-              <i class="fas fa-chalkboard-teacher text-white text-xl"></i>
-            </div>
-            <div class="ml-5 w-0 flex-1">
-              <div class="flex items-center justify-between">
-                <h2 class="text-2xl font-bold text-gray-900">Welcome back, Dr. Johnson</h2>
-                <span class="text-sm font-medium text-blue-600">Today: <span id="current-date" class="font-normal"></span></span>
-              </div>
-              <p class="mt-1 text-sm text-gray-500">Here's what's happening with your research supervision today.</p>
-            </div>
-          </div>
-        </div>
-        <div class="bg-gray-50 px-6 py-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="flex items-center">
-            <div class="flex-shrink-0 bg-blue-100 rounded-md p-2">
-              <i class="fas fa-file-signature text-blue-600"></i>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium text-gray-500">Pending Reviews</p>
-              <p class="text-lg font-semibold text-gray-900">12</p>
-            </div>
-          </div>
-          <div class="flex items-center">
-            <div class="flex-shrink-0 bg-green-100 rounded-md p-2">
-              <i class="fas fa-tasks text-green-600"></i>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium text-gray-500">Active Projects</p>
-              <p class="text-lg font-semibold text-gray-900">8</p>
-            </div>
-          </div>
-          <div class="flex items-center">
-            <div class="flex-shrink-0 bg-purple-100 rounded-md p-2">
-              <i class="fas fa-user-friends text-purple-600"></i>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium text-gray-500">Panel Assignments</p>
-              <p class="text-lg font-semibold text-gray-900">4</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white overflow-hidden shadow rounded-lg">
-        <div class="p-6">
-          <h3 class="text-lg font-medium text-gray-900">Quick Actions</h3>
-          <div class="mt-4 grid grid-cols-2 gap-4">
-            <a href="#" class="group bg-blue-50 rounded-md p-4 flex flex-col items-center text-center hover:bg-blue-100 smooth-transition">
-              <div class="bg-blue-100 rounded-full p-3 group-hover:bg-blue-200 smooth-transition">
-                <i class="fas fa-file-import text-blue-600 text-xl"></i>
-              </div>
-              <span class="mt-2 text-sm font-medium text-gray-900">New Review</span>
-            </a>
-            <a href="#" class="group bg-green-50 rounded-md p-4 flex flex-col items-center text-center hover:bg-green-100 smooth-transition">
-              <div class="bg-green-100 rounded-full p-3 group-hover:bg-green-200 smooth-transition">
-                <i class="fas fa-user-plus text-green-600 text-xl"></i>
-              </div>
-              <span class="mt-2 text-sm font-medium text-gray-900">Assign Panel</span>
-            </a>
-            <a href="#" class="group bg-purple-50 rounded-md p-4 flex flex-col items-center text-center hover:bg-purple-100 smooth-transition">
-              <div class="bg-purple-100 rounded-full p-3 group-hover:bg-purple-200 smooth-transition">
-                <i class="fas fa-chart-bar text-purple-600 text-xl"></i>
-              </div>
-              <span class="mt-2 text-sm font-medium text-gray-900">Progress Report</span>
-            </a>
-            <a href="#" class="group bg-yellow-50 rounded-md p-4 flex flex-col items-center text-center hover:bg-yellow-100 smooth-transition">
-              <div class="bg-yellow-100 rounded-full p-3 group-hover:bg-yellow-200 smooth-transition">
-                <i class="fas fa-calendar-check text-yellow-600 text-xl"></i>
-              </div>
-              <span class="mt-2 text-sm font-medium text-gray-900">Schedule Defense</span>
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Proposals Review Section with tabs -->
-    <section class="bg-white shadow rounded-lg overflow-hidden animate-card" style="animation-delay: 0.1s">
-      <div class="border-b border-gray-200">
-        <nav class="flex -mb-px">
-          <a href="#" class="border-blue-500 text-blue-600 whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
-            <i class="fas fa-file-alt mr-2"></i> Pending Reviews (12)
-          </a>
-          <a href="#" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
-            <i class="fas fa-check-circle mr-2"></i> Reviewed (24)
-          </a>
-          <a href="#" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
-            <i class="fas fa-clock mr-2"></i> Drafts (3)
-          </a>
-        </nav>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Proposal ID
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Title
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Author(s)
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Submitted
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr class="hover:bg-gray-50 smooth-transition">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                PRJ2024001
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                <div class="font-medium">The Effects of AI Technology on Education</div>
-                <div class="text-gray-500 text-xs mt-1">Computer Science</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                Jane Doe
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                2 days ago
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="status-badge bg-yellow-100 text-yellow-800">
-                  <i class="fas fa-clock mr-1"></i> For Review
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button onclick="openReviewModal('PRJ2024001')" class="text-blue-600 hover:text-blue-900 mr-4">
-                  <i class="fas fa-eye mr-1"></i> Preview
-                </button>
-                <button onclick="openReviewModal('PRJ2024001')" class="text-green-600 hover:text-green-900">
-                  <i class="fas fa-edit mr-1"></i> Review
-                </button>
-              </td>
-            </tr>
-            <tr class="hover:bg-gray-50 smooth-transition">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                PRJ2024002
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                <div class="font-medium">Sustainable Energy Solutions for Rural Areas</div>
-                <div class="text-gray-500 text-xs mt-1">Environmental Science</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                John Smith
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                1 week ago
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="status-badge bg-green-100 text-green-800">
-                  <i class="fas fa-check mr-1"></i> Approved
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button onclick="openReviewModal('PRJ2024002')" class="text-blue-600 hover:text-blue-900">
-                  <i class="fas fa-eye mr-1"></i> View
-                </button>
-              </td>
-            </tr>
-            <tr class="hover:bg-gray-50 smooth-transition">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                PRJ2024003
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                <div class="font-medium">Machine Learning Applications in Healthcare</div>
-                <div class="text-gray-500 text-xs mt-1">Bioinformatics</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                Alan Turing
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                3 days ago
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="status-badge bg-red-100 text-red-800">
-                  <i class="fas fa-exclamation-circle mr-1"></i> Needs Revision
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button onclick="openReviewModal('PRJ2024003')" class="text-blue-600 hover:text-blue-900 mr-4">
-                  <i class="fas fa-eye mr-1"></i> Preview
-                </button>
-                <button onclick="openReviewModal('PRJ2024003')" class="text-green-600 hover:text-green-900">
-                  <i class="fas fa-edit mr-1"></i> Review
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="bg-gray-50 px-6 py-3 flex items-center justify-between border-t border-gray-200">
-        <div class="text-sm text-gray-500">
-          Showing <span class="font-medium">1</span> to <span class="font-medium">3</span> of <span class="font-medium">12</span> proposals
-        </div>
-        <div class="flex space-x-2">
-          <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-            Previous
-          </button>
-          <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-            Next
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Assign Advisers / Panels Section with improved form -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-white shadow rounded-lg overflow-hidden animate-card" style="animation-delay: 0.2s">
-        <div class="px-6 py-5 border-b border-gray-200">
-          <h3 class="text-lg font-medium text-gray-900">
-            <i class="fas fa-user-plus text-blue-500 mr-2"></i> Assign Advisers
-          </h3>
-        </div>
-        <div class="px-6 py-4">
-          <form class="space-y-4">
-            <div>
-              <label for="proposal-select" class="block text-sm font-medium text-gray-700 mb-1">Select Proposal</label>
-              <select id="proposal-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
-                <option selected disabled>Choose a proposal...</option>
-                <option value="PRJ2024001">PRJ2024001 - AI in Education</option>
-                <option value="PRJ2024002">PRJ2024002 - Sustainable Energy</option>
-                <option value="PRJ2024003">PRJ2024003 - ML in Healthcare</option>
-              </select>
-            </div>
-            <div>
-              <label for="adviser-search" class="block text-sm font-medium text-gray-700 mb-1">Search Advisers</label>
-              <div class="relative mt-1">
-                <input type="text" id="adviser-search" class="block w-full pr-12 pl-3 py-2 border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Type to search...">
-                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  <i class="fas fa-search text-gray-400"></i>
-                </div>
-              </div>
-              <div class="mt-2 space-y-2">
-                <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <div class="flex items-center">
-                    <img class="h-8 w-8 rounded-full" src="https://randomuser.me/api/portraits/men/32.jpg" alt="">
-                    <div class="ml-3">
-                      <p class="text-sm font-medium text-gray-900">Dr. Michael Chen</p>
-                      <p class="text-xs text-gray-500">Computer Science</p>
-                    </div>
-                  </div>
-                  <button type="button" class="text-blue-600 hover:text-blue-900 text-sm font-medium">
-                    Select
-                  </button>
-                </div>
-                <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <div class="flex items-center">
-                    <img class="h-8 w-8 rounded-full" src="https://randomuser.me/api/portraits/women/44.jpg" alt="">
-                    <div class="ml-3">
-                      <p class="text-sm font-medium text-gray-900">Dr. Lisa Rodriguez</p>
-                      <p class="text-xs text-gray-500">Environmental Science</p>
-                    </div>
-                  </div>
-                  <button type="button" class="text-blue-600 hover:text-blue-900 text-sm font-medium">
-                    Select
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Selected Advisers</label>
-              <div class="mt-1 space-y-2">
-                <div class="flex items-center justify-between p-2 bg-blue-50 rounded">
-                  <div class="flex items-center">
-                    <img class="h-8 w-8 rounded-full" src="https://randomuser.me/api/portraits/men/75.jpg" alt="">
-                    <div class="ml-3">
-                      <p class="text-sm font-medium text-gray-900">Dr. Robert Johnson</p>
-                      <p class="text-xs text-gray-500">Bioinformatics</p>
-                    </div>
-                  </div>
-                  <button type="button" class="text-red-600 hover:text-red-900">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="pt-2">
-              <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                Assign Adviser(s)
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <div class="bg-white shadow rounded-lg overflow-hidden animate-card" style="animation-delay: 0.3s">
-        <div class="px-6 py-5 border-b border-gray-200">
-          <h3 class="text-lg font-medium text-gray-900">
-            <i class="fas fa-users text-purple-500 mr-2"></i> Assign Panel Members
-          </h3>
-        </div>
-        <div class="px-6 py-4">
-          <form class="space-y-4">
-            <div>
-              <label for="panel-proposal-select" class="block text-sm font-medium text-gray-700 mb-1">Select Proposal</label>
-              <select id="panel-proposal-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md">
-                <option selected disabled>Choose a proposal...</option>
-                <option value="PRJ2024001">PRJ2024001 - AI in Education</option>
-                <option value="PRJ2024002">PRJ2024002 - Sustainable Energy</option>
-                <option value="PRJ2024003">PRJ2024003 - ML in Healthcare</option>
-              </select>
-            </div>
-            <div>
-              <label for="panel-search" class="block text-sm font-medium text-gray-700 mb-1">Search Panel Members</label>
-              <div class="relative mt-1">
-                <input type="text" id="panel-search" class="block w-full pr-12 pl-3 py-2 border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 sm:text-sm" placeholder="Type to search...">
-                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  <i class="fas fa-search text-gray-400"></i>
-                </div>
-              </div>
-              <div class="mt-2 space-y-2">
-                <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <div class="flex items-center">
-                    <img class="h-8 w-8 rounded-full" src="https://randomuser.me/api/portraits/women/63.jpg" alt="">
-                    <div class="ml-3">
-                      <p class="text-sm font-medium text-gray-900">Dr. Emily Wilson</p>
-                      <p class="text-xs text-gray-500">Computer Science</p>
-                    </div>
-                  </div>
-                  <button type="button" class="text-purple-600 hover:text-purple-900 text-sm font-medium">
-                    Select
-                  </button>
-                </div>
-                <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <div class="flex items-center">
-                    <img class="h-8 w-8 rounded-full" src="https://randomuser.me/api/portraits/men/22.jpg" alt="">
-                    <div class="ml-3">
-                      <p class="text-sm font-medium text-gray-900">Dr. David Kim</p>
-                      <p class="text-xs text-gray-500">Data Science</p>
-                    </div>
-                  </div>
-                  <button type="button" class="text-purple-600 hover:text-purple-900 text-sm font-medium">
-                    Select
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Selected Panel Members</label>
-              <div class="mt-1 space-y-2">
-                <div class="flex items-center justify-between p-2 bg-purple-50 rounded">
-                  <div class="flex items-center">
-                    <img class="h-8 w-8 rounded-full" src="https://randomuser.me/api/portraits/men/41.jpg" alt="">
-                    <div class="ml-3">
-                      <p class="text-sm font-medium text-gray-900">Dr. James Peterson</p>
-                      <p class="text-xs text-gray-500">Artificial Intelligence</p>
-                    </div>
-                  </div>
-                  <button type="button" class="text-red-600 hover:text-red-900">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="pt-2">
-              <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
-                Assign Panel Members
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </section>
-
-    <!-- Monitor Research Progress Section with charts -->
-    <section class="bg-white shadow rounded-lg overflow-hidden animate-card" style="animation-delay: 0.4s">
-      <div class="px-6 py-5 border-b border-gray-200">
-        <div class="flex items-center justify-between">
-          <h3 class="text-lg font-medium text-gray-900">
-            <i class="fas fa-chart-line text-green-500 mr-2"></i> Research Progress Monitoring
-          </h3>
-          <div class="flex items-center space-x-2">
-            <span class="text-sm text-gray-500">Filter by:</span>
-            <select class="block w-full pl-3 pr-10 py-1 text-base border-gray-300 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm rounded-md">
-              <option>All Projects</option>
-              <option>My Advisees</option>
-              <option>My Panel Assignments</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="px-6 py-4">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-gray-500">Total Projects</p>
-                <p class="text-2xl font-semibold text-gray-900">24</p>
-              </div>
-              <div class="bg-blue-100 rounded-full p-3">
-                <i class="fas fa-project-diagram text-blue-600"></i>
-              </div>
-            </div>
-            <div class="mt-4">
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-gray-500">Completed</span>
-                <span class="font-medium text-gray-900">8 (33%)</span>
-              </div>
-              <div class="mt-1 w-full bg-gray-200 rounded-full h-2">
-                <div class="bg-green-500 h-2 rounded-full" style="width: 33%"></div>
-              </div>
-            </div>
-          </div>
-          <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-gray-500">Average Progress</p>
-                <p class="text-2xl font-semibold text-gray-900">68%</p>
-              </div>
-              <div class="bg-green-100 rounded-full p-3">
-                <i class="fas fa-tasks text-green-600"></i>
-              </div>
-            </div>
-            <div class="mt-4">
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-gray-500">Last Month</span>
-                <span class="font-medium text-green-600">+12%</span>
-              </div>
-              <div class="mt-1 w-full bg-gray-200 rounded-full h-2">
-                <div class="bg-blue-500 h-2 rounded-full" style="width: 68%"></div>
-              </div>
-            </div>
-          </div>
-          <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-gray-500">Upcoming Defenses</p>
-                <p class="text-2xl font-semibold text-gray-900">5</p>
-              </div>
-              <div class="bg-purple-100 rounded-full p-3">
-                <i class="fas fa-calendar-check text-purple-600"></i>
-              </div>
-            </div>
-            <div class="mt-4">
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-gray-500">Next 30 Days</span>
-                <span class="font-medium text-purple-600">View Schedule</span>
-              </div>
-              <div class="mt-1 w-full bg-gray-200 rounded-full h-2">
-                <div class="bg-purple-500 h-2 rounded-full" style="width: 45%"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <
+        // Simulated AI assistant functionality
+        document.querySelectorAll('.progress-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.querySelector('.progress-details').classList.remove('hidden');
+            });
+            card.addEventListener('mouseleave', function() {
+                this.querySelector('.progress-details').classList.add('hidden');
+            });
+        });
+    </script>
+</body>
+</html>

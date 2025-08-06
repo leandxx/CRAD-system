@@ -100,15 +100,15 @@ include("../includes/connection.php");
                     </a>
                 </li>
                 <li>
-                    <a href="student_pages/defense.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-calendar-check nav-icon"></i>
-                        <span class="nav-text">Defense Scheduling</span>
+                    <a href="student_pages/documents.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                        <i class="fas fa-file-alt nav-icon"></i>
+                        <span class="nav-text">Progress Tracker</span>
                     </a>
                 </li>
                 <li>
-                    <a href="student_pages/documents.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-file-alt nav-icon"></i>
-                        <span class="nav-text">Document Tracker</span>
+                    <a href="student_pages/defense.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                        <i class="fas fa-calendar-check nav-icon"></i>
+                        <span class="nav-text">Defense Scheduling</span>
                     </a>
                 </li>
             </ul>

@@ -57,7 +57,7 @@ include('../includes/connection.php'); // Your DB connection
         <div class="flex-1 flex flex-col overflow-hidden h-screen">
             <header class="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-4 shadow-sm">
                 <h1 class="text-2xl md:text-3xl font-bold text-primary flex items-center">
-                    Proposal Submission
+                    Analytics
                 </h1>
                 <div class="flex items-center space-x-4">
                     <button class="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 relative transition-all hover:scale-105">

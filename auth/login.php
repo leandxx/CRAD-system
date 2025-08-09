@@ -27,7 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             } elseif ($user['role'] === 'faculty') {
                 header("Location: ../faculty-pages/faculty-dashboard.php");
             } elseif ($user['role'] === 'student') {
-                header("Location: ../student/student.html");
+                header("Location: ../student_pages/student.php");
             } else {
                 echo "<script>alert('Unknown user role'); window.history.back();</script>";
             }

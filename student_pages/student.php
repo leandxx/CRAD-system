@@ -33,13 +33,6 @@ include('../includes/connection.php'); // Your DB connection
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
-        .hide-scrollbar {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        } 
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
         .research-phase {
             transition: all 0.3s ease;
         }

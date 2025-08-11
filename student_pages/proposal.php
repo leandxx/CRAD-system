@@ -25,6 +25,12 @@ include('../includes/connection.php'); // Your DB connection
                 }
             }
         }
+
+        function toggleModal() {
+            const modal = document.getElementById('proposalModal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+        }
     </script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -64,73 +70,11 @@ include('../includes/connection.php'); // Your DB connection
 
             <!-- Main Content Area -->
             <main class="flex-1 overflow-y-auto p-6">
-                <!-- Proposal Submission Card -->
-                <div class="bg-white rounded-xl shadow-lg p-6 mb-8 border-l-4 border-primary transform hover:shadow-xl transition-shadow duration-300">
-                    <div class="flex items-center mb-4">
-                        <div class="bg-primary/10 p-3 rounded-full mr-4">
-                            <i class="fas fa-paper-plane text-primary text-xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-gray-800">Submit New Proposal</h2>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                                <i class="fas fa-heading mr-2 text-primary/70"></i>
-                                Project Title
-                            </label>
-                            <input type="text" placeholder="Enter your project title..." 
-                                   class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary focus:border-primary transition duration-200 px-4 py-2 border hover:border-primary/50">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                                <i class="fas fa-tag mr-2 text-primary/70"></i>
-                                Project Type
-                            </label>
-                            <select class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary focus:border-primary transition duration-200 px-4 py-2 border hover:border-primary/50">
-                                <option value="">Select project type</option>
-                                <option value="capstone">Capstone Project</option>
-                                <option value="thesis">Thesis</option>
-                                <option value="research">Research Paper</option>
-                                <option value="design">Design Project</option>
-                            </select>
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                                <i class="fas fa-align-left mr-2 text-primary/70"></i>
-                                Project Description
-                            </label>
-                            <textarea rows="5" placeholder="Describe your project in detail..." 
-                                      class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary focus:border-primary transition duration-200 px-4 py-2 border hover:border-primary/50"></textarea>
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                                <i class="fas fa-paperclip mr-2 text-primary/70"></i>
-                                Attachments
-                            </label>
-                            <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary/50 transition duration-200">
-                                <div class="space-y-1 text-center">
-                                    <div class="flex text-sm text-gray-600 justify-center">
-                                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary/80 focus-within:outline-none">
-                                            <span>Upload files</span>
-                                            <input type="file" class="sr-only" multiple>
-                                        </label>
-                                        <p class="pl-1">or drag and drop</p>
-                                    </div>
-                                    <p class="text-xs text-gray-500">PDF, DOCX up to 10MB</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button class="bg-gradient-to-r from-primary to-secondary text-white px-6 py-2.5 rounded-lg hover:shadow-md transition-all duration-300 flex items-center">
-                            <i class="fas fa-paper-plane mr-2"></i> Submit Proposal
-                        </button>
-                    </div>
+                <!-- Button to Open Modal -->
+                <div class="flex justify-end mb-4">
+                    <button onclick="toggleModal()" class="bg-gradient-to-r from-primary to-secondary text-white px-6 py-2.5 rounded-lg hover:shadow-md transition-all duration-300 flex items-center">
+                        <i class="fas fa-paper-plane mr-2"></i> Submit New Proposal
+                    </button>
                 </div>
 
                 <!-- Submitted Proposals Section -->
@@ -277,26 +221,80 @@ include('../includes/connection.php'); // Your DB connection
                             </div>
                         </div>
                     </div>
-
-                    <!-- Empty State (commented out) -->
-                    <!-- <div class="text-center py-12">
-                        <div class="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <i class="fas fa-folder-open text-gray-400 text-3xl"></i>
-                        </div>
-                        <h3 class="text-lg font-medium text-gray-900">No proposals submitted yet</h3>
-                        <p class="mt-1 text-sm text-gray-500">Get started by submitting your first research proposal.</p>
-                        <button class="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition">
-                            Create New Proposal
-                        </button>
-                    </div> -->
                 </div>
             </main>
         </div>
     </div>
 
+    <!-- Modal for New Proposal Submission -->
+    <div id="proposalModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
+        <div class="bg-white rounded-lg shadow-lg w-11/12 md:w-1/2 p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Submit New Proposal</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                        <i class="fas fa-heading mr-2 text-primary/70"></i>
+                        Project Title
+                    </label>
+                    <input type="text" placeholder="Enter your project title..." 
+                           class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary focus:border-primary transition duration-200 px-4 py-2 border hover:border-primary/50">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                        <i class="fas fa-tag mr-2 text-primary/70"></i>
+                        Project Type
+                    </label>
+                    <select class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary focus:border-primary transition duration-200 px-4 py-2 border hover:border-primary/50">
+                        <option value="">Select project type</option>
+                        <option value="capstone">Capstone Project</option>
+                        <option value="thesis">Thesis</option>
+                        <option value="research">Research Paper</option>
+                        <option value="design">Design Project</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                        <i class="fas fa-align-left mr-2 text-primary/70"></i>
+                        Project Description
+                    </label>
+                    <textarea rows="5" placeholder="Describe your project in detail..." 
+                              class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:ring-primary focus:border-primary transition duration-200 px-4 py-2 border hover:border-primary/50"></textarea>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                        <i class="fas fa-paperclip mr-2 text-primary/70"></i>
+                        Attachments
+                    </label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary/50 transition duration-200">
+                        <div class="space-y-1 text-center">
+                            <div class="flex text-sm text-gray-600 justify-center">
+                                <label class="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary/80 focus-within:outline-none">
+                                    <span>Upload files</span>
+                                    <input type="file" class="sr-only" multiple>
+                                </label>
+                                <p class="pl-1">or drag and drop</p>
+                            </div>
+                            <p class="text-xs text-gray-500">PDF, DOCX up to 10MB</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end space-x-4">
+                <button onclick="toggleModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition">Cancel</button>
+                <button class="bg-gradient-to-r from-primary to-secondary text-white px-6 py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center">
+                    <i class="fas fa-paper-plane mr-2"></i> Submit Proposal
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Floating Action Button -->
     <div class="fixed bottom-6 right-6">
-        <button class="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center transform hover:scale-110">
+        <button onclick="toggleModal()" class="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center transform hover:scale-110">
             <i class="fas fa-plus text-xl"></i>
         </button>
     </div>

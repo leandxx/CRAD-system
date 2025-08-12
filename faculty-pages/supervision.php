@@ -238,76 +238,8 @@ include('../includes/connection.php');
 
         <!-- Meeting Notes and Feedback Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Recent Meetings -->
-          <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="p-5 border-b border-gray-200">
-              <h2 class="text-lg font-semibold flex items-center">
-                <i class="fas fa-calendar-alt text-blue-500 mr-2"></i>
-                Recent Advisory Meetings
-              </h2>
-            </div>
-            <div class="divide-y divide-gray-200">
-              <div class="p-4 hover:bg-gray-50 cursor-pointer">
-                <div class="flex justify-between">
-                  <div>
-                    <h3 class="text-sm font-medium">Progress Review - Chapter 3</h3>
-                    <p class="text-xs text-gray-500 mt-1">Group 5 - AI Learning System</p>
-                  </div>
-                  <span class="text-xs text-gray-500">May 10, 2023</span>
-                </div>
-                <div class="mt-3 text-sm text-gray-600">
-                  <p>Discussed methodology section revisions. Students need to clarify data collection procedures.</p>
-                </div>
-                <div class="mt-3 flex justify-end">
-                  <button class="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded">
-                    View Notes
-                  </button>
-                </div>
-              </div>
-              <!-- More meeting items... -->
-            </div>
-            <div class="bg-gray-50 px-5 py-3 text-center">
-              <a href="#" class="text-sm text-blue-600 font-medium">View all meetings</a>
-            </div>
-          </div>
-
-          <!-- Feedback Given -->
-          <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="p-5 border-b border-gray-200">
-              <h2 class="text-lg font-semibold flex items-center">
-                <i class="fas fa-comment-dots text-green-500 mr-2"></i>
-                Recent Feedback Given
-              </h2>
-            </div>
-            <div class="divide-y divide-gray-200">
-              <div class="p-4 hover:bg-gray-50 cursor-pointer">
-                <div class="flex justify-between">
-                  <div>
-                    <h3 class="text-sm font-medium">Chapter 2 Review</h3>
-                    <p class="text-xs text-gray-500 mt-1">Group 3 - Blockchain System</p>
-                  </div>
-                  <span class="text-xs text-gray-500">May 8, 2023</span>
-                </div>
-                <div class="mt-3 text-sm text-gray-600">
-                  <p>Literature review needs more recent sources (past 3 years). Please reorganize by themes.</p>
-                </div>
-                <div class="mt-3 flex justify-between items-center">
-                  <span class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded">Pending Revision</span>
-                  <button class="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded">
-                    View Details
-                  </button>
-                </div>
-              </div>
-              <!-- More feedback items... -->
-            </div>
-            <div class="bg-gray-50 px-5 py-3 text-center">
-              <a href="#" class="text-sm text-blue-600 font-medium">View all feedback</a>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  </div>
+         
+            
 
   <!-- JS Toggle Function -->
   <script>

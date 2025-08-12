@@ -288,12 +288,6 @@ include('../includes/connection.php');
               <div>
                 <h3 class="font-semibold mb-2">Your Feedback</h3>
                 <textarea class="w-full border rounded-lg p-3 h-32" placeholder="Enter your detailed feedback here..."></textarea>
-                <div class="mt-2">
-                  <label class="inline-flex items-center">
-                    <input type="checkbox" class="rounded border-gray-300 text-blue-600">
-                    <span class="ml-2 text-sm">Request meeting with students</span>
-                  </label>
-                </div>
                 <button class="w-full mt-3 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
                   Submit Review
                 </button>

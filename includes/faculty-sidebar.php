@@ -21,8 +21,32 @@ $username = $_SESSION['username'] ?? ''; // ADD THIS
     <link rel="icon" type="image/png" href="../assets/img/sms-logo.png" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* Custom scrollbar for Webkit browsers (Chrome, Safari, Edge) */
+#sidebar nav::-webkit-scrollbar {
+    width: 8px; /* width of scrollbar */
+}
+
+#sidebar nav::-webkit-scrollbar-track {
+    background: #1e40af; /* dark blue track, matches sidebar color */
+    border-radius: 4px;
+}
+
+#sidebar nav::-webkit-scrollbar-thumb {
+    background-color: #3b82f6; /* bright blue thumb */
+    border-radius: 4px;
+    border: 2px solid #1e40af; /* border same as track for padding effect */
+}
+
+#sidebar nav::-webkit-scrollbar-thumb:hover {
+    background-color: #60a5fa; /* lighter blue on hover */
+}
+
+/* Firefox scrollbar styling */
+#sidebar nav {
+    scrollbar-width: thin;
+    scrollbar-color: #3b82f6 #1e40af; /* thumb and track */
+}
+
     </style>
 </head>
 <body class="bg-gray-50 font-sans">
@@ -52,7 +76,7 @@ $username = $_SESSION['username'] ?? ''; // ADD THIS
     </div>
 
    <!-- Nav Links -->
-        <nav class="flex-1 overflow-y-auto pb-4 hide-scrollbar">
+        <nav class="flex-1 overflow-y-auto pb-4">
             <div class="px-4 py-3">
                 <p class="text-xs uppercase text-blue-300 font-semibold mb-2 sidebar-section">Adviser Tools</p>
                 <ul>
@@ -74,12 +98,7 @@ $username = $_SESSION['username'] ?? ''; // ADD THIS
                             <span class="sidebar-text">Proposal Review</span>
                         </a>
                     </li>
-                    <li>
-                        <a href="/CRAD-system/faculty-pages/schedule.php" class="flex items-center space-x-3 px-3 py-2 rounded <?= $current == 'schedule' ? 'bg-blue-700 text-white' : 'hover:bg-blue-700' ?>">
-                            <i class="fas fa-calendar-alt w-5"></i>
-                            <span class="sidebar-text">Panel Scheduling</span>
-                        </a>
-                    </li>
+                  
                     <li>
                         <a href="/CRAD-system/faculty-pages/progress.php" class="flex items-center space-x-3 px-3 py-2 rounded <?= $current == 'progress' ? 'bg-blue-700 text-white' : 'hover:bg-blue-700' ?>">
                             <i class="fas fa-tasks w-5"></i>
@@ -89,21 +108,7 @@ $username = $_SESSION['username'] ?? ''; // ADD THIS
                 </ul>
             </div>        
 
-        <div class="px-4 py-3 border-t border-blue-700">
-            <p class="text-xs uppercase text-blue-300 font-semibold mb-2 sidebar-section">Support Services</p>
-            <ul>
-                <li><a href="/CRAD-system/faculty-pages/payment-verification.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-wallet w-5"></i><span class="sidebar-text">Payment Verification</span></a></li>
-                <li><a href="/CRAD-system/faculty-pages/research-facilities.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-flask w-5"></i><span class="sidebar-text">Research Facilities</span></a></li>
-            </ul>
-        </div>
 
-        <div class="px-4 py-3 border-t border-blue-700">
-            <p class="text-xs uppercase text-blue-300 font-semibold mb-2 sidebar-section">Events</p>
-            <ul>
-                <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-calendar-day w-5"></i><span class="sidebar-text">Seminars</span></a></li>
-                <li><a href="#" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"><i class="fas fa-users w-5"></i><span class="sidebar-text">Research Groups</span></a></li>
-            </ul>
-        </div>
 
         <div class="px-4 py-3 border-t border-blue-700">
             <form action="../auth/logout.php" method="POST">

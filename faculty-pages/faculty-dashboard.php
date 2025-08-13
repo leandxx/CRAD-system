@@ -90,22 +90,6 @@ include('../includes/connection.php');
             </div>
           </div>
 
-          <div class="bg-white rounded-lg shadow p-6 hover-card transition-all duration-300">
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-gray-500 text-sm font-medium">Upcoming Defenses</h3>
-                <p class="text-2xl font-bold mt-1">3</p>
-              </div>
-              <div class="bg-green-100 p-3 rounded-full">
-                <i class="fas fa-calendar-check text-green-600 text-xl"></i>
-              </div>
-            </div>
-            <div class="mt-4">
-              <a href="#" class="text-blue-600 text-sm font-medium flex items-center">
-                View schedule <i class="fas fa-chevron-right ml-1 text-xs"></i>
-              </a>
-            </div>
-          </div>
 
           <div class="bg-white rounded-lg shadow p-6 hover-card transition-all duration-300">
             <div class="flex items-center justify-between">
@@ -241,71 +225,8 @@ include('../includes/connection.php');
               </div>
             </div>
 
-            <!-- Defense Schedule Card -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-              <div class="p-5 border-b border-gray-200">
-                <h2 class="text-lg font-semibold flex items-center">
-                  <i class="fas fa-calendar-check text-green-500 mr-2"></i>
-                  Upcoming Defenses
-                </h2>
-              </div>
-              <div class="divide-y divide-gray-200">
-                <div class="p-4">
-                  <div class="flex justify-between">
-                    <div>
-                      <h3 class="text-sm font-medium">Proposal Defense</h3>
-                      <p class="text-xs text-gray-500 mt-1">Group 3 - Blockchain System</p>
-                    </div>
-                    <span class="text-xs text-blue-600 font-medium">May 15, 10:00 AM</span>
-                  </div>
-                  <div class="mt-3 flex justify-between items-center">
-                    <span class="text-xs text-gray-500">Room 302</span>
-                    <div class="flex space-x-2">
-                      <button class="text-xs bg-green-50 text-green-600 px-2 py-1 rounded">
-                        Confirm
-                      </button>
-                      <button class="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded">
-                        Reschedule
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <!-- More defense schedule items... -->
-              </div>
-              <div class="bg-gray-50 px-5 py-3 text-center">
-                <a href="#" class="text-sm text-blue-600 font-medium">View full calendar</a>
-              </div>
-            </div>
-
-            <!-- Quick Actions Card -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-              <div class="p-5 border-b border-gray-200">
-                <h2 class="text-lg font-semibold">Quick Actions</h2>
-              </div>
-              <div class="grid grid-cols-2 gap-4 p-4">
-                <a href="#" class="p-3 border rounded-lg text-center hover:bg-blue-50 transition-colors">
-                  <i class="fas fa-upload text-blue-500 text-xl mb-2"></i>
-                  <p class="text-sm font-medium">Upload Feedback</p>
-                </a>
-                <a href="#" class="p-3 border rounded-lg text-center hover:bg-green-50 transition-colors">
-                  <i class="fas fa-download text-green-500 text-xl mb-2"></i>
-                  <p class="text-sm font-medium">Download Files</p>
-                </a>
-                <a href="#" class="p-3 border rounded-lg text-center hover:bg-purple-50 transition-colors">
-                  <i class="fas fa-calendar-plus text-purple-500 text-xl mb-2"></i>
-                  <p class="text-sm font-medium">Schedule Defense</p>
-                </a>
-                <a href="#" class="p-3 border rounded-lg text-center hover:bg-yellow-50 transition-colors">
-                  <i class="fas fa-robot text-yellow-500 text-xl mb-2"></i>
-                  <p class="text-sm font-medium">AI Review Tool</p>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  </div>
+            <!-- Notifications Card -->
+            
 
   <!-- JS Toggle Function -->
   <script>

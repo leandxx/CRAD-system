@@ -110,8 +110,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div>
           <button
             type="submit"
-            class="w-full bg-blue-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition duration-300"
-          >
+            class="w-full bg-blue-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition duration-300">
             Log In
           </button>
         </div>

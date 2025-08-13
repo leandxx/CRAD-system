@@ -1,5 +1,7 @@
 <?php
+
 include('../includes/connection.php'); // Your DB connection
+
 ?>
 
 <!DOCTYPE html>

@@ -1,4 +1,5 @@
 <?php
+session_start();
 include("../includes/connection.php");
 
 // Check if user is logged in
@@ -165,25 +166,6 @@ $role = $user['role'];
                         <span class="nav-text">Defense Scheduling</span>
                     </a>
                 </li>
-            </ul>
-        </div>
-
-        <!-- Support Services -->
-        <div class="px-4 py-3 border-t border-blue-700">
-            <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Support Services</p>
-            <ul>
-                <li>
-                    <a href="student_pages/payments.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-money-bill-wave nav-icon"></i>
-                        <span class="nav-text">Payment Verification</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="student_pages/facilities.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-microscope nav-icon"></i>
-                        <span class="nav-text">Research Facilities</span>
-                    </a>
-                </li>
                 <li>
                     <a href="student_pages/analytics.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-chart-line nav-icon"></i>
@@ -193,23 +175,12 @@ $role = $user['role'];
             </ul>
         </div>
 
-        <!-- Events -->
         <div class="px-4 py-3 border-t border-blue-700">
-            <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Events</p>
-            <ul>
-                <li>
-                    <a href="student_pages/seminars.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-calendar-day nav-icon"></i>
-                        <span class="nav-text">Seminars/Festivals</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="student_pages/groups.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-users nav-icon"></i>
-                        <span class="nav-text">Research Groups</span>
-                    </a>
-                </li>
-            </ul>
+            <form action="../CRAD-system/auth/logout.php" method="POST">
+                <button type="submit" class="w-full text-left flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700 text-red-300">
+                    <i class="fas fa-sign-out-alt w-5"></i><span class="sidebar-text">Logout</span>
+                </button>
+            </form>
         </div>
 
     </nav>

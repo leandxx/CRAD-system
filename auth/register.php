@@ -2,20 +2,25 @@
 session_start();
 include("../includes/connection.php");
 
-$alertMessage = ''; // Variable to hold alert messages
+$alertMessage = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Get form data
-    $username = trim($_POST['username']);
+    $fullName = trim($_POST['full_name']);
+    $email = trim($_POST['email']);
     $password = $_POST['password'];
     $confirmPassword = $_POST['confirmPassword'];
     $role = $_POST['userType'];
 
-    // Email format validation
-    if (!filter_var($username, FILTER_VALIDATE_EMAIL)) {
+    // Validate full name
+    if (empty($fullName) || !preg_match("/^[a-zA-Z\s]+$/", $fullName)) {
+        $alertMessage = 'Please enter a valid full name (letters and spaces only).';
+    }
+    // Email validation
+    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $alertMessage = 'Please enter a valid email address!';
     }
-    // Password strength validation
+    // Password validation
     elseif (
         strlen($password) < 8 ||
         !preg_match('/[A-Z]/', $password) ||
@@ -25,16 +30,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     ) {
         $alertMessage = 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
     }
-    // Validate passwords match
+    // Match passwords
     elseif ($password !== $confirmPassword) {
         $alertMessage = 'Passwords do not match!';
     }
     else {
-        // Check if email already exists
-        $stmt = $conn->prepare("SELECT user_id FROM login_tbl WHERE username = ?");
-        $stmt->bind_param("s", $username);
+        // Check if email exists
+        $stmt = $conn->prepare("SELECT user_id FROM login_tbl WHERE email = ?");
+        $stmt->bind_param("s", $email);
         $stmt->execute();
         $stmt->store_result();
+
         if ($stmt->num_rows > 0) {
             $alertMessage = 'Email is already registered!';
             $stmt->close();
@@ -43,16 +49,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Hash password
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-            // Insert into database
-            $stmt = $conn->prepare("INSERT INTO login_tbl (username, password, role) VALUES (?, ?, ?)");
-            $stmt->bind_param("sss", $username, $hashedPassword, $role);
+            // Insert into DB
+            $stmt = $conn->prepare("INSERT INTO login_tbl (full_name, email, password, role) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("ssss", $fullName, $email, $hashedPassword, $role);
 
             if ($stmt->execute()) {
                 echo "<script>alert('Registration successful!'); window.location.href='login.php';</script>";
             } else {
                 $alertMessage = 'Registration failed: ' . $stmt->error;
             }
-
             $stmt->close();
         }
     }
@@ -124,17 +129,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
           </div>
         <?php endif; ?>
 
-        <!-- Username / Email -->
-        <div>
-          <label for="username" class="block text-blue-900 font-semibold mb-1">Username or Email</label>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
+        <!-- Full Name -->
+<div>
+  <label for="full_name" class="block text-blue-900 font-semibold mb-1">Full Name</label>
+  <input
+    type="text"
+    id="full_name"
+    name="full_name"
+    class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    required
+  />
+</div>
+
+<!-- Email -->
+<div>
+  <label for="email" class="block text-blue-900 font-semibold mb-1">Email</label>
+  <input
+    type="email"
+    id="email"
+    name="email"
+    class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    required
+  />
+</div>
 
         <!-- Password -->
         <div class="relative">
@@ -177,9 +194,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             required
           >
             <option value="" disabled selected>Choose your role</option>
-            <option value="admin">Admin</option>
-            <option value="student">Student</option>
-            <option value="faculty">Faculty</option>
+            <option value="Admin">Admin</option>
+            <option value="Student">Student</option>
+            <option value="Faculty">Faculty</option>
           </select>
         </div>
 

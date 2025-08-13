@@ -56,7 +56,7 @@ include('../includes/connection.php'); // Your DB connection
                             <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white">
                                 <i class="fas fa-user"></i>
                             </div>
-                            <span class="hidden md:inline font-medium">John D. Researcher</span>
+                            <span class="hidden md:inline font-medium"><?php echo htmlspecialchars($full_name); ?></span>
                             <i class="fas fa-chevron-down text-xs opacity-70 group-hover:opacity-100 transition"></i>
                         </button>
                         <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">

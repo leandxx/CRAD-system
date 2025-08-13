@@ -3,12 +3,12 @@ session_start();
 include("../includes/connection.php");
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $usernameOrEmail = $_POST['username'];
+    $email = trim($_POST['email']); // changed from 'username'
     $password = $_POST['password'];
 
-    // Use prepared statement
-    $stmt = $conn->prepare("SELECT * FROM login_tbl WHERE username = ?");
-    $stmt->bind_param("s", $usernameOrEmail);
+    // Use prepared statement to find user by email
+    $stmt = $conn->prepare("SELECT * FROM login_tbl WHERE email = ?");
+    $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -17,16 +17,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if (password_verify($password, $user['password'])) {
             // Set session variables
-            $_SESSION['user_id'] = $user['user_id']; // match DB column
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role']; // fetched from DB directly
+            $_SESSION['user_id'] = $user['user_id'];
+            $_SESSION['full_name'] = $user['full_name'];
+            $_SESSION['email'] = $user['email'];
+            $_SESSION['role'] = $user['role'];
 
             // Redirect based on role
-            if ($user['role'] === 'admin') {
+            if ($user['role'] === 'Admin') {
                 header("Location: ../admin/dashboard.php");
-            } elseif ($user['role'] === 'faculty') {
+            } elseif ($user['role'] === 'Faculty') {
                 header("Location: ../faculty-pages/faculty-dashboard.php");
-            } elseif ($user['role'] === 'student') {
+            } elseif ($user['role'] === 'Student') {
                 header("Location: ../student_pages/student.php");
             } else {
                 echo "<script>alert('Unknown user role'); window.history.back();</script>";
@@ -36,7 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             echo "<script>alert('Incorrect password'); window.history.back();</script>";
         }
     } else {
-        echo "<script>alert('No account found with that username/email'); window.history.back();</script>";
+        echo "<script>alert('No account found with that email'); window.history.back();</script>";
     }
 }
 ?>
@@ -83,11 +84,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       <form id="loginForm" action="login.php" method="POST" class="space-y-6">
         <!-- Username -->
         <div>
-          <label for="username" class="block text-blue-900 font-semibold mb-1">Username or Email</label>
+          <label for="email" class="block text-blue-900 font-semibold mb-1">Email</label>
           <input
             type="text"
-            id="username"
-            name="username"
+            id="email"
+            name="email"
             class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />

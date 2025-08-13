@@ -1,6 +1,26 @@
 <?php
 include("../includes/connection.php");
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+// Get username and role from login_tbl1
+$sql = "SELECT full_name, role FROM login_tbl WHERE user_id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
+
+$full_name = $user['full_name'];
+$role = $user['role'];
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,7 +75,7 @@ include("../includes/connection.php");
 }
 
 .sidebar-collapsed {
-    width: 4rem;
+    width: 5rem;
 }
 
 .sidebar-transition {
@@ -87,23 +107,26 @@ include("../includes/connection.php");
     <div class="p-4 flex items-center justify-between border-b border-blue-700">
         <div class="flex items-center space-x-2">
             <div class="portal-logo">
-               <img src="assets/img/sms-logo.png" alt="University Logo" class="h-16 w-20 logo-img">
+               <img src="assets/img/sms-logo.png" alt="University Logo" class="h-14 w-16 logo-img">
             </div>
-            <span class="text-lg font-bold portal-title">CRAD Student Portal</span>
+            <span class="text-bs font-bold portal-title">CRAD Student Portal</span>
         </div>
-        <button class="text-white focus:outline-none" id="toggleSidebar">
-         <i class="fas fa-bars text-2xl"></i>
-        </button>
+        <div class="pr-3">
+    <button class="text-white focus:outline-none" id="toggleSidebar">
+        <i class="fas fa-bars text-2xl"></i>
+    </button>
+</div>
+
     </div>
 
     <!-- Profile Section -->
     <div class="p-4 flex items-center space-x-3 bg-blue-900">
-        <img src="https://placehold.co/50x50" alt="Student profile" class="rounded-full">
-        <div>
-            <p class="font-medium profile-name">John D. Researcher</p>
-            <p class="text-xs text-blue-200 profile-role">PhD Candidate</p>
-        </div>
+    <img src="assets/img/me.png" alt="Student profile" class="rounded-full h-14 w-14">
+    <div>
+        <p class="font-medium profile-name"><?php echo htmlspecialchars($full_name); ?></p>
+        <p class="text-xs text-blue-200 profile-role"><?php echo htmlspecialchars($role); ?></p>
     </div>
+</div>
 
     <!-- Navigation -->
     <nav class="flex-1 pb-4 hide-scrollbar overflow-y-auto">

@@ -83,7 +83,7 @@ include('../includes/connection.php'); // Your DB connection
                             <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white">
                                 <i class="fas fa-user text-sm"></i>
                             </div>
-                            <span class="hidden md:inline font-medium">John D. Researcher</span>
+                            <span class="hidden md:inline font-medium"><?php echo htmlspecialchars($full_name); ?></span>
                             <i class="fas fa-chevron-down text-xs opacity-70 group-hover:opacity-100 transition"></i>
                         </button>
                         <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">
@@ -144,7 +144,7 @@ include('../includes/connection.php'); // Your DB connection
                     <h2 class="text-xl font-semibold mb-4 text-gray-800">Quick Access</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <!-- Research Process Cards -->
-                        <a href="proposal-submission.php" class="bg-white rounded-lg shadow p-6 card-hover transition-all duration-300">
+                        <a href="student_pages/proposal.php" class="bg-white rounded-lg shadow p-6 card-hover transition-all duration-300">
                             <div class="flex items-center space-x-4">
                                 <div class="p-3 rounded-full bg-blue-100 text-blue-600">
                                     <i class="fas fa-file-upload text-xl"></i>

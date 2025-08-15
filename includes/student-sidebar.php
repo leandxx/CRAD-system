@@ -78,22 +78,12 @@ $role = $user['role'];
         </button>
     </div>
 
-<<<<<<< HEAD
     <!-- Profile Section -->
     <div class="p-4 flex items-center space-x-3 bg-blue-900">
     <img src="assets/img/me.png" alt="Student profile" class="rounded-full h-14 w-14">
     <div>
         <p class="font-medium profile-name">Hello, <?php echo htmlspecialchars(ucfirst($role)); ?></p>
         <p class="text-xs text-blue-200 profile-role"><?php echo htmlspecialchars($role); ?></p>
-=======
-    <!-- Profile -->
-    <div class="p-4 flex items-center space-x-3 bg-blue-900 border-b border-blue-700">
-        <img src="assets/img/me.png" alt="Student profile" class="rounded-full h-14 w-14">
-        <div>
-            <p class="font-medium profile-name"><?php echo htmlspecialchars($full_name); ?></p>
-            <p class="text-xs text-blue-200 profile-role"><?php echo htmlspecialchars($role); ?></p>
-        </div>
->>>>>>> 5423e2407f0731a95e1fb6e25ffafa61dd6a6ef9
     </div>
 
     <!-- Nav Links (Scrollable Middle) -->

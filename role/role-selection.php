@@ -65,7 +65,7 @@ session_start();
         </a>
         
         <!-- Student Box -->
-        <a href="student-login.php" class="role-box bg-green-600 text-white flex flex-col items-center justify-center rounded-lg shadow-md p-6 text-center">
+        <a href="../auth/login.php" class="role-box bg-green-600 text-white flex flex-col items-center justify-center rounded-lg shadow-md p-6 text-center">
           <div class="bg-green-500 p-3 rounded-full mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path d="M12 14l9-5-9-5-9 5 9 5z" />

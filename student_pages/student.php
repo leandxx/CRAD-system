@@ -32,6 +32,51 @@ include('../includes/connection.php'); // Your DB connection
             modal.classList.toggle('flex');
         }
     </script>
+    <style>
+        .progress-bar {
+            width: 100%;
+            height: 16px;
+            background: #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2563eb 60%, #7c3aed 100%);
+            width: 0;
+            border-radius: 8px;
+            transition: width 1.5s cubic-bezier(0.4,0,0.2,1);
+            box-shadow: 0 2px 8px 0 #2563eb22;
+        }
+        .research-phase {
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s;
+        }
+        .research-phase.active {
+            background: linear-gradient(90deg, #dbeafe 60%, #ede9fe 100%);
+            box-shadow: 0 4px 16px 0 #2563eb11;
+            border: 2px solid #2563eb;
+        }
+        .phase-tooltip {
+            opacity: 0;
+            pointer-events: none;
+            position: absolute;
+            left: 50%;
+            top: -2.5rem;
+            transform: translateX(-50%);
+            background: #fff;
+            color: #2563eb;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            box-shadow: 0 2px 8px 0 #2563eb22;
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+        .research-phase:hover .phase-tooltip {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
@@ -352,11 +397,10 @@ include('../includes/connection.php'); // Your DB connection
         document.addEventListener('DOMContentLoaded', () => {
             const progressFill = document.querySelector('.progress-fill');
             if (progressFill) {
-                // Reset to 0 and animate to 65%
                 progressFill.style.width = '0';
                 setTimeout(() => {
                     progressFill.style.width = '65%';
-                }, 500);
+                }, 300);
             }
 
             // Add hover effects to research phases
@@ -364,17 +408,16 @@ include('../includes/connection.php'); // Your DB connection
             phases.forEach(phase => {
                 phase.addEventListener('mouseenter', () => {
                     phase.style.transform = 'scale(1.05)';
+                    phase.style.boxShadow = '0 6px 24px 0 #2563eb22';
                 });
                 phase.addEventListener('mouseleave', () => {
                     phase.style.transform = 'scale(1)';
+                    phase.style.boxShadow = '';
                 });
             });
 
             // Animate cards on scroll
-            const observerOptions = {
-                threshold: 0.1
-            };
-
+            const observerOptions = { threshold: 0.1 };
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
@@ -394,14 +437,18 @@ include('../includes/connection.php'); // Your DB connection
             const progressFill = document.querySelector('.progress-fill');
             if (progressFill) {
                 progressFill.style.width = '75%';
-                document.querySelector('.research-phase:nth-child(3)').classList.add('active');
-                document.querySelector('.research-phase:nth-child(3) i').classList.remove('text-blue-400');
-                document.querySelector('.research-phase:nth-child(3) i').classList.add('text-white');
-                
-                // Update tooltip
-                const tooltip = document.querySelector('.research-phase:nth-child(3) .phase-tooltip');
-                if (tooltip) {
-                    tooltip.textContent = "Revisions received - work in progress";
+                const phase = document.querySelector('.research-phase:nth-child(3)');
+                if (phase) {
+                    phase.classList.add('active');
+                    const icon = phase.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('text-blue-400');
+                        icon.classList.add('text-white');
+                    }
+                    const tooltip = phase.querySelector('.phase-tooltip');
+                    if (tooltip) {
+                        tooltip.textContent = "Revisions received - work in progress";
+                    }
                 }
             }
         }, 3000);

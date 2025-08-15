@@ -6,18 +6,13 @@ $alertMessage = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Get form data
-    $fullName = trim($_POST['full_name']);
     $email = trim($_POST['email']);
     $password = $_POST['password'];
     $confirmPassword = $_POST['confirmPassword'];
     $role = $_POST['userType'];
 
-    // Validate full name
-    if (empty($fullName) || !preg_match("/^[a-zA-Z\s]+$/", $fullName)) {
-        $alertMessage = 'Please enter a valid full name (letters and spaces only).';
-    }
     // Email validation
-    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $alertMessage = 'Please enter a valid email address!';
     }
     // Password validation
@@ -36,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
     else {
         // Check if email exists
-        $stmt = $conn->prepare("SELECT user_id FROM login_tbl WHERE email = ?");
+        $stmt = $conn->prepare("SELECT user_id FROM user_tbl WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $stmt->store_result();
@@ -49,9 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Hash password
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-            // Insert into DB
-            $stmt = $conn->prepare("INSERT INTO login_tbl (full_name, email, password, role) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("ssss", $fullName, $email, $hashedPassword, $role);
+            // Insert into DB (no full_name now)
+            $stmt = $conn->prepare("INSERT INTO user_tbl (email, password, role) VALUES (?, ?, ?)");
+            $stmt->bind_param("sss", $email, $hashedPassword, $role);
 
             if ($stmt->execute()) {
                 echo "<script>alert('Registration successful!'); window.location.href='login.php';</script>";
@@ -65,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $conn->close();
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -130,16 +126,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <?php endif; ?>
 
         <!-- Full Name -->
-<div>
-  <label for="full_name" class="block text-blue-900 font-semibold mb-1">Full Name</label>
-  <input
-    type="text"
-    id="full_name"
-    name="full_name"
-    class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-    required
-  />
-</div>
 
 <!-- Email -->
 <div>

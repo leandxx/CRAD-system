@@ -10,15 +10,13 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
-// Get username and role from login_tbl1
-$sql = "SELECT full_name, role FROM login_tbl WHERE user_id = ?";
+// Get role from user_tbl
+$sql = "SELECT role FROM user_tbl WHERE user_id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $user = $result->fetch_assoc();
-
-$full_name = $user['full_name'];
 $role = $user['role'];
 ?>
 
@@ -124,7 +122,7 @@ $role = $user['role'];
     <div class="p-4 flex items-center space-x-3 bg-blue-900">
     <img src="assets/img/me.png" alt="Student profile" class="rounded-full h-14 w-14">
     <div>
-        <p class="font-medium profile-name"><?php echo htmlspecialchars($full_name); ?></p>
+        <p class="font-medium profile-name">Hello, <?php echo htmlspecialchars(ucfirst($role)); ?></p>
         <p class="text-xs text-blue-200 profile-role"><?php echo htmlspecialchars($role); ?></p>
     </div>
 </div>

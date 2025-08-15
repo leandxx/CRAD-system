@@ -10,13 +10,8 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
-<<<<<<< HEAD
 // Get role from user_tbl
 $sql = "SELECT role FROM user_tbl WHERE user_id = ?";
-=======
-// Get username and role from login_tbl
-$sql = "SELECT full_name, role FROM login_tbl WHERE user_id = ?";
->>>>>>> 5423e2407f0731a95e1fb6e25ffafa61dd6a6ef9
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();

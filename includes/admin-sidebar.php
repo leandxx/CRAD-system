@@ -137,7 +137,7 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Dashboard</p>
             <ul>
                 <li>
-                    <a href="admin_pages/dashboard.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/dashboard.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-tachometer-alt nav-icon"></i>
                         <span class="nav-text">Admin Dashboard</span>
                     </a>
@@ -175,7 +175,7 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Group Management</p>
             <ul>
                 <li>
-                    <a href="admin_pages/create-groups.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/create-groups.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-users nav-icon"></i>
                         <span class="nav-text">Create Group Accounts</span>
                     </a>

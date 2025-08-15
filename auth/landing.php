@@ -47,7 +47,7 @@ include("../includes/connection.php");
       </ul>
       <ul class="navbar-nav">
         <li class="nav-item">
-          <a class="btn-get-started btn-primary px-4 py-2 rounded-pill fw-bold" href="../auth/login.php">Get Started</a>
+          <a class="btn-get-started btn-primary px-4 py-2 rounded-pill fw-bold" href="../role/role-selection.php">Get Started</a>
         </li>
       </ul>
     </div>
@@ -61,7 +61,7 @@ include("../includes/connection.php");
       <div class="col-md-6 hero-text">
         <h1 class="animate__animated animate__fadeInLeft">Welcome to <br><span class="text-primary">School Management System</span></h1>
         <p class="animate__animated animate__fadeIn animate__delay-1s">Efficiently manage student records, faculty activities, and school operations — all in one place.</p>
-        <a href="../auth/login.php" class="btn-get-started animate__animated animate__fadeIn animate__delay-2s">Get Started</a>
+        <a href="../role/role-selection.php" class="btn-get-started animate__animated animate__fadeIn animate__delay-2s">Get Started</a>
       </div>
     </div>
   </div>

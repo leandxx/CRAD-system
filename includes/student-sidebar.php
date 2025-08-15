@@ -149,15 +149,9 @@ $role = $user['role'];
                     </a>
                 </li>
                 <li>
-                    <a href="student_pages/adviser.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-user-tie nav-icon"></i>
-                        <span class="nav-text">Adviser Assignment</span>
-                    </a>
-                </li>
-                <li>
                     <a href="student_pages/documents.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-file-alt nav-icon"></i>
-                        <span class="nav-text">Progress Tracker</span>
+                        <span class="nav-text">Document Tracker</span>
                     </a>
                 </li>
                 <li>
@@ -166,16 +160,10 @@ $role = $user['role'];
                         <span class="nav-text">Defense Scheduling</span>
                     </a>
                 </li>
-                <li>
-                    <a href="student_pages/analytics.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-chart-line nav-icon"></i>
-                        <span class="nav-text">Analytics</span>
-                    </a>
-                </li>
             </ul>
         </div>
 
-        <div class="px-4 py-3 border-t border-blue-700">
+        <div class="px-4 py-3 border-t border-blue-700" id="sidebar">
             <form action="../CRAD-system/auth/logout.php" method="POST">
                 <button type="submit" class="w-full text-left flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700 text-red-300">
                     <i class="fas fa-sign-out-alt w-5"></i><span class="sidebar-text">Logout</span>

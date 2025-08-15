@@ -7,7 +7,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password = $_POST['password'];
 
     // Use prepared statement to find user by email
-    $stmt = $conn->prepare("SELECT * FROM login_tbl WHERE email = ?");
+    $stmt = $conn->prepare("SELECT * FROM user_tbl WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -24,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             // Redirect based on role
             if ($user['role'] === 'Admin') {
-                header("Location: ../admin/dashboard.php");
+                header("Location: ../admin-pages/admin-dashboard.php");
             } elseif ($user['role'] === 'Faculty') {
                 header("Location: ../faculty-pages/faculty-dashboard.php");
             } elseif ($user['role'] === 'Student') {

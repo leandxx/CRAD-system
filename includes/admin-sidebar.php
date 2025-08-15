@@ -137,7 +137,7 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Dashboard</p>
             <ul>
                 <li>
-                    <a href="admin-pages/dashboard.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/admin-dashboard.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-tachometer-alt nav-icon"></i>
                         <span class="nav-text">Admin Dashboard</span>
                     </a>
@@ -150,17 +150,12 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Account Management</p>
             <ul>
                 <li>
-                    <a href="admin_pages/manage-students.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/manage-student.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-user-graduate nav-icon"></i>
                         <span class="nav-text">Manage Students</span>
                     </a>
                 </li>
-                <li>
-                    <a href="admin_pages/manage-faculty.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-chalkboard-teacher nav-icon"></i>
-                        <span class="nav-text">Manage Faculty</span>
-                    </a>
-                </li>
+            
                 <li>
                     <a href="admin_pages/manage-admins.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-user-shield nav-icon"></i>
@@ -170,30 +165,6 @@ $greeting = "Hello, " . match($role) {
             </ul>
         </div>
 
-        <!-- Group Management -->
-        <div class="px-4 py-3">
-            <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Group Management</p>
-            <ul>
-                <li>
-                    <a href="admin-pages/create-groups.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-users nav-icon"></i>
-                        <span class="nav-text">Create Group Accounts</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="admin_pages/manage-groups.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-list-ul nav-icon"></i>
-                        <span class="nav-text">Manage Groups</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="admin_pages/group-assignments.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-tasks nav-icon"></i>
-                        <span class="nav-text">Group Assignments</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
 
         <!-- Research Management -->
         <div class="px-4 py-3">

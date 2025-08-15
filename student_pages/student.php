@@ -7,107 +7,10 @@ include('../includes/connection.php'); // Your DB connection
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="../assets/img/sms-logo.png" />
-    <title>CRAD Student Portal</title>
+    <title>CRAD student-portal</title>
+    <link rel="icon" href="../assets/img/sms-logo.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-    <style>
-        .sidebar-collapse {
-            transition: all 0.3s ease;
-        }
-        .active-nav-item {
-            background-color: #3b82f6;
-            color: white;
-        }
-        .progress-bar {
-            height: 8px;
-            border-radius: 4px;
-            background-color: #e5e7eb;
-        }
-        .progress-fill {
-            height: 100%;
-            border-radius: 4px;
-            background-color: #3b82f6;
-            transition: width 1s ease-in-out;
-        }
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .research-phase {
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .research-phase.active {
-            background-color: #3b82f6;
-            color: white;
-        }
-        .research-phase.completed {
-            background-color: #10b981;
-            color: white;
-        }
-        .research-phase:hover::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255,255,255,0.1);
-        }
-        .notification-dot.pulse {
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.7; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .hide-scrollbar {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .glow-card {
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
-        }
-        .phase-tooltip {
-            visibility: hidden;
-            width: 120px;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 5px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 50%;
-            transform: translateX(-50%);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .research-phase:hover .phase-tooltip {
-            visibility: visible;
-            opacity: 1;
-        }
-        .floating-action {
-            animation: float 6s ease-in-out infinite;
-        }
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
-        }
-        .event-card:hover {
-            transform: scale(1.02);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
         tailwind.config = {
             theme: {
@@ -122,11 +25,19 @@ include('../includes/connection.php'); // Your DB connection
                 }
             }
         }
+
+        function toggleModal() {
+            const modal = document.getElementById('proposalModal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+        }
     </script>
 </head>
-<body class="bg-gray-50 font-sans">
-    <div class="flex h-screen overflow-hidden">
-        <?php include '../includes/student-sidebar.php'; ?>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <div class="min-h-screen flex">
+        <!-- Sidebar -->
+        <?php include('../includes/student-sidebar.php'); ?>
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden h-screen">
@@ -146,7 +57,6 @@ include('../includes/connection.php'); // Your DB connection
                             <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white">
                                 <i class="fas fa-user text-sm"></i>
                             </div>
-                            <span class="hidden md:inline font-medium"><?php echo htmlspecialchars($full_name ?? 'User'); ?></span>
                             <i class="fas fa-chevron-down text-xs opacity-70 group-hover:opacity-100 transition"></i>
                         </button>
                         <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">
@@ -163,7 +73,6 @@ include('../includes/connection.php'); // Your DB connection
                 <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg p-6 mb-8 text-white animate__animated animate__fadeIn">
                     <div class="flex flex-col md:flex-row items-center justify-between">
                         <div>
-                            <h2 class="text-2xl font-bold mb-2">Welcome back, <?php echo explode(' ', $full_name ?? 'Researcher')[0]; ?>!</h2>
                             <p class="opacity-90">You're making great progress on your research journey. Keep it up!</p>
                         </div>
                         <div class="mt-4 md:mt-0">

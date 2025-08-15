@@ -10,8 +10,13 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
+<<<<<<< HEAD
 // Get role from user_tbl
 $sql = "SELECT role FROM user_tbl WHERE user_id = ?";
+=======
+// Get username and role from login_tbl
+$sql = "SELECT full_name, role FROM login_tbl WHERE user_id = ?";
+>>>>>>> 5423e2407f0731a95e1fb6e25ffafa61dd6a6ef9
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -30,107 +35,74 @@ $role = $user['role'];
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        .hide-scrollbar {
-            overflow-y: auto;               /* Scroll always available */
-            -ms-overflow-style: auto;       /* IE/Edge legacy */
-            scrollbar-width: thin;          /* Firefox thin scrollbar */
-            scrollbar-gutter: stable;       /* Reserve space so no overlap */
-            padding-right: 8px;              /* Fallback for older browsers */
-        } 
-
-        /* WebKit browsers (Chrome, Edge, Safari) */
         .hide-scrollbar::-webkit-scrollbar {
-            width: 12px;
+            width: 8px;
         }
-
-        .hide-scrollbar::-webkit-scrollbar-track {
-            background: transparent; /* Removes white background */
-            border-radius: 12px;
-        }
-
         .hide-scrollbar::-webkit-scrollbar-thumb {
-            background-color: rgba(0,0,0,0.22);
-            border-radius: 8px;
-            border: 3px solid transparent;
-            background-clip: padding-box;
+            background-color: rgba(0,0,0,0.25);
+            border-radius: 4px;
         }
-
-        .hide-scrollbar::-webkit-scrollbar-thumb:hover {
-            background-color: rgba(0,0,0,0.34);
+        .sidebar-collapsed .nav-text,
+        .sidebar-collapsed .profile-name,
+        .sidebar-collapsed .profile-role,
+        .sidebar-collapsed .portal-title,
+        .sidebar-collapsed .portal-logo {
+            display: none;
         }
-
-        /* Firefox */
-        .hide-scrollbar {
-            scrollbar-color: rgba(0,0,0,0.22) transparent;
+        .sidebar-collapsed {
+            width: 5rem;
         }
-
-       /* Hide labels and logo when collapsed */
-.sidebar-collapsed .nav-text,
-.sidebar-collapsed .profile-name,
-.sidebar-collapsed .profile-role,
-.sidebar-collapsed .portal-title,
-.sidebar-collapsed .portal-logo { 
-    display: none;
-}
-
-.sidebar-collapsed {
-    width: 5rem;
-}
-
-.sidebar-transition {
-    transition: all 0.3s ease-in-out;
-}
-
-.sidebar img.logo-img {
-    transition: all 0.3s ease;
-}
-
-.sidebar-collapsed img.logo-img {
-    width: 2.5rem;
-    height: 2.5rem;
-}
-
-.sidebar .nav-icon {
-    width: 1.25rem;
-    text-align: center;
-}
-
+        .sidebar-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        .sidebar-collapsed img.logo-img {
+            width: 2.5rem;
+            height: 2.5rem;
+        }
+        .sidebar .nav-icon {
+            width: 1.25rem;
+            text-align: center;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
 
-<!-- Sidebar Container -->
+<!-- Sidebar -->
 <div class="sidebar sidebar-transition bg-blue-800 text-white flex flex-col hidden md:flex h-screen w-64" id="sidebar">
 
-    <!-- Logo + Title -->
+    <!-- Header: Logo + Toggle -->
     <div class="p-4 flex items-center justify-between border-b border-blue-700">
         <div class="flex items-center space-x-2">
             <div class="portal-logo">
-               <img src="assets/img/sms-logo.png" alt="University Logo" class="h-14 w-16 logo-img">
+                <img src="assets/img/sms-logo.png" alt="University Logo" class="h-14 w-16 logo-img">
             </div>
-            <span class="text-bs font-bold portal-title">CRAD Student Portal</span>
+            <span class="text-base font-bold portal-title">CRAD Student Portal</span>
         </div>
-        <div class="pr-3">
-    <button class="text-white focus:outline-none" id="toggleSidebar">
-        <i class="fas fa-bars text-2xl"></i>
-    </button>
-</div>
-
+        <button class="text-white focus:outline-none" id="toggleSidebar">
+            <i class="fas fa-bars text-2xl"></i>
+        </button>
     </div>
 
+<<<<<<< HEAD
     <!-- Profile Section -->
     <div class="p-4 flex items-center space-x-3 bg-blue-900">
     <img src="assets/img/me.png" alt="Student profile" class="rounded-full h-14 w-14">
     <div>
         <p class="font-medium profile-name">Hello, <?php echo htmlspecialchars(ucfirst($role)); ?></p>
         <p class="text-xs text-blue-200 profile-role"><?php echo htmlspecialchars($role); ?></p>
+=======
+    <!-- Profile -->
+    <div class="p-4 flex items-center space-x-3 bg-blue-900 border-b border-blue-700">
+        <img src="assets/img/me.png" alt="Student profile" class="rounded-full h-14 w-14">
+        <div>
+            <p class="font-medium profile-name"><?php echo htmlspecialchars($full_name); ?></p>
+            <p class="text-xs text-blue-200 profile-role"><?php echo htmlspecialchars($role); ?></p>
+        </div>
+>>>>>>> 5423e2407f0731a95e1fb6e25ffafa61dd6a6ef9
     </div>
-</div>
 
-    <!-- Navigation -->
-    <nav class="flex-1 pb-4 hide-scrollbar overflow-y-auto">
-
-        <!-- Research Process -->
+    <!-- Nav Links (Scrollable Middle) -->
+    <div class="flex-1 hide-scrollbar overflow-y-auto">
         <div class="px-4 py-3">
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Research Process</p>
             <ul>
@@ -160,16 +132,17 @@ $role = $user['role'];
                 </li>
             </ul>
         </div>
+    </div>
 
-        <div class="px-4 py-3 border-t border-blue-700" id="sidebar">
-            <form action="../CRAD-system/auth/logout.php" method="POST">
-                <button type="submit" class="w-full text-left flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700 text-red-300">
-                    <i class="fas fa-sign-out-alt w-5"></i><span class="sidebar-text">Logout</span>
-                </button>
-            </form>
-        </div>
-
-    </nav>
+    <!-- Logout Button (Fixed Bottom) -->
+    <div class="px-4 py-3 border-t border-blue-700">
+        <form action="../CRAD-system/auth/logout.php" method="POST">
+            <button type="submit" class="w-full text-left flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700 text-red-300">
+                <i class="fas fa-sign-out-alt w-5"></i>
+                <span class="sidebar-text">Logout</span>
+            </button>
+        </form>
+    </div>
 </div>
 
 <!-- JS TOGGLE -->

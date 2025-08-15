@@ -135,7 +135,7 @@ $greeting = "Hello, " . match($role) {
 
     <!-- Profile Section -->
     <div class="p-4 flex items-center space-x-3 bg-blue-900">
-        <img src="assets/img/me.png" alt="Student profile" class="rounded-full h-14 w-14">
+        <img src="assets/img/me.png" alt="Student profile" class="rounded-full h-12 w-12">
         <div>
             <p class="font-medium profile-name"><?php echo htmlspecialchars($greeting); ?></p>
             <p class="text-xs text-blue-200 profile-role"><?php echo htmlspecialchars(ucfirst($role)); ?></p>

@@ -274,7 +274,7 @@ include('../includes/connection.php'); // Your DB connection
                             </div>
                         </a>
                         
-                        <a href="student_pages/document.php" class="bg-white rounded-xl shadow-md p-6 card-hover transition-all duration-300 border-l-4 border-purple-500 hover:border-purple-600 group">
+                        <a href="student_pages/documents.php" class="bg-white rounded-xl shadow-md p-6 card-hover transition-all duration-300 border-l-4 border-purple-500 hover:border-purple-600 group">
                             <div class="flex items-center space-x-4">
                                 <div class="p-3 rounded-full bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
                                     <i class="fas fa-tasks text-xl"></i>

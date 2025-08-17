@@ -232,8 +232,7 @@ $stmt->close();
                 </div>
                 <button 
                     onclick="toggleModal('createTimelineModal')"
-                    class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center transition"
-                >
+                    class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg flex items-center transition">
                     <i class="fas fa-plus mr-2"></i> Create New Timeline
                 </button>
             </div>
@@ -378,51 +377,52 @@ $stmt->close();
                 </form>
             </div>
         </div>
-    </>
+    </div>
 
     <!-- Edit Timeline Modal -->
-    <div id="editTimelineModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold">Edit Timeline</h3>
-                    <button onclick="toggleModal('editTimelineModal')" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <form method="POST">
-                    <input type="hidden" id="edit_timeline_id" name="timeline_id">
-                    <div class="mb-4">
-                        <label for="edit_title" class="block text-sm font-medium text-gray-700 mb-1">Timeline Title</label>
-                        <input type="text" id="edit_title" name="title" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="edit_description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <textarea id="edit_description" name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
-                    </div>
-                    
-                    <h4 class="text-lg font-medium mb-3">Milestones</h4>
-                    <div id="editMilestoneContainer">
-                        <!-- Milestones will be added here by JavaScript -->
-                    </div>
-                    
-                    <div class="flex justify-between mt-4">
-                        <button type="button" id="addEditMilestone" class="text-primary hover:text-secondary">
-                            <i class="fas fa-plus mr-1"></i> Add Milestone
-                        </button>
-                        <div>
-                            <button type="button" onclick="toggleModal('editTimelineModal')" class="mr-2 px-4 py-2 border border-gray-300 rounded-md">
-                                Cancel
-                            </button>
-                            <button type="submit" name="update_timeline" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md">
-                                Update Timeline
-                            </button>
-                        </div>
-                    </div>
-                </form>
+<div id="editTimelineModal" class="modal-container hidden">
+    <div class="modal-content">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Edit Timeline</h3>
+                <button onclick="toggleModal('editTimelineModal')" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
+            <form method="POST">
+                <input type="hidden" id="edit_timeline_id" name="timeline_id">
+                <input type="hidden" id="deleted_milestones" name="deleted_milestones" value="">
+                <div class="mb-4">
+                    <label for="edit_title" class="block text-sm font-medium text-gray-700 mb-1">Timeline Title</label>
+                    <input type="text" id="edit_title" name="title" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                </div>
+                <div class="mb-4">
+                    <label for="edit_description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea id="edit_description" name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                </div>
+                
+                <h4 class="text-lg font-medium mb-3">Milestones</h4>
+                <div id="editMilestoneContainer">
+                    <!-- Milestones will be added here by JavaScript -->
+                </div>
+                
+                <div class="flex justify-between mt-4">
+                    <button type="button" id="addEditMilestone" class="text-primary hover:text-secondary">
+                        <i class="fas fa-plus mr-1"></i> Add Milestone
+                    </button>
+                    <div>
+                        <button type="button" onclick="toggleModal('editTimelineModal')" class="mr-2 px-4 py-2 border border-gray-300 rounded-md">
+                            Cancel
+                        </button>
+                        <button type="submit" name="update_timeline" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md">
+                            Update Timeline
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
     <script>
         

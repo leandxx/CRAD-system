@@ -151,11 +151,6 @@ $stmt->close();
             }
         }
 
-        function toggleModal() {
-            const modal = document.getElementById('submissionModal');
-            modal.classList.toggle('hidden');
-            modal.classList.toggle('flex');
-        }
     </script>
 </head>
   <div class="min-h-screen flex">
@@ -425,7 +420,6 @@ $stmt->close();
 </div>
 
     <script>
-        
 // Improved openEditModal function
 function openEditModal(timeline, milestones) {
     // Set the timeline information
@@ -490,7 +484,7 @@ function initializeDatePicker(element) {
     });
 }
 
-// Add event listener for remove milestone buttons
+// Remove milestone handler
 document.addEventListener('click', function(e) {
     if (e.target.closest('.remove-milestone')) {
         const milestoneItem = e.target.closest('.milestone-item');
@@ -517,8 +511,6 @@ document.addEventListener('click', function(e) {
 // Add new milestone in edit modal
 document.getElementById('addEditMilestone').addEventListener('click', function() {
     const container = document.getElementById('editMilestoneContainer');
-    const count = container.children.length + 1;
-    
     const newMilestone = document.createElement('div');
     newMilestone.className = 'milestone-item mb-4 p-4 border border-gray-200 rounded-lg';
     newMilestone.dataset.milestoneId = 'new';
@@ -550,283 +542,126 @@ document.getElementById('addEditMilestone').addEventListener('click', function()
     initializeDatePicker(newMilestone);
 });
 
-        // Admin countdown timer - improved version
-    function updateAdminCountdown() {
-        <?php if (!empty($milestones)): ?>
-            <?php 
-            $now = new DateTime();
-            $current_milestone = null;
-            foreach ($milestones as $milestone) {
-                $deadline = new DateTime($milestone['deadline']);
-                if ($deadline > $now) {
-                    $current_milestone = $milestone;
-                    break;
-                }
+// Toggle modal
+function toggleModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.classList.toggle('hidden');
+    modal.classList.toggle('flex');
+}
+
+// Admin countdown timer - single version
+function updateAdminCountdown() {
+    <?php if (!empty($milestones)): ?>
+        <?php 
+        $now = new DateTime();
+        $current_milestone = null;
+        foreach ($milestones as $milestone) {
+            $deadline = new DateTime($milestone['deadline']);
+            if ($deadline > $now) {
+                $current_milestone = $milestone;
+                break;
             }
-            ?>
-            
-            <?php if ($current_milestone): ?>
-                const deadline = new Date("<?= $current_milestone['deadline'] ?>").getTime();
-                const now = new Date().getTime();
-                const distance = deadline - now;
-                
-                // Time calculations
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                
-                // Display the result
-                document.getElementById("admin-countdown-days").textContent = days.toString().padStart(2, '0');
-                document.getElementById("admin-countdown-hours").textContent = hours.toString().padStart(2, '0');
-                document.getElementById("admin-countdown-minutes").textContent = minutes.toString().padStart(2, '0');
-                
-                // Change color if less than 24 hours remaining
-                const countdownContainer = document.querySelector('.bg-gradient-to-r');
-                if (distance < (24 * 60 * 60 * 1000)) {
-                    countdownContainer.classList.remove('from-primary', 'to-secondary');
-                    countdownContainer.classList.add('from-red-500', 'to-red-600');
-                } else {
-                    countdownContainer.classList.remove('from-red-500', 'to-red-600');
-                    countdownContainer.classList.add('from-primary', 'to-secondary');
-                }
-                
-                // If the countdown is finished
-                if (distance < 0) {
-                    countdownContainer.classList.add('from-gray-500', 'to-gray-600');
-                    clearInterval(countdownInterval);
-                }
-            <?php else: ?>
-                // All milestones completed
-                document.getElementById("admin-countdown-days").textContent = '00';
-                document.getElementById("admin-countdown-hours").textContent = '00';
-                document.getElementById("admin-countdown-minutes").textContent = '00';
-                document.querySelector('.bg-gradient-to-r').classList.add('from-gray-500', 'to-gray-600');
-            <?php endif; ?>
-        <?php endif; ?>
-    }
-    // Initialize countdown
-    let countdownInterval;
-    document.addEventListener('DOMContentLoaded', function() {
-        // Start countdown and update every second
-        updateAdminCountdown();
-        countdownInterval = setInterval(updateAdminCountdown, 1000);
+        }
+        ?>
         
-        // Your existing DOMContentLoaded code...
-        flatpickr(".flatpickr", {
+        <?php if ($current_milestone): ?>
+            const deadline = new Date("<?= $current_milestone['deadline'] ?>").getTime();
+            const now = new Date().getTime();
+            const distance = deadline - now;
+            
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            
+            document.getElementById("admin-countdown-days").textContent = days.toString().padStart(2, '0');
+            document.getElementById("admin-countdown-hours").textContent = hours.toString().padStart(2, '0');
+            document.getElementById("admin-countdown-minutes").textContent = minutes.toString().padStart(2, '0');
+            
+            const countdownContainer = document.querySelector('.bg-gradient-to-r');
+            if (distance < (24 * 60 * 60 * 1000)) {
+                countdownContainer.classList.remove('from-primary', 'to-secondary');
+                countdownContainer.classList.add('from-red-500', 'to-red-600');
+            } else {
+                countdownContainer.classList.remove('from-red-500', 'to-red-600');
+                countdownContainer.classList.add('from-primary', 'to-secondary');
+            }
+            
+            if (distance < 0) {
+                countdownContainer.classList.add('from-gray-500', 'to-gray-600');
+                clearInterval(countdownInterval);
+            }
+        <?php else: ?>
+            document.getElementById("admin-countdown-days").textContent = '00';
+            document.getElementById("admin-countdown-hours").textContent = '00';
+            document.getElementById("admin-countdown-minutes").textContent = '00';
+            document.querySelector('.bg-gradient-to-r').classList.add('from-gray-500', 'to-gray-600');
+        <?php endif; ?>
+    <?php endif; ?>
+}
+
+// Initialize scripts
+let countdownInterval;
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize countdown
+    updateAdminCountdown();
+    countdownInterval = setInterval(updateAdminCountdown, 1000);
+
+    // Initialize datepickers
+    flatpickr(".flatpickr", {
+        enableTime: true,
+        dateFormat: "Y-m-d H:i",
+        minDate: "today"
+    });
+
+    // Add milestone button (create modal)
+    document.getElementById('addMilestone').addEventListener('click', function() {
+        const container = document.getElementById('milestoneContainer');
+        const count = container.children.length + 1;
+        
+        const newMilestone = document.createElement('div');
+        newMilestone.className = 'milestone-item mb-4 p-4 border border-gray-200 rounded-lg';
+        newMilestone.innerHTML = `
+            <div class="flex justify-between items-center mb-2">
+                <h5 class="font-medium">Milestone #${count}</h5>
+                <button type="button" class="text-red-500 hover:text-red-700 remove-milestone">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                    <input type="text" name="milestone_title[]" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+                    <input type="datetime-local" name="milestone_deadline[]" class="w-full px-3 py-2 border border-gray-300 rounded-md flatpickr" required>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea name="milestone_description[]" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+            </div>
+        `;
+        
+        container.appendChild(newMilestone);
+        flatpickr(newMilestone.querySelector(".flatpickr"), {
             enableTime: true,
             dateFormat: "Y-m-d H:i",
             minDate: "today"
         });
-        
-        // Rest of your initialization code...
-    });
-        // Initialize date pickers
-        document.addEventListener('DOMContentLoaded', function() {
-            flatpickr(".flatpickr", {
-                enableTime: true,
-                dateFormat: "Y-m-d H:i",
-                minDate: "today"
-            });
-            
-            // Add milestone button
-            document.getElementById('addMilestone').addEventListener('click', function() {
-                const container = document.getElementById('milestoneContainer');
-                const count = container.children.length + 1;
-                
-                const newMilestone = document.createElement('div');
-                newMilestone.className = 'milestone-item mb-4 p-4 border border-gray-200 rounded-lg';
-                newMilestone.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <h5 class="font-medium">Milestone #${count}</h5>
-                        <button type="button" class="text-red-500 hover:text-red-700 remove-milestone">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                            <input type="text" name="milestone_title[]" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-                            <input type="datetime-local" name="milestone_deadline[]" class="w-full px-3 py-2 border border-gray-300 rounded-md flatpickr" required>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <textarea name="milestone_description[]" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
-                    </div>
-                `;
-                
-                container.appendChild(newMilestone);
-                flatpickr(newMilestone.querySelector(".flatpickr"), {
-                    enableTime: true,
-                    dateFormat: "Y-m-d H:i",
-                    minDate: "today"
-                });
-                
-                // Add event to remove button
-                newMilestone.querySelector('.remove-milestone').addEventListener('click', function() {
-                    container.removeChild(newMilestone);
-                    // Renumber remaining milestones
-                    const milestones = container.querySelectorAll('.milestone-item');
-                    milestones.forEach((milestone, index) => {
-                        milestone.querySelector('h5').textContent = `Milestone #${index + 1}`;
-                    });
-                });
-            });
-            
-            // Add edit milestone button
-            document.getElementById('addEditMilestone').addEventListener('click', function() {
-                const container = document.getElementById('editMilestoneContainer');
-                const count = container.children.length + 1;
-                
-                const newMilestone = document.createElement('div');
-                newMilestone.className = 'milestone-item mb-4 p-4 border border-gray-200 rounded-lg';
-                newMilestone.innerHTML = `
-                    <input type="hidden" name="milestone_id[]" value="new">
-                    <div class="flex justify-between items-center mb-2">
-                        <h5 class="font-medium">New Milestone</h5>
-                        <button type="button" class="text-red-500 hover:text-red-700 remove-milestone">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                            <input type="text" name="milestone_title[]" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-                            <input type="datetime-local" name="milestone_deadline[]" class="w-full px-3 py-2 border border-gray-300 rounded-md flatpickr" required>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <textarea name="milestone_description[]" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
-                    </div>
-                `;
-                
-                container.appendChild(newMilestone);
-                flatpickr(newMilestone.querySelector(".flatpickr"), {
-                    enableTime: true,
-                    dateFormat: "Y-m-d H:i",
-                    minDate: "today"
-                });
-                
-                // Add event to remove button
-                newMilestone.querySelector('.remove-milestone').addEventListener('click', function() {
-                    container.removeChild(newMilestone);
-                });
-            });
-            
-            // Countdown timer
-            updateAdminCountdown();
-            setInterval(updateAdminCountdown, 60000);
-        });
-        
-        function toggleModal(modalId) {
-            const modal = document.getElementById(modalId);
-            modal.classList.toggle('hidden');
-            modal.classList.toggle('flex');
-        }
-        
-        function openEditModal(timeline, milestones) {
-            document.getElementById('edit_timeline_id').value = timeline.id;
-            document.getElementById('edit_title').value = timeline.title;
-            document.getElementById('edit_description').value = timeline.description || '';
-            
-            const container = document.getElementById('editMilestoneContainer');
-            container.innerHTML = '';
-            
+
+        // Remove milestone button
+        newMilestone.querySelector('.remove-milestone').addEventListener('click', function() {
+            container.removeChild(newMilestone);
+            const milestones = container.querySelectorAll('.milestone-item');
             milestones.forEach((milestone, index) => {
-                const milestoneElement = document.createElement('div');
-                milestoneElement.className = 'milestone-item mb-4 p-4 border border-gray-200 rounded-lg';
-                milestoneElement.innerHTML = `
-                    <input type="hidden" name="milestone_id[]" value="${milestone.id}">
-                    <div class="flex justify-between items-center mb-2">
-                        <h5 class="font-medium">Milestone #${index + 1}</h5>
-                        <button type="button" class="text-red-500 hover:text-red-700 remove-milestone">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                            <input type="text" name="milestone_title[]" value="${milestone.title}" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-                            <input type="datetime-local" name="milestone_deadline[]" value="${milestone.deadline.replace(' ', 'T')}" class="w-full px-3 py-2 border border-gray-300 rounded-md flatpickr" required>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <textarea name="milestone_description[]" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md">${milestone.description || ''}</textarea>
-                    </div>
-                `;
-                
-                container.appendChild(milestoneElement);
-                flatpickr(milestoneElement.querySelector(".flatpickr"), {
-                    enableTime: true,
-                    dateFormat: "Y-m-d H:i",
-                    minDate: "today"
-                });
-                
-                // Add event to remove button
-                milestoneElement.querySelector('.remove-milestone').addEventListener('click', function() {
-                    container.removeChild(milestoneElement);
-                });
+                milestone.querySelector('h5').textContent = `Milestone #${index + 1}`;
             });
-            
-            toggleModal('editTimelineModal');
-        }
-        
-        // Admin countdown timer
-        function updateAdminCountdown() {
-            <?php if (!empty($milestones)): ?>
-                <?php 
-                $now = new DateTime();
-                $current_milestone = null;
-                foreach ($milestones as $milestone) {
-                    $deadline = new DateTime($milestone['deadline']);
-                    if ($deadline > $now) {
-                        $current_milestone = $milestone;
-                        break;
-                    }
-                }
-                ?>
-                
-                <?php if ($current_milestone): ?>
-                    const deadline = new Date("<?= $current_milestone['deadline'] ?>").getTime();
-                    const now = new Date().getTime();
-                    const distance = deadline - now;
-                    
-                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                    
-                    document.getElementById("admin-countdown-days").textContent = days.toString().padStart(2, '0');
-                    document.getElementById("admin-countdown-hours").textContent = hours.toString().padStart(2, '0');
-                    document.getElementById("admin-countdown-minutes").textContent = minutes.toString().padStart(2, '0');
-                    
-                    if (distance < (24 * 60 * 60 * 1000)) {
-                        document.querySelector('.bg-gradient-to-r').classList.remove('from-primary', 'to-secondary');
-                        document.querySelector('.bg-gradient-to-r').classList.add('from-red-500', 'to-red-600');
-                    }
-                    
-                    if (distance < 0) {
-                        document.querySelector('.bg-gradient-to-r').classList.add('from-gray-500', 'to-gray-600');
-                    }
-                <?php else: ?>
-                    document.getElementById("admin-countdown-days").textContent = '00';
-                    document.getElementById("admin-countdown-hours").textContent = '00';
-                    document.getElementById("admin-countdown-minutes").textContent = '00';
-                <?php endif; ?>
-            <?php endif; ?>
-        }
-    </script>
+        });
+    });
+});
+</script>
+
     
 </body>
 </html>

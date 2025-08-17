@@ -218,7 +218,7 @@ include('../includes/connection.php'); // Your DB connection
                                 </div>
                                 <div>
                                     <h3 class="font-medium text-gray-800 group-hover:text-green-600">Defense Scheduling</h3>
-                                    <p class="text-sm text-gray-500 group-hover:text-gray-600">See your date of defense</p>
+                                    <p class="text-sm text-gray-500 group-hover:text-gray-600">See your defense date</p>
                                 </div>
                             </div>
                             <div class="mt-4 text-right">

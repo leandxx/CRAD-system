@@ -73,7 +73,8 @@ $greeting = "Hello, " . match($role) {
         .sidebar-collapsed .profile-name,
         .sidebar-collapsed .profile-role,
         .sidebar-collapsed .portal-title,
-        .sidebar-collapsed .portal-logo { 
+        .sidebar-collapsed .portal-logo,
+        .sidebar-collapsed .sidebar-text { 
             display: none;
         }
 
@@ -171,7 +172,7 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Research Management</p>
             <ul>
                 <li>
-                    <a href="admin_pages/proposals.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/admin-proposals.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-file-alt nav-icon"></i>
                         <span class="nav-text">Proposals</span>
                     </a>

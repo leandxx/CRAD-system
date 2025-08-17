@@ -151,13 +151,6 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Account Management</p>
             <ul>
                 <li>
-                    <a href="admin-pages/manage-student.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-user-graduate nav-icon"></i>
-                        <span class="nav-text">Manage Students</span>
-                    </a>
-                </li>
-            
-                <li>
                     <a href="admin_pages/manage-admins.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-user-shield nav-icon"></i>
                         <span class="nav-text">Manage Admins</span>
@@ -172,9 +165,9 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Research Management</p>
             <ul>
                 <li>
-                    <a href="admin-pages/admin-proposals.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/admin-timeline.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-file-alt nav-icon"></i>
-                        <span class="nav-text">Proposals</span>
+                        <span class="nav-text">Research Submission Timeline</span>
                     </a>
                 </li>
                 <li>
@@ -183,12 +176,7 @@ $greeting = "Hello, " . match($role) {
                         <span class="nav-text">Defense Scheduling</span>
                     </a>
                 </li>
-                <li>
-                    <a href="admin_pages/research-categories.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
-                        <i class="fas fa-tags nav-icon"></i>
-                        <span class="nav-text">Research Categories</span>
-                    </a>
-                </li>
+            
             </ul>
         </div>
 

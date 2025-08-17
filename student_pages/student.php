@@ -1,6 +1,125 @@
 <?php
 include('../includes/connection.php'); // Your DB connection
+
+// Handle form submissions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['create_timeline'])) {
+        // Create new timeline
+        $title = $_POST['title'];
+        $description = $_POST['description'];
+        
+        $stmt = $conn->prepare("INSERT INTO submission_timelines (title, description) VALUES (?, ?)");
+        $stmt->bind_param("ss", $title, $description);
+        $stmt->execute();
+        $timeline_id = $stmt->insert_id;
+        $stmt->close();
+        
+        // Add milestones
+        foreach ($_POST['milestone_title'] as $key => $title) {
+            $description = $_POST['milestone_description'][$key];
+            $deadline = $_POST['milestone_deadline'][$key];
+            
+            $stmt = $conn->prepare("INSERT INTO timeline_milestones (timeline_id, title, description, deadline) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("isss", $timeline_id, $title, $description, $deadline);
+            $stmt->execute();
+            $stmt->close();
+        }
+        
+        $_SESSION['success_message'] = "Timeline created successfully!";
+    } elseif (isset($_POST['update_timeline'])) {
+        // Update timeline
+        $timeline_id = $_POST['timeline_id'];
+        $title = $_POST['title'];
+        $description = $_POST['description'];
+        
+        $stmt = $conn->prepare("UPDATE submission_timelines SET title = ?, description = ? WHERE id = ?");
+        $stmt->bind_param("ssi", $title, $description, $timeline_id);
+        $stmt->execute();
+        $stmt->close();
+        
+        // Update milestones
+        foreach ($_POST['milestone_id'] as $key => $milestone_id) {
+            $title = $_POST['milestone_title'][$key];
+            $description = $_POST['milestone_description'][$key];
+            $deadline = $_POST['milestone_deadline'][$key];
+            
+            if ($milestone_id == 'new') {
+                $stmt = $conn->prepare("INSERT INTO timeline_milestones (timeline_id, title, description, deadline) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param("isss", $timeline_id, $title, $description, $deadline);
+            } else {
+                $stmt = $conn->prepare("UPDATE timeline_milestones SET title = ?, description = ?, deadline = ? WHERE id = ?");
+                $stmt->bind_param("sssi", $title, $description, $deadline, $milestone_id);
+            }
+            $stmt->execute();
+            $stmt->close();
+        }
+        
+        $_SESSION['success_message'] = "Timeline updated successfully!";
+    } elseif (isset($_POST['toggle_timeline'])) {
+        // Toggle timeline active status
+        $timeline_id = $_POST['timeline_id'];
+        $stmt = $conn->prepare("UPDATE submission_timelines SET is_active = NOT is_active WHERE id = ?");
+        $stmt->bind_param("i", $timeline_id);
+        $stmt->execute();
+        $stmt->close();
+        
+        $_SESSION['success_message'] = "Timeline status updated!";
+    }
+}
+
+// Get active timeline
+$active_timeline = null;
+$milestones = [];
+$stmt = $conn->prepare("SELECT * FROM submission_timelines WHERE is_active = 1 LIMIT 1");
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result->num_rows > 0) {
+    $active_timeline = $result->fetch_assoc();
+    
+    // Get milestones for active timeline
+    $stmt = $conn->prepare("SELECT * FROM timeline_milestones WHERE timeline_id = ? ORDER BY deadline ASC");
+    $stmt->bind_param("i", $active_timeline['id']);
+    $stmt->execute();
+    $milestones = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+// Initialize variables
+$now = new DateTime(); // This line was missing
+$active_timeline = null;
+$milestones = [];
+$total_milestones = 0;
+$completed_milestones = 0;
+$progress = 0;
+
+// Get active timeline and milestones
+$stmt = $conn->prepare("SELECT t.* FROM submission_timelines t WHERE t.is_active = 1 LIMIT 1");
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result->num_rows > 0) {
+    $active_timeline = $result->fetch_assoc();
+    
+    // Get milestones for active timeline
+    $stmt = $conn->prepare("SELECT * FROM timeline_milestones WHERE timeline_id = ? ORDER BY deadline ASC");
+    $stmt->bind_param("i", $active_timeline['id']);
+    $stmt->execute();
+    $milestones = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    
+    // Calculate progress only if we have milestones
+    $total_milestones = count($milestones);
+    if ($total_milestones > 0) {
+        foreach ($milestones as $milestone) {
+            $deadline = new DateTime($milestone['deadline']);
+            if ($deadline < $now) {
+                $completed_milestones++;
+            }
+        }
+        $progress = ($completed_milestones / $total_milestones) * 100;
+    }
+}
+$stmt->close();
+
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -113,80 +232,126 @@ include('../includes/connection.php'); // Your DB connection
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto p-6 hide-scrollbar">
-                <!-- Welcome Banner -->
-                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl shadow-lg p-6 mb-8 text-white animate__animated animate__fadeIn">
-                    <div class="flex flex-col md:flex-row items-center justify-between">
-                        <div>
-                            <p class="opacity-90">You're making great progress on your research journey. Keep it up!</p>
-                        </div>
-                        <div class="mt-4 md:mt-0">
-                            <div class="flex items-center bg-white/20 rounded-full px-4 py-2">
-                                <i class="fas fa-trophy mr-2"></i>
-                                <span>Current Streak: 5 days in a row</span>
-                            </div>
-                        </div>
+            <main class="flex-1 overflow-y-auto p-6 hide-scrollbar">        
+                 <!-- Countdown Header -->
+        <div class="bg-gradient-to-r from-primary to-secondary text-white p-4 rounded-lg shadow-lg mb-6">
+            <div class="flex flex-col md:flex-row items-center justify-between">
+                <div class="flex items-center mb-4 md:mb-0">
+                    <i class="fas fa-clock text-2xl mr-3"></i>
+                    <div>
+                        <h3 class="font-bold text-lg">Current Phase Countdown</h3>
+                        <?php if (!empty($milestones)): ?>
+                            <?php 
+                            $current_milestone = null;
+                            $now = new DateTime();
+                            foreach ($milestones as $milestone) {
+                                $deadline = new DateTime($milestone['deadline']);
+                                if ($deadline > $now) {
+                                    $current_milestone = $milestone;
+                                    break;
+                                }
+                            }
+                            ?>
+                            <p class="text-sm opacity-90">
+                                <?= $current_milestone ? htmlspecialchars($current_milestone['title']) : 'All milestones completed' ?> - 
+                                Ends <?= $current_milestone ? date('F j, Y \a\t g:i A', strtotime($current_milestone['deadline'])) : '' ?>
+                            </p>
+                        <?php else: ?>
+                            <p class="text-sm opacity-90">No active milestones</p>
+                        <?php endif; ?>
                     </div>
                 </div>
+                <div class="flex items-center">
+                    <div class="text-center px-4">
+                        <div id="admin-countdown-days" class="text-3xl font-bold">00</div>
+                        <div class="text-xs opacity-90">Days</div>
+                    </div>
+                    <div class="text-2xl font-bold opacity-70">:</div>
+                    <div class="text-center px-4">
+                        <div id="admin-countdown-hours" class="text-3xl font-bold">00</div>
+                        <div class="text-xs opacity-90">Hours</div>
+                    </div>
+                    <div class="text-2xl font-bold opacity-70">:</div>
+                    <div class="text-center px-4">
+                        <div id="admin-countdown-minutes" class="text-3xl font-bold">00</div>
+                        <div class="text-xs opacity-90">Minutes</div>
+                    </div>
+                </div>
+            </div>
+        </div>       
 
-                <!-- Research Progress Overview -->
-                <section class="mb-8 animate__animated animate__fadeInUp">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">
-                        <i class="fas fa-chart-line mr-2 text-primary"></i> Research Progress
-                    </h2>
-                    <div class="bg-white rounded-lg shadow-lg p-6 glow-card">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-lg font-medium">Thesis: "Machine Learning Applications in Healthcare"</h3>
-                            <span class="text-sm font-medium bg-blue-100 text-blue-800 px-3 py-1 rounded-full animate-pulse">
-                                <i class="fas fa-running mr-1"></i> In Progress
+                <!-- Research Submission Overview -->
+                <main class="flex-1 overflow-y-auto p-6 hide-scrollbar">               
+        <!-- Research Submission Overview -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">
+                <i class="fas fa-chart-line mr-2 text-primary"></i> Submission Timeline
+            </h2>
+            <div class="bg-white rounded-lg shadow-lg p-6 glow-card">
+                <?php if ($active_timeline): ?>
+                    <h3 class="text-lg font-semibold mb-2"><?= htmlspecialchars($active_timeline['title']) ?></h3>
+                    <p class="text-gray-600 mb-4"><?= htmlspecialchars($active_timeline['description']) ?></p>
+                    
+                    <div class="mb-6">
+                        <div class="flex justify-between text-sm text-gray-600 mb-1">
+                            <span>
+                                <?php if (!empty($milestones)): ?>
+                                    Started: <?= date('M Y', strtotime($milestones[0]['deadline'])) ?>
+                                <?php endif; ?>
+                            </span>
+                            <span><?= round($progress) ?>% Complete</span>
+                            <span>
+                                <?php if (!empty($milestones)): ?>
+                                    Target: <?= date('M Y', strtotime(end($milestones)['deadline'])) ?>
+                                <?php endif; ?>
                             </span>
                         </div>
-                        
-                        <div class="mb-6">
-                            <div class="flex justify-between text-sm text-gray-600 mb-1">
-                                <span>Started: Jan 2023</span>
-                                <span>65% Complete</span>
-                                <span>Target: Dec 2023</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: 65%"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                            <div class="research-phase active p-4 rounded-lg text-center transition-all hover:shadow-md">
-                                <div class="phase-tooltip">Proposal submitted and approved</div>
-                                <i class="fas fa-file-alt text-3xl mb-3"></i>
-                                <p class="text-sm font-medium">Proposal</p>
-                                <p class="text-xs mt-1"><i class="fas fa-check-circle mr-1"></i>Completed</p>
-                            </div>
-                            <div class="research-phase active p-4 rounded-lg text-center transition-all hover:shadow-md">
-                                <div class="phase-tooltip">Defense scheduled for May 30</div>
-                                <i class="fas fa-user-tie text-3xl mb-3"></i>
-                                <p class="text-sm font-medium">Defense</p>
-                                <p class="text-xs mt-1"><i class="fas fa-calendar-day mr-1"></i>May 30</p>
-                            </div>
-                            <div class="research-phase p-4 rounded-lg text-center border-2 border-dashed border-blue-200 hover:border-blue-300 transition-all hover:shadow-md">
-                                <div class="phase-tooltip">Awaiting defense results</div>
-                                <i class="fas fa-clipboard-check text-3xl mb-3 text-blue-400"></i>
-                                <p class="text-sm font-medium">Revision</p>
-                                <p class="text-xs mt-1 text-blue-500"><i class="fas fa-clock mr-1"></i>Pending</p>
-                            </div>
-                            <div class="research-phase p-4 rounded-lg text-center border border-gray-200 hover:border-gray-300 transition-all hover:shadow-md">
-                                <div class="phase-tooltip">Complete all revisions first</div>
-                                <i class="fas fa-check-circle text-3xl mb-3 text-gray-300"></i>
-                                <p class="text-sm font-medium">Clearance</p>
-                                <p class="text-xs mt-1 text-gray-400">Not Started</p>
-                            </div>
-                            <div class="research-phase p-4 rounded-lg text-center border border-gray-200 hover:border-gray-300 transition-all hover:shadow-md">
-                                <div class="phase-tooltip">Final step after approval</div>
-                                <i class="fas fa-graduation-cap text-3xl mb-3 text-gray-300"></i>
-                                <p class="text-sm font-medium">Completion</p>
-                                <p class="text-xs mt-1 text-gray-400">Not Started</p>
-                            </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: <?= $progress ?>%"></div>
                         </div>
                     </div>
-                </section>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-<?= min(5, count($milestones)) ?> gap-4">
+                        <?php foreach ($milestones as $index => $milestone): ?>
+                            <?php
+                            $deadline = new DateTime($milestone['deadline']);
+                            $is_past = $deadline < $now;
+                            $is_current = !$is_past && ($index === 0 || new DateTime($milestones[$index-1]['deadline']) < $now);
+                            ?>
+                            <div class="research-phase <?= $is_past || $is_current ? 'active' : '' ?> p-4 rounded-lg text-center transition-all hover:shadow-md">
+                                <div class="phase-tooltip"><?= htmlspecialchars($milestone['description']) ?></div>
+                                <i class="fas 
+                                    <?= $is_past ? 'fa-check-circle text-success' : ($is_current ? 'fa-exclamation-circle text-warning' : 'fa-flag text-gray-300') ?> 
+                                    text-3xl mb-3"
+                                ></i>
+                                <p class="text-sm font-medium"><?= htmlspecialchars($milestone['title']) ?></p>
+                                <p class="text-xs mt-1">
+                                    <?php if ($is_past): ?>
+                                        <i class="fas fa-check-circle mr-1"></i>Completed
+                                    <?php elseif ($is_current): ?>
+                                        <i class="fas fa-clock mr-1"></i>
+                                        <?php
+                                        $diff = $now->diff($deadline);
+                                        echo $diff->days . ' days left';
+                                        ?>
+                                    <?php else: ?>
+                                        <i class="fas fa-calendar-day mr-1"></i>
+                                        <?= date('M j', strtotime($milestone['deadline'])) ?>
+                                    <?php endif; ?>
+                                </p>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="text-center py-8">
+                        <i class="fas fa-calendar-times text-4xl text-gray-300 mb-4"></i>
+                        <h3 class="text-lg font-medium text-gray-500">No active timeline</h3>
+                        <p class="text-gray-400">Check back later for submission deadlines</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+
 
                 <!-- Quick Access Cards -->
                 <section class="mb-8 animate__animated animate__fadeInUp">
@@ -250,143 +415,105 @@ include('../includes/connection.php'); // Your DB connection
                     </div>
                 </section>
 
-                <!-- Upcoming Events & Deadlines -->
-                <section class="mb-8 animate__animated animate__fadeInUp">
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Upcoming Deadlines -->
-                        <div class="bg-white rounded-xl shadow-lg p-6 lg:col-span-2">
-                            <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-xl font-semibold text-gray-800 flex items-center">
-                                    <i class="fas fa-calendar-times mr-2 text-red-500"></i> Upcoming Deadlines
-                                </h2>
-                                <a href="#" class="text-sm text-blue-600 hover:underline flex items-center">
-                                    View all <i class="fas fa-chevron-right ml-1 text-xs"></i>
-                                </a>
-                            </div>
-                            <div class="space-y-4">
-                                <div class="flex items-start p-4 border border-red-100 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
-                                    <div class="p-3 rounded-full bg-red-200 text-red-600 mr-4">
-                                        <i class="fas fa-exclamation"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <div class="flex justify-between items-start">
-                                            <h3 class="font-medium text-red-800">Proposal Submission</h3>
-                                            <span class="text-xs bg-red-200 text-red-800 px-2 py-1 rounded-full">High Priority</span>
-                                        </div>
-                                        <p class="text-sm text-red-600 mt-1"><i class="far fa-clock mr-1"></i>Due in 3 days - May 15, 2023</p>
-                                        <div class="mt-2 flex items-center text-sm text-gray-600">
-                                            <i class="fas fa-info-circle mr-2"></i> Final submission for committee review
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-start p-4 border border-blue-100 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
-                                    <div class="p-3 rounded-full bg-blue-200 text-blue-600 mr-4">
-                                        <i class="fas fa-file-edit"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <h3 class="font-medium text-blue-800">Chapter 1 Revision</h3>
-                                        <p class="text-sm text-blue-600 mt-1"><i class="far fa-clock mr-1"></i>Due in 1 week - May 20, 2023</p>
-                                        <div class="mt-2 flex items-center text-sm text-gray-600">
-                                            <i class="fas fa-user mr-2"></i> Advisor: Dr. Smith
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-start p-4 border border-green-100 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
-                                    <div class="p-3 rounded-full bg-green-200 text-green-600 mr-4">
-                                        <i class="fas fa-users"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <h3 class="font-medium text-green-800">Group Meeting</h3>
-                                        <p class="text-sm text-green-600 mt-1"><i class="far fa-clock mr-1"></i>Tomorrow - 2:00 PM</p>
-                                        <div class="mt-2 flex items-center text-sm text-gray-600">
-                                            <i class="fas fa-map-marker-alt mr-2"></i> Research Lab 302
-                                        </div>
-                                    </div>
-                                    <button class="ml-4 text-green-600 hover:text-green-800">
-                                        <i class="far fa-calendar-plus text-xl"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- Upcoming Events -->
-                        <div class="space-y-6">
-                            <div class="bg-white rounded-xl shadow-lg p-6">
-                                <div class="flex justify-between items-center mb-4">
-                                    <h2 class="text-xl font-semibold text-gray-800 flex items-center">
-                                        <i class="fas fa-calendar-star mr-2 text-purple-500"></i> Upcoming Events
-                                    </h2>
-                                    <a href="seminars-festivals.php" class="text-sm text-blue-600 hover:underline flex items-center">
-                                        View all <i class="fas fa-chevron-right ml-1 text-xs"></i>
-                                    </a>
-                                </div>
-                                <div class="space-y-4">
-                                    <div class="event-card bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-100 transition-all duration-300">
-                                        <div class="flex items-start">
-                                            <div class="bg-purple-600 text-white p-3 rounded-lg mr-4 text-center min-w-[60px] shadow-md">
-                                                <div class="font-bold text-lg">24</div>
-                                                <div class="text-xs uppercase">May</div>
-                                            </div>
-                                            <div>
-                                                <h3 class="font-medium text-purple-800">Annual Research Festival</h3>
-                                                <p class="text-sm text-purple-600 mt-1"><i class="far fa-clock mr-1"></i>9:00 AM - 5:00 PM</p>
-                                                <p class="text-sm text-gray-600 mt-1"><i class="fas fa-map-marker-alt mr-1"></i>Main Auditorium</p>
-                                                <button class="mt-3 text-sm bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-full transition-colors">
-                                                    Register Now <i class="fas fa-arrow-right ml-1"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="event-card bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-100 transition-all duration-300">
-                                        <div class="flex items-start">
-                                            <div class="bg-blue-600 text-white p-3 rounded-lg mr-4 text-center min-w-[60px] shadow-md">
-                                                <div class="font-bold text-lg">05</div>
-                                                <div class="text-xs uppercase">Jun</div>
-                                            </div>
-                                            <div>
-                                                <h3 class="font-medium text-blue-800">Data Science Workshop</h3>
-                                                <p class="text-sm text-blue-600 mt-1"><i class="far fa-clock mr-1"></i>1:00 PM - 4:00 PM</p>
-                                                <p class="text-sm text-gray-600 mt-1"><i class="fas fa-map-marker-alt mr-1"></i>Computer Lab 3</p>
-                                                <div class="mt-3 flex justify-between items-center">
-                                                    <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                                        <i class="fas fa-users mr-1"></i> 12/25 spots left
-                                                    </span>
-                                                    <button class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-full transition-colors">
-                                                        Learn More
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Research Tips -->
-                            <div class="bg-white rounded-xl shadow-lg p-6 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100">
-                                <h2 class="text-xl font-semibold text-gray-800 mb-3 flex items-center">
-                                    <i class="fas fa-lightbulb mr-2 text-yellow-500"></i> Research Tip of the Day
-                                </h2>
-                                <div class="floating-action bg-white p-4 rounded-lg shadow-md border-l-4 border-yellow-400">
-                                    <h3 class="font-medium text-gray-800 mb-2">Effective Literature Review</h3>
-                                    <p class="text-sm text-gray-600">When reviewing literature, organize your sources by theme rather than chronology. This helps identify patterns and gaps more effectively.</p>
-                                    <div class="mt-3 text-right">
-                                        <button class="text-xs text-blue-600 hover:underline">
-                                            Read more tips <i class="fas fa-chevron-right ml-1"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </main>
-        </div>
-    </div>
+                 
 
     <script>
+          // Admin countdown timer - improved version
+    function updateAdminCountdown() {
+        <?php if (!empty($milestones)): ?>
+            <?php 
+            $now = new DateTime();
+            $current_milestone = null;
+            foreach ($milestones as $milestone) {
+                $deadline = new DateTime($milestone['deadline']);
+                if ($deadline > $now) {
+                    $current_milestone = $milestone;
+                    break;
+                }
+            }
+            ?>
+            
+            <?php if ($current_milestone): ?>
+                const deadline = new Date("<?= $current_milestone['deadline'] ?>").getTime();
+                const now = new Date().getTime();
+                const distance = deadline - now;
+                
+                // Time calculations
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                
+                // Display the result
+                document.getElementById("admin-countdown-days").textContent = days.toString().padStart(2, '0');
+                document.getElementById("admin-countdown-hours").textContent = hours.toString().padStart(2, '0');
+                document.getElementById("admin-countdown-minutes").textContent = minutes.toString().padStart(2, '0');
+                
+                // Change color if less than 24 hours remaining
+                const countdownContainer = document.querySelector('.bg-gradient-to-r');
+                if (distance < (24 * 60 * 60 * 1000)) {
+                    countdownContainer.classList.remove('from-primary', 'to-secondary');
+                    countdownContainer.classList.add('from-red-500', 'to-red-600');
+                } else {
+                    countdownContainer.classList.remove('from-red-500', 'to-red-600');
+                    countdownContainer.classList.add('from-primary', 'to-secondary');
+                }
+                
+                // If the countdown is finished
+                if (distance < 0) {
+                    countdownContainer.classList.add('from-gray-500', 'to-gray-600');
+                    clearInterval(countdownInterval);
+                }
+            <?php else: ?>
+                // All milestones completed
+                document.getElementById("admin-countdown-days").textContent = '00';
+                document.getElementById("admin-countdown-hours").textContent = '00';
+                document.getElementById("admin-countdown-minutes").textContent = '00';
+                document.querySelector('.bg-gradient-to-r').classList.add('from-gray-500', 'to-gray-600');
+            <?php endif; ?>
+        <?php endif; ?>
+    }
+
+    // Initialize countdown
+    let countdownInterval;
+    document.addEventListener('DOMContentLoaded', function() {
+        // Start countdown and update every second
+        updateAdminCountdown();
+        countdownInterval = setInterval(updateAdminCountdown, 1000);
+        
+        // Your existing DOMContentLoaded code...
+        flatpickr(".flatpickr", {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            minDate: "today"
+        });
+        
+        // Rest of your initialization code...
+    });
+         // Initialize progress bar animation
+        document.addEventListener('DOMContentLoaded', () => {
+            const progressFill = document.querySelector('.progress-fill');
+            if (progressFill) {
+                progressFill.style.width = '0';
+                setTimeout(() => {
+                    progressFill.style.width = '<?= $progress ?>%';
+                }, 300);
+            }
+
+            // Add hover effects to research phases
+            const phases = document.querySelectorAll('.research-phase');
+            phases.forEach(phase => {
+                phase.addEventListener('mouseenter', () => {
+                    phase.style.transform = 'scale(1.05)';
+                    phase.style.boxShadow = '0 6px 24px 0 #2563eb22';
+                });
+                phase.addEventListener('mouseleave', () => {
+                    phase.style.transform = 'scale(1)';
+                    phase.style.boxShadow = '';
+                });
+            });
+        });
         // Toggle sidebar visibility
         document.getElementById("toggleSidebar")?.addEventListener("click", () => {
             const sidebar = document.getElementById("sidebar");

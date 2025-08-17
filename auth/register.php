@@ -182,7 +182,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <option value="" disabled selected>Choose your role</option>
             <option value="Admin">Admin</option>
             <option value="Student">Student</option>
-            <option value="Faculty">Faculty</option>
           </select>
         </div>
 

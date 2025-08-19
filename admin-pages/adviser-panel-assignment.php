@@ -622,7 +622,7 @@ Thesis Coordinator</textarea>
 
     <script>
                     document.getElementById('connectGmail').addEventListener('click', function() {
-                window.open('gmail-auth.php', 'gmailAuth', 'width=500,height=600');
+                window.open('admin-pages/gmail-auth.php', 'gmailAuth', 'width=500,height=600');
             });
 
             // Listen for auth completion

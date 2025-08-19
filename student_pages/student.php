@@ -1,95 +1,16 @@
 <?php
 include('../includes/connection.php'); // Your DB connection
-
-// Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['create_timeline'])) {
-        // Create new timeline
-        $title = $_POST['title'];
-        $description = $_POST['description'];
-        
-        $stmt = $conn->prepare("INSERT INTO submission_timelines (title, description) VALUES (?, ?)");
-        $stmt->bind_param("ss", $title, $description);
-        $stmt->execute();
-        $timeline_id = $stmt->insert_id;
-        $stmt->close();
-        
-        // Add milestones
-        foreach ($_POST['milestone_title'] as $key => $title) {
-            $description = $_POST['milestone_description'][$key];
-            $deadline = $_POST['milestone_deadline'][$key];
-            
-            $stmt = $conn->prepare("INSERT INTO timeline_milestones (timeline_id, title, description, deadline) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("isss", $timeline_id, $title, $description, $deadline);
-            $stmt->execute();
-            $stmt->close();
-        }
-        
-        $_SESSION['success_message'] = "Timeline created successfully!";
-    } elseif (isset($_POST['update_timeline'])) {
-        // Update timeline
-        $timeline_id = $_POST['timeline_id'];
-        $title = $_POST['title'];
-        $description = $_POST['description'];
-        
-        $stmt = $conn->prepare("UPDATE submission_timelines SET title = ?, description = ? WHERE id = ?");
-        $stmt->bind_param("ssi", $title, $description, $timeline_id);
-        $stmt->execute();
-        $stmt->close();
-        
-        // Update milestones
-        foreach ($_POST['milestone_id'] as $key => $milestone_id) {
-            $title = $_POST['milestone_title'][$key];
-            $description = $_POST['milestone_description'][$key];
-            $deadline = $_POST['milestone_deadline'][$key];
-            
-            if ($milestone_id == 'new') {
-                $stmt = $conn->prepare("INSERT INTO timeline_milestones (timeline_id, title, description, deadline) VALUES (?, ?, ?, ?)");
-                $stmt->bind_param("isss", $timeline_id, $title, $description, $deadline);
-            } else {
-                $stmt = $conn->prepare("UPDATE timeline_milestones SET title = ?, description = ?, deadline = ? WHERE id = ?");
-                $stmt->bind_param("sssi", $title, $description, $deadline, $milestone_id);
-            }
-            $stmt->execute();
-            $stmt->close();
-        }
-        
-        $_SESSION['success_message'] = "Timeline updated successfully!";
-    } elseif (isset($_POST['toggle_timeline'])) {
-        // Toggle timeline active status
-        $timeline_id = $_POST['timeline_id'];
-        $stmt = $conn->prepare("UPDATE submission_timelines SET is_active = NOT is_active WHERE id = ?");
-        $stmt->bind_param("i", $timeline_id);
-        $stmt->execute();
-        $stmt->close();
-        
-        $_SESSION['success_message'] = "Timeline status updated!";
-    }
-}
-
-// Get active timeline
-$active_timeline = null;
-$milestones = [];
-$stmt = $conn->prepare("SELECT * FROM submission_timelines WHERE is_active = 1 LIMIT 1");
-$stmt->execute();
-$result = $stmt->get_result();
-if ($result->num_rows > 0) {
-    $active_timeline = $result->fetch_assoc();
-    
-    // Get milestones for active timeline
-    $stmt = $conn->prepare("SELECT * FROM timeline_milestones WHERE timeline_id = ? ORDER BY deadline ASC");
-    $stmt->bind_param("i", $active_timeline['id']);
-    $stmt->execute();
-    $milestones = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-}
+date_default_timezone_set('Asia/Manila'); // Set your timezone
 
 // Initialize variables
-$now = new DateTime(); // This line was missing
+$now = new DateTime();
 $active_timeline = null;
 $milestones = [];
 $total_milestones = 0;
 $completed_milestones = 0;
 $progress = 0;
+$current_milestone = null;
+$isoDeadline = null;
 
 // Get active timeline and milestones
 $stmt = $conn->prepare("SELECT t.* FROM submission_timelines t WHERE t.is_active = 1 LIMIT 1");
@@ -112,14 +33,18 @@ if ($result->num_rows > 0) {
             if ($deadline < $now) {
                 $completed_milestones++;
             }
+            
+            // Find current milestone
+            if ($deadline > $now && !$current_milestone) {
+                $current_milestone = $milestone;
+                $isoDeadline = date('c', strtotime($current_milestone['deadline']));
+            }
         }
         $progress = ($completed_milestones / $total_milestones) * 100;
     }
 }
 $stmt->close();
-
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -143,12 +68,6 @@ $stmt->close();
                     }
                 }
             }
-        }
-
-        function toggleModal() {
-            const modal = document.getElementById('proposalModal');
-            modal.classList.toggle('hidden');
-            modal.classList.toggle('flex');
         }
     </script>
     <style>
@@ -195,10 +114,16 @@ $stmt->close();
         .research-phase:hover .phase-tooltip {
             opacity: 1;
         }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
-
     <div class="min-h-screen flex">
         <!-- Sidebar -->
         <?php include('../includes/student-sidebar.php'); ?>
@@ -232,134 +157,125 @@ $stmt->close();
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto p-6 hide-scrollbar">        
-                 <!-- Countdown Header -->
-        <div class="bg-gradient-to-r from-primary to-secondary text-white p-4 rounded-lg shadow-lg mb-6">
-            <div class="flex flex-col md:flex-row items-center justify-between">
-                <div class="flex items-center mb-4 md:mb-0">
-                    <i class="fas fa-clock text-2xl mr-3"></i>
-                    <div>
-                        <h3 class="font-bold text-lg">Current Phase Countdown</h3>
-                        <?php if (!empty($milestones)): ?>
-                            <?php 
-                            $current_milestone = null;
-                            $now = new DateTime();
-                            foreach ($milestones as $milestone) {
-                                $deadline = new DateTime($milestone['deadline']);
-                                if ($deadline > $now) {
-                                    $current_milestone = $milestone;
-                                    break;
-                                }
-                            }
-                            ?>
-                            <p class="text-sm opacity-90">
-                                <?= $current_milestone ? htmlspecialchars($current_milestone['title']) : 'All milestones completed' ?> - 
-                                Ends <?= $current_milestone ? date('F j, Y \a\t g:i A', strtotime($current_milestone['deadline'])) : '' ?>
-                            </p>
-                        <?php else: ?>
-                            <p class="text-sm opacity-90">No active milestones</p>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="flex items-center">
-                    <div class="text-center px-4">
-                        <div id="admin-countdown-days" class="text-3xl font-bold">00</div>
-                        <div class="text-xs opacity-90">Days</div>
-                    </div>
-                    <div class="text-2xl font-bold opacity-70">:</div>
-                    <div class="text-center px-4">
-                        <div id="admin-countdown-hours" class="text-3xl font-bold">00</div>
-                        <div class="text-xs opacity-90">Hours</div>
-                    </div>
-                    <div class="text-2xl font-bold opacity-70">:</div>
-                    <div class="text-center px-4">
-                        <div id="admin-countdown-minutes" class="text-3xl font-bold">00</div>
-                        <div class="text-xs opacity-90">Minutes</div>
-                    </div>
-                </div>
-            </div>
-        </div>       
-
-                <!-- Research Submission Overview -->
-                <main class="flex-1 overflow-y-auto p-6 hide-scrollbar">               
-        <!-- Research Submission Overview -->
-        <section class="mb-8">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">
-                <i class="fas fa-chart-line mr-2 text-primary"></i> Submission Timeline
-            </h2>
-            <div class="bg-white rounded-lg shadow-lg p-6 glow-card">
-                <?php if ($active_timeline): ?>
-                    <h3 class="text-lg font-semibold mb-2"><?= htmlspecialchars($active_timeline['title']) ?></h3>
-                    <p class="text-gray-600 mb-4"><?= htmlspecialchars($active_timeline['description']) ?></p>
-                    
-                    <div class="mb-6">
-                        <div class="flex justify-between text-sm text-gray-600 mb-1">
-                            <span>
-                                <?php if (!empty($milestones)): ?>
-                                    Started: <?= date('M Y', strtotime($milestones[0]['deadline'])) ?>
-                                <?php endif; ?>
-                            </span>
-                            <span><?= round($progress) ?>% Complete</span>
-                            <span>
-                                <?php if (!empty($milestones)): ?>
-                                    Target: <?= date('M Y', strtotime(end($milestones)['deadline'])) ?>
-                                <?php endif; ?>
-                            </span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: <?= $progress ?>%"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-<?= min(5, count($milestones)) ?> gap-4">
-                        <?php foreach ($milestones as $index => $milestone): ?>
-                            <?php
-                            $deadline = new DateTime($milestone['deadline']);
-                            $is_past = $deadline < $now;
-                            $is_current = !$is_past && ($index === 0 || new DateTime($milestones[$index-1]['deadline']) < $now);
-                            ?>
-                            <div class="research-phase <?= $is_past || $is_current ? 'active' : '' ?> p-4 rounded-lg text-center transition-all hover:shadow-md">
-                                <div class="phase-tooltip"><?= htmlspecialchars($milestone['description']) ?></div>
-                                <i class="fas 
-                                    <?= $is_past ? 'fa-check-circle text-success' : ($is_current ? 'fa-exclamation-circle text-warning' : 'fa-flag text-gray-300') ?> 
-                                    text-3xl mb-3"
-                                ></i>
-                                <p class="text-sm font-medium"><?= htmlspecialchars($milestone['title']) ?></p>
-                                <p class="text-xs mt-1">
-                                    <?php if ($is_past): ?>
-                                        <i class="fas fa-check-circle mr-1"></i>Completed
-                                    <?php elseif ($is_current): ?>
-                                        <i class="fas fa-clock mr-1"></i>
-                                        <?php
-                                        $diff = $now->diff($deadline);
-                                        echo $diff->days . ' days left';
-                                        ?>
+            <main class="flex-1 overflow-y-auto p-6 hide-scrollbar">
+                <!-- Countdown Header -->
+                <div class="bg-gradient-to-r from-primary to-secondary text-white p-4 rounded-lg shadow-lg mb-6" id="countdown-banner">
+                    <div class="flex flex-col md:flex-row items-center justify-between">
+                        <div class="flex items-center mb-4 md:mb-0">
+                            <i class="fas fa-clock text-2xl mr-3"></i>
+                            <div>
+                                <h3 class="font-bold text-lg">Current Phase Countdown</h3>
+                                <p class="text-sm opacity-90">
+                                    <?php if ($current_milestone): ?>
+                                        <?= htmlspecialchars($current_milestone['title']) ?> - 
+                                        Ends <?= date('F j, Y \a\t g:i A', strtotime($current_milestone['deadline'])) ?>
                                     <?php else: ?>
-                                        <i class="fas fa-calendar-day mr-1"></i>
-                                        <?= date('M j', strtotime($milestone['deadline'])) ?>
+                                        <?= empty($milestones) ? 'No active milestones' : 'All milestones completed' ?>
                                     <?php endif; ?>
                                 </p>
                             </div>
-                        <?php endforeach; ?>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="text-center px-4">
+                                <div id="countdown-days" class="text-3xl font-bold">00</div>
+                                <div class="text-xs opacity-90">Days</div>
+                            </div>
+                            <div class="text-2xl font-bold opacity-70">:</div>
+                            <div class="text-center px-4">
+                                <div id="countdown-hours" class="text-3xl font-bold">00</div>
+                                <div class="text-xs opacity-90">Hours</div>
+                            </div>
+                            <div class="text-2xl font-bold opacity-70">:</div>
+                            <div class="text-center px-4">
+                                <div id="countdown-minutes" class="text-3xl font-bold">00</div>
+                                <div class="text-xs opacity-90">Minutes</div>
+                            </div>
+                            <div class="text-2xl font-bold opacity-70">:</div>
+                            <div class="text-center px-4">
+                                <div id="countdown-seconds" class="text-3xl font-bold">00</div>
+                                <div class="text-xs opacity-90">Seconds</div>
+                            </div>
+                        </div>
                     </div>
-                <?php else: ?>
-                    <div class="text-center py-8">
-                        <i class="fas fa-calendar-times text-4xl text-gray-300 mb-4"></i>
-                        <h3 class="text-lg font-medium text-gray-500">No active timeline</h3>
-                        <p class="text-gray-400">Check back later for submission deadlines</p>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </section>
+                </div>
 
+                <!-- Research Submission Overview -->
+                <section class="mb-8">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">
+                        <i class="fas fa-chart-line mr-2 text-primary"></i> Submission Timeline
+                    </h2>
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <?php if ($active_timeline): ?>
+                            <h3 class="text-lg font-semibold mb-2"><?= htmlspecialchars($active_timeline['title']) ?></h3>
+                            <p class="text-gray-600 mb-4"><?= htmlspecialchars($active_timeline['description']) ?></p>
+                            
+                            <div class="mb-6">
+                                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                    <span>
+                                        <?php if (!empty($milestones)): ?>
+                                            Started: <?= date('M Y', strtotime($milestones[0]['deadline'])) ?>
+                                        <?php endif; ?>
+                                    </span>
+                                    <span><?= round($progress) ?>% Complete</span>
+                                    <span>
+                                        <?php if (!empty($milestones)): ?>
+                                            Target: <?= date('M Y', strtotime(end($milestones)['deadline'])) ?>
+                                        <?php endif; ?>
+                                    </span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: <?= $progress ?>%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-<?= min(5, count($milestones)) ?> gap-4">
+                                <?php foreach ($milestones as $index => $milestone): ?>
+                                    <?php
+                                    $deadline = new DateTime($milestone['deadline']);
+                                    $is_past = $deadline < $now;
+                                    $is_current = !$is_past && ($index === 0 || new DateTime($milestones[$index-1]['deadline']) < $now);
+                                    ?>
+                                    <div class="research-phase <?= $is_past || $is_current ? 'active' : '' ?> p-4 rounded-lg text-center transition-all hover:shadow-md">
+                                        <div class="phase-tooltip"><?= htmlspecialchars($milestone['description']) ?></div>
+                                        <i class="fas 
+                                            <?= $is_past ? 'fa-check-circle text-success' : ($is_current ? 'fa-exclamation-circle text-warning' : 'fa-flag text-gray-300') ?> 
+                                            text-3xl mb-3"
+                                        ></i>
+                                        <p class="text-sm font-medium"><?= htmlspecialchars($milestone['title']) ?></p>
+                                        <p class="text-xs mt-1">
+                                            <?php if ($is_past): ?>
+                                                <i class="fas fa-check-circle mr-1"></i>Completed
+                                            <?php elseif ($is_current): ?>
+                                                <i class="fas fa-clock mr-1"></i>
+                                                <?php
+                                                $diff = $now->diff($deadline);
+                                                echo $diff->days . ' days left';
+                                                ?>
+                                            <?php else: ?>
+                                                <i class="fas fa-calendar-day mr-1"></i>
+                                                <?= date('M j', strtotime($milestone['deadline'])) ?>
+                                            <?php endif; ?>
+                                        </p>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="text-center py-8">
+                                <i class="fas fa-calendar-times text-4xl text-gray-300 mb-4"></i>
+                                <h3 class="text-lg font-medium text-gray-500">No active timeline</h3>
+                                <p class="text-gray-400">Check back later for submission deadlines</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </section>
 
                 <!-- Quick Access Cards -->
-                <section class="mb-8 animate__animated animate__fadeInUp">
+                <section class="mb-8">
                     <h2 class="text-xl font-semibold mb-6 text-gray-800 flex items-center">
                         <i class="fas fa-bolt mr-2 text-yellow-500"></i> Quick Access
                     </h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <a href="student_pages/proposal.php" class="bg-white rounded-xl shadow-md p-6 card-hover transition-all duration-300 border-l-4 border-blue-500 hover:border-blue-600 group">
+                        <a href="student_pages/proposal.php" class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 border-l-4 border-blue-500 hover:border-blue-600 group">
                             <div class="flex items-center space-x-4">
                                 <div class="p-3 rounded-full bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                                     <i class="fas fa-file-upload text-xl"></i>
@@ -376,7 +292,7 @@ $stmt->close();
                             </div>
                         </a>
                         
-                        <a href="student_pages/defense.php" class="bg-white rounded-xl shadow-md p-6 card-hover transition-all duration-300 border-l-4 border-green-500 hover:border-green-600 group">
+                        <a href="student_pages/defense.php" class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 border-l-4 border-green-500 hover:border-green-600 group">
                             <div class="flex items-center space-x-4">
                                 <div class="p-3 rounded-full bg-green-100 text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
                                     <i class="fas fa-calendar-check text-xl"></i>
@@ -393,7 +309,7 @@ $stmt->close();
                             </div>
                         </a>
                         
-                        <a href="student_pages/documents.php" class="bg-white rounded-xl shadow-md p-6 card-hover transition-all duration-300 border-l-4 border-purple-500 hover:border-purple-600 group">
+                        <a href="student_pages/documents.php" class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 border-l-4 border-purple-500 hover:border-purple-600 group">
                             <div class="flex items-center space-x-4">
                                 <div class="p-3 rounded-full bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
                                     <i class="fas fa-tasks text-xl"></i>
@@ -414,85 +330,66 @@ $stmt->close();
                         </a>
                     </div>
                 </section>
-
-
-                 
+            </main>
+        </div>
+    </div>
 
     <script>
-          // Admin countdown timer - improved version
-    function updateAdminCountdown() {
-        <?php if (!empty($milestones)): ?>
-            <?php 
-            $now = new DateTime();
-            $current_milestone = null;
-            foreach ($milestones as $milestone) {
-                $deadline = new DateTime($milestone['deadline']);
-                if ($deadline > $now) {
-                    $current_milestone = $milestone;
-                    break;
-                }
-            }
-            ?>
-            
+        // Countdown timer
+        function updateCountdown() {
             <?php if ($current_milestone): ?>
-                const deadline = new Date("<?= $current_milestone['deadline'] ?>").getTime();
+                const deadline = new Date("<?= $isoDeadline ?>").getTime();
                 const now = new Date().getTime();
                 const distance = deadline - now;
-                
+
                 // Time calculations
                 const days = Math.floor(distance / (1000 * 60 * 60 * 24));
                 const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                
-                // Display the result
-                document.getElementById("admin-countdown-days").textContent = days.toString().padStart(2, '0');
-                document.getElementById("admin-countdown-hours").textContent = hours.toString().padStart(2, '0');
-                document.getElementById("admin-countdown-minutes").textContent = minutes.toString().padStart(2, '0');
-                
-                // Change color if less than 24 hours remaining
-                const countdownContainer = document.querySelector('.bg-gradient-to-r');
+
+                // Update display
+                document.getElementById("countdown-days").textContent = String(days).padStart(2, '0');
+                document.getElementById("countdown-hours").textContent = String(hours).padStart(2, '0');
+                document.getElementById("countdown-minutes").textContent = String(minutes).padStart(2, '0');
+                document.getElementById("countdown-seconds").textContent = String(seconds).padStart(2, '0');
+
+                // Change banner color based on urgency
+                const banner = document.getElementById('countdown-banner');
                 if (distance < (24 * 60 * 60 * 1000)) {
-                    countdownContainer.classList.remove('from-primary', 'to-secondary');
-                    countdownContainer.classList.add('from-red-500', 'to-red-600');
+                    // Less than 24 hours - warning
+                    banner.classList.remove('from-primary', 'to-secondary', 'from-yellow-500', 'to-yellow-600');
+                    banner.classList.add('from-warning', 'to-orange-500');
+                } else if (distance < (3 * 24 * 60 * 60 * 1000)) {
+                    // Less than 3 days - yellow
+                    banner.classList.remove('from-primary', 'to-secondary', 'from-warning', 'to-orange-500');
+                    banner.classList.add('from-yellow-500', 'to-yellow-600');
                 } else {
-                    countdownContainer.classList.remove('from-red-500', 'to-red-600');
-                    countdownContainer.classList.add('from-primary', 'to-secondary');
+                    // Normal state
+                    banner.classList.remove('from-warning', 'to-orange-500', 'from-yellow-500', 'to-yellow-600');
+                    banner.classList.add('from-primary', 'to-secondary');
                 }
-                
-                // If the countdown is finished
+
+                // If countdown finished, reload page
                 if (distance < 0) {
-                    countdownContainer.classList.add('from-gray-500', 'to-gray-600');
-                    clearInterval(countdownInterval);
+                    setTimeout(() => location.reload(), 1000);
                 }
             <?php else: ?>
-                // All milestones completed
-                document.getElementById("admin-countdown-days").textContent = '00';
-                document.getElementById("admin-countdown-hours").textContent = '00';
-                document.getElementById("admin-countdown-minutes").textContent = '00';
-                document.querySelector('.bg-gradient-to-r').classList.add('from-gray-500', 'to-gray-600');
+                // No current milestone
+                document.getElementById("countdown-days").textContent = '00';
+                document.getElementById("countdown-hours").textContent = '00';
+                document.getElementById("countdown-minutes").textContent = '00';
+                document.getElementById("countdown-seconds").textContent = '00';
+                document.getElementById('countdown-banner').classList.add('from-gray-500', 'to-gray-600');
             <?php endif; ?>
-        <?php endif; ?>
-    }
+        }
 
-    // Initialize countdown
-    let countdownInterval;
-    document.addEventListener('DOMContentLoaded', function() {
-        // Start countdown and update every second
-        updateAdminCountdown();
-        countdownInterval = setInterval(updateAdminCountdown, 1000);
-        
-        // Your existing DOMContentLoaded code...
-        flatpickr(".flatpickr", {
-            enableTime: true,
-            dateFormat: "Y-m-d H:i",
-            minDate: "today"
-        });
-        
-        // Rest of your initialization code...
-    });
-         // Initialize progress bar animation
-        document.addEventListener('DOMContentLoaded', () => {
+        // Initialize countdown
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+
+            // Progress bar animation
             const progressFill = document.querySelector('.progress-fill');
             if (progressFill) {
                 progressFill.style.width = '0';
@@ -501,7 +398,7 @@ $stmt->close();
                 }, 300);
             }
 
-            // Add hover effects to research phases
+            // Hover effects for research phases
             const phases = document.querySelectorAll('.research-phase');
             phases.forEach(phase => {
                 phase.addEventListener('mouseenter', () => {
@@ -514,71 +411,12 @@ $stmt->close();
                 });
             });
         });
-        // Toggle sidebar visibility
+
+        // Toggle sidebar if needed
         document.getElementById("toggleSidebar")?.addEventListener("click", () => {
             const sidebar = document.getElementById("sidebar");
             sidebar.classList.toggle("hidden");
         });
-
-        // Animated progress update
-        document.addEventListener('DOMContentLoaded', () => {
-            const progressFill = document.querySelector('.progress-fill');
-            if (progressFill) {
-                progressFill.style.width = '0';
-                setTimeout(() => {
-                    progressFill.style.width = '65%';
-                }, 300);
-            }
-
-            // Add hover effects to research phases
-            const phases = document.querySelectorAll('.research-phase');
-            phases.forEach(phase => {
-                phase.addEventListener('mouseenter', () => {
-                    phase.style.transform = 'scale(1.05)';
-                    phase.style.boxShadow = '0 6px 24px 0 #2563eb22';
-                });
-                phase.addEventListener('mouseleave', () => {
-                    phase.style.transform = 'scale(1)';
-                    phase.style.boxShadow = '';
-                });
-            });
-
-            // Animate cards on scroll
-            const observerOptions = { threshold: 0.1 };
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('animate__fadeInUp');
-                        observer.unobserve(entry.target);
-                    }
-                });
-            }, observerOptions);
-
-            document.querySelectorAll('section').forEach(section => {
-                observer.observe(section);
-            });
-        });
-
-        // Simulate progress update (for demo purposes)
-        setTimeout(() => {
-            const progressFill = document.querySelector('.progress-fill');
-            if (progressFill) {
-                progressFill.style.width = '75%';
-                const phase = document.querySelector('.research-phase:nth-child(3)');
-                if (phase) {
-                    phase.classList.add('active');
-                    const icon = phase.querySelector('i');
-                    if (icon) {
-                        icon.classList.remove('text-blue-400');
-                        icon.classList.add('text-white');
-                    }
-                    const tooltip = phase.querySelector('.phase-tooltip');
-                    if (tooltip) {
-                        tooltip.textContent = "Revisions received - work in progress";
-                    }
-                }
-            }
-        }, 3000);
     </script>
 </body>
 </html>

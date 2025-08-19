@@ -171,14 +171,23 @@ $greeting = "Hello, " . match($role) {
                     </a>
                 </li>
                 <li>
-                    <a href="admin_pages/defense-scheduling.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/defense-scheduling.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-calendar-alt nav-icon"></i>
                         <span class="nav-text">Defense Scheduling</span>
+                    </a>
+                </li>
+
+                 <!-- Added Adviser & Panel Assignment Module -->
+                <li>
+                    <a href="admin-pages/adviser-panel-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                        <i class="fas fa-users nav-icon"></i>
+                        <span class="nav-text">Adviser & Panel Assignment</span>
                     </a>
                 </li>
             
             </ul>
         </div>
+        
 
         <!-- System Settings -->
         <div class="px-4 py-3 border-t border-blue-700">

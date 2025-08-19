@@ -2,7 +2,7 @@
 session_start();
 require '../vendor/autoload.php';
 
-$client = new Google_Client();
+$client->setRedirectUri('http://localhost/CRAD-system/admin-pages/gmail-callback.php');
 $client->setClientId('YOUR_CLIENT_ID');
 $client->setClientSecret('YOUR_CLIENT_SECRET');
 $client->setRedirectUri('https://yoursite.com/gmail-callback.php');

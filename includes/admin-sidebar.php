@@ -101,7 +101,7 @@ $greeting = "Hello, " . match($role) {
         }
     </style>
 </head>
-<body class="bg-gray-50">
+<body>
 
 <!-- Sidebar Container -->
 <div class="sidebar sidebar-transition bg-blue-800 text-white flex flex-col hidden md:flex h-screen w-64" id="sidebar">
@@ -171,19 +171,27 @@ $greeting = "Hello, " . match($role) {
                     </a>
                 </li>
                 <li>
-                    <a href="admin-pages/defense-scheduling.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/admin-defense.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-calendar-alt nav-icon"></i>
                         <span class="nav-text">Defense Scheduling</span>
                     </a>
                 </li>
 
-                 <!-- Added Adviser & Panel Assignment Module -->
+                 <!-- Panel Assignment Module -->
                 <li>
-                    <a href="admin-pages/adviser-panel-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/panel-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-users nav-icon"></i>
-                        <span class="nav-text">Adviser & Panel Assignment</span>
+                        <span class="nav-text">Panel Management<br>&Assignment</span>
                     </a>
                 </li>
+
+                <li>
+                    <a href="admin-pages/adviser-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                        <i class="fas fa-user-tie nav-icon"></i>
+                        <span class="nav-text">Adviser Assignment</span>
+                    </a>
+                </li>
+
             
             </ul>
         </div>

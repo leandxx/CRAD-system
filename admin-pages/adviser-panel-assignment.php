@@ -96,7 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
     elseif ($action == 'send_availability') {
-        // Handle availability request
         $panel_ids = $_POST['panel_ids'] ?? [];
         $subject = $conn->real_escape_string($_POST['subject']);
         $message = $conn->real_escape_string($_POST['message']);
@@ -105,104 +104,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (empty($panel_ids)) {
             $error = "Please select at least one panel member";
         } else {
-            // Include PHPMailer
+            // Start session if not already started
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            
+            // Check if admin has authenticated with Gmail
+            if (!isset($_SESSION['gmail_authenticated'])) {
+                $_SESSION['email_data'] = [
+                    'panel_ids' => $panel_ids,
+                    'subject' => $subject,
+                    'message' => $message,
+                    'questions' => $questions
+                ];
+                header("Location: gmail-auth.php");
+                exit();
+            }
+            
+            // Proceed with email sending (original PHPMailer code)
             require '../vendor/autoload.php';
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
             
-            // Get selected panel members
-            $ids = implode(',', array_map('intval', $panel_ids));
-            $query = "SELECT * FROM panel_members WHERE id IN ($ids)";
-            $result = $conn->query($query);
-            
-            if ($result->num_rows > 0) {
-                $success_count = 0;
-                $failed_emails = [];
+            try {
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = $_SESSION['gmail_email'];
+                $mail->Password = $_SESSION['gmail_token']; // Use app password
+                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
                 
-                // Create PHPMailer instance
-                $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-                
-                try {
-                    // Server settings (configure these with your SMTP details)
-                    $mail->isSMTP();
-                    $mail->Host       = 'smtp.gmail.com'; // Your SMTP server
-                    $mail->SMTPAuth   = true;
-                    $mail->Username   = 'your-email';
-                    $mail->Password   = 'your-email-password'; // Your email password
-                    $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-                    $mail->Port       = 587;
-                    $mail->setFrom('your-email@gmail.com', 'Thesis Coordinator');
-                    $mail->isHTML(true);
-                    $mail->Subject = $subject;
-                    
-                    while($panel = $result->fetch_assoc()) {
-                        // Build the email content
-                        $panel_message = "<html>
-                            <head>
-                                <style>
-                                    body { font-family: Arial, sans-serif; line-height: 1.6; }
-                                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                                    .header { background-color: #f8f9fa; padding: 15px; text-align: center; }
-                                    .content { padding: 20px; }
-                                    .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; font-size: 0.9em; color: #666; }
-                                </style>
-                            </head>
-                            <body>
-                                <div class='container'>
-                                    <div class='header'>
-                                        <h2>".htmlspecialchars($subject)."</h2>
-                                    </div>
-                                    <div class='content'>
-                                        <p>Dear ".htmlspecialchars($panel['first_name']).",</p>
-                                        ".nl2br(htmlspecialchars($message))."
-                                        <p><strong>Please provide the following information:</strong></p>
-                                        <ul>";
-                        
-                        foreach ($questions as $question) {
-                            $panel_message .= "<li>".htmlspecialchars($question)."</li>";
-                        }
-                        
-                        $panel_message .= "</ul>
-                                        <p>Please reply to this email with your availability at your earliest convenience.</p>
-                                    </div>
-                                    <div class='footer'>
-                                        <p>Best regards,<br>Thesis Coordinator</p>
-                                    </div>
-                                </div>
-                            </body>
-                        </html>";
-                        
-                        // Set recipient and content
-                        $mail->clearAddresses();
-                        $mail->addAddress($panel['email'], $panel['first_name'] . ' ' . $panel['last_name']);
-                        $mail->Body = $panel_message;
-                        
-                        // Send email
-                        if ($mail->send()) {
-                            $success_count++;
-                            
-                            // Log the email in database
-                            $log_sql = "INSERT INTO panel_availability_requests 
-                                       (panel_id, subject, message, sent_at) 
-                                       VALUES 
-                                       ({$panel['id']}, '$subject', '$message', NOW())";
-                            $conn->query($log_sql);
-                        } else {
-                            $failed_emails[] = $panel['email'];
-                        }
-                    }
-                    
-                    if ($success_count > 0) {
-                        $success = "Availability request sent to $success_count panel member(s)";
-                        if (!empty($failed_emails)) {
-                            $error = "Failed to send to: " . implode(', ', $failed_emails);
-                        }
-                    } else {
-                        $error = "Failed to send emails to any panel members";
-                    }
-                } catch (Exception $e) {
-                    $error = "Email could not be sent. Error: {$mail->ErrorInfo}";
-                }
-            } else {
-                $error = "No valid panel members selected";
+                // Rest of your email sending code...
+                // Make sure to properly close all the braces here
+            } catch (Exception $e) {
+                $error = "Email error: " . $e->getMessage();
             }
         }
     }
@@ -649,6 +584,10 @@ Thesis Coordinator</textarea>
                     <button type="submit" class="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700">
                         <i class="fas fa-paper-plane mr-1"></i> Send Request
                     </button>
+                    <button type="button" id="connectGmail" 
+                            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        <i class="fab fa-google mr-1"></i> Connect Gmail
+                    </button>
                 </div>
             </form>
         </div>
@@ -682,6 +621,16 @@ Thesis Coordinator</textarea>
     </div>
 
     <script>
+                    document.getElementById('connectGmail').addEventListener('click', function() {
+                window.open('gmail-auth.php', 'gmailAuth', 'width=500,height=600');
+            });
+
+            // Listen for auth completion
+            window.addEventListener('message', function(e) {
+                if (e.data.gmailAuth) {
+                    alert('Gmail connected successfully!');
+                }
+            });
         // Modal handling functions
         function toggleModal(modalId, show) {
             const modal = document.getElementById(modalId);

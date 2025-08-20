@@ -336,26 +336,28 @@ $user_data = mysqli_fetch_assoc($user_result);
                         <h3 class="font-semibold mb-2">Group Members</h3>
                         <ul class="divide-y divide-gray-200">
                             <?php
-                            $members_query = "SELECT u.* 
-                                            FROM group_members gm 
-                                            JOIN user_tbl u ON gm.student_id = u.user_id 
-                                            WHERE gm.group_id = '$group_id'";
-                            $members_result = mysqli_query($conn, $members_query);
-                            
-                            while ($member = mysqli_fetch_assoc($members_result)) {
-                                echo '<li class="py-2 flex justify-between items-center">';
-                                echo '<div>';
-                                echo '<p class="font-medium">' . $member['email'] . '</p>';
-                                echo '<p class="text-sm text-gray-500">' . ucfirst($member['role']) . '</p>';
-                                echo '</div>';
-                                echo '<div class="flex items-center">';
-                                if ($member['user_id'] == $user_id) {
-                                    echo '<span class="bg-primary/10 text-primary text-xs font-medium px-2.5 py-0.5 rounded mr-2">You</span>';
-                                }
-                                echo '</div>';
-                                echo '</li>';
-                            }
-                            ?>
+$members_query = "SELECT u.*, sp.full_name
+                  FROM group_members gm
+                  JOIN user_tbl u ON gm.student_id = u.user_id
+                  JOIN student_profiles sp ON u.user_id = sp.user_id
+                  WHERE gm.group_id = '$group_id'";
+$members_result = mysqli_query($conn, $members_query);
+
+while ($member = mysqli_fetch_assoc($members_result)) {
+    echo '<li class="py-2 flex justify-between items-center">';
+    echo '<div>';
+    echo '<p class="font-medium">' . htmlspecialchars($member['full_name']) . '</p>';
+    echo '<p class="text-sm text-gray-500">' . ucfirst($member['role']) . '</p>';
+    echo '</div>';
+    echo '<div class="flex items-center">';
+    if ($member['user_id'] == $user_id) {
+        echo '<span class="bg-primary/10 text-primary text-xs font-medium px-2.5 py-0.5 rounded mr-2">You</span>';
+    }
+    echo '</div>';
+    echo '</li>';
+}
+?>
+
                         </ul>
                     </div>
                     

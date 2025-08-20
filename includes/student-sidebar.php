@@ -9,22 +9,28 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
-// Get user details
-$sql = "SELECT role FROM user_tbl WHERE user_id = ?";
+// Get user details along with full_name from student_profiles
+$sql = "SELECT u.role, sp.full_name
+        FROM user_tbl u
+        LEFT JOIN student_profiles sp ON u.user_id = sp.user_id
+        WHERE u.user_id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $user = $result->fetch_assoc();
-$role = $user['role'];
 
-// Create greeting based on role
-$greeting = "Hello, " . match($role) {
+$role = $user['role'];
+$full_name = $user['full_name'] ?? 'User'; // fallback if full_name not set
+
+// Create greeting
+$greeting = "Hello, " . match(strtolower($role)) {
     'admin' => 'Admin',
-    'student' => 'Student',
-    default => 'User'
+    'student' => $full_name,
+    default => $full_name
 };
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -137,7 +143,7 @@ $greeting = "Hello, " . match($role) {
     <div class="p-4 flex items-center space-x-3 bg-blue-900">
         <img src="assets/img/me.png" alt="Student profile" class="rounded-full h-12 w-12">
         <div>
-            <p class="font-medium profile-name"><?php echo htmlspecialchars($greeting); ?></p>
+            <p class="font-medium profile-name"><?php echo htmlspecialchars($full_name); ?></p>
             <p class="text-xs text-blue-200 profile-role"><?php echo htmlspecialchars(ucfirst($role)); ?></p>
         </div>
     </div>
@@ -183,7 +189,7 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 section-title">Account</p>
             <ul class="space-y-1">
                 <li>
-                    <a href="student_pages/profile.php" class="nav-item flex items-center space-x-3 px-3 py-2">
+                    <a href="student_pages/student-profile.php" class="nav-item flex items-center space-x-3 px-3 py-2">
                         <i class="fas fa-user nav-icon"></i>
                         <span class="nav-text">Profile Settings</span>
                     </a>

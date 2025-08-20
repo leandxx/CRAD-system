@@ -1,5 +1,4 @@
 <?php
-session_start();
 include("../includes/connection.php");
 
 // Check if user is logged in
@@ -23,7 +22,7 @@ $role = $user['role'];
 $greeting = "Hello, " . match($role) {
     'admin' => 'Admin',
     'student' => 'Student',
-    default => 'User'
+    default => 'Admin'
 };
 ?>
 

@@ -33,30 +33,15 @@ include('../includes/connection.php'); // Your DB connection
         }
     </script>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-gray-50 text-gray-800 font-sans h-screen overflow-hidden">
 
     <div class="min-h-screen flex">
-        <!-- Sidebar -->
+          <!-- Sidebar/header -->
         <?php include('../includes/student-sidebar.php'); ?>
+        <?php include('../includes/student-header.php'); ?>
+
         
-        <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col overflow-hidden h-screen">
-            <header class="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-4 shadow-sm">
-                <div class="flex items-center">
-                    <h1 class="text-2xl md:text-3xl font-bold text-primary flex items-center">
-                        Proposal Submission
-                    </h1>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <div class="relative group">
-                        <button class="flex items-center space-x-2 focus:outline-none">
-                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white">
-                                <i class="fas fa-user text-sm"></i>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-            </header>
+    
 
             <div class="flex-1 overflow-y-auto p-6">
 

@@ -172,8 +172,9 @@ $isoDeadline = $current_milestone
 <body class="bg-gray-50 text-gray-800 font-sans h-screen overflow-hidden">
 
   <div class="min-h-screen flex">
-    <!-- Sidebar -->
-    <?php include('../includes/admin-sidebar.php'); ?>
+    <!-- Sidebar/header -->
+        <?php include('../includes/admin-sidebar.php'); ?>
+        <?php include('../includes/admin-header.php'); ?>
 
     <div class="flex-1 overflow-y-auto p-6">
       <!-- Success message -->

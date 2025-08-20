@@ -61,7 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         Efficiently manage research proposals, monitor statuses, assign advisers and panels, and explore AI-powered categorization — all in one place.
       </p>
       <a
-        href="landing.php"
+        href="../role/role-selection.php"
         class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3 rounded-md shadow transition duration-300"
       >
         SMS
@@ -111,7 +111,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
           </button>
         </div>
       </form>
-
+<p class="mt-6 text-center text-gray-600 text-sm">
+        Don’t have an account?
+        <a href="register.php" class="text-blue-700 hover:underline">Sign up</a>
+      </p>
     </div>
   </div>
 </body>

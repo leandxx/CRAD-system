@@ -2,12 +2,6 @@
 include('../includes/connection.php');
 session_start(); // <- Kailangan ito sa bawat page bago gamitin $_SESSION
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'Student') {
-    header("Location: ../student_pages/student.php");
-    exit();
-}
-
 $user_id = $_SESSION['user_id'];
 
 // Get user's group information

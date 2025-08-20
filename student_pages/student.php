@@ -346,8 +346,12 @@ $stmt->close();
 
                 // If countdown finished, reload page
                 if (distance < 0) {
-                    setTimeout(() => location.reload(), 1000);
-                }
+        // Add a small delay before reload to ensure the milestone is marked as completed
+        setTimeout(() => {
+            location.reload();
+        }, 1000);
+        return;
+      }
             <?php else: ?>
                 // No current milestone
                 document.getElementById("countdown-days").textContent = '00';

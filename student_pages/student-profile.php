@@ -129,7 +129,6 @@ if ($student_id) {
     <div class="min-h-screen flex">
         <!-- Sidebar/header -->
         <?php include('../includes/student-sidebar.php'); ?>
-        <?php include('../includes/student-header.php'); ?>
 
         <!-- Main content area -->
         <main class="flex-1 overflow-y-auto p-6">

@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt->bind_param("sss", $email, $hashedPassword, $role);
 
             if ($stmt->execute()) {
-                echo "<script>alert('Registration successful!'); window.location.href='login.php';</script>";
+                echo "<script>alert('Registration successful!'); window.location.href='student-login.php';</script>";
             } else {
                 $alertMessage = 'Registration failed: ' . $stmt->error;
             }
@@ -199,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       <!-- Login link -->
       <p class="mt-6 text-center text-gray-600 text-sm">
         Already have an account?
-        <a href="login.php" class="text-blue-700 hover:underline">Log in</a>
+        <a href="student-login.php" class="text-blue-700 hover:underline">Log in</a>
       </p>
     </div>
   </div>

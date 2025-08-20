@@ -54,7 +54,7 @@ session_start();
       
       <div class="flex flex-col md:flex-row gap-6 w-full justify-center">
         <!-- Admin Box -->
-        <a href="../auth/login.php" class="role-box bg-blue-600 text-white flex flex-col items-center justify-center rounded-lg shadow-md p-6 text-center">
+        <a href="../auth/admin-login.php" class="role-box bg-blue-600 text-white flex flex-col items-center justify-center rounded-lg shadow-md p-6 text-center">
           <div class="bg-blue-500 p-3 rounded-full mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -65,7 +65,7 @@ session_start();
         </a>
         
         <!-- Student Box -->
-        <a href="../auth/login.php" class="role-box bg-green-600 text-white flex flex-col items-center justify-center rounded-lg shadow-md p-6 text-center">
+        <a href="../auth/student-login.php" class="role-box bg-green-600 text-white flex flex-col items-center justify-center rounded-lg shadow-md p-6 text-center">
           <div class="bg-green-500 p-3 rounded-full mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path d="M12 14l9-5-9-5-9 5 9 5z" />

@@ -23,13 +23,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['role'] = $user['role'];
 
             // Redirect based on role
-            if ($user['role'] === 'Admin') {
+           if ($user['role'] === 'Admin') {
                 header("Location: ../admin-pages/admin-dashboard.php");
-            } elseif ($user['role'] === 'Faculty') {
-                header("Location: ../faculty-pages/faculty-dashboard.php");
-            } elseif ($user['role'] === 'Student') {
-                header("Location: ../student_pages/student.php");
-            } else {
+            }  else {
                 echo "<script>alert('Unknown user role'); window.history.back();</script>";
             }
             exit();
@@ -81,7 +77,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         Log in to your account
       </h3>
       
-      <form id="loginForm" action="login.php" method="POST" class="space-y-6">
+      <form id="loginForm" action="admin-login.php" method="POST" class="space-y-6">
         <!-- Username -->
         <div>
           <label for="email" class="block text-blue-900 font-semibold mb-1">Email</label>
@@ -116,10 +112,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
       </form>
 
-      <p class="mt-6 text-center text-gray-600 text-sm">
-        Don’t have an account?
-        <a href="register.php" class="text-blue-700 hover:underline">Sign up</a>
-      </p>
     </div>
   </div>
 </body>

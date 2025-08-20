@@ -208,7 +208,7 @@ $greeting = "Hello, " . match($role) {
                     </a>
                 </li>
                 <li>
-                    <form action="../CRAD-system/auth/logout.php" method="POST">
+                    <form action="../CRAD-system/auth/admin-logout.php" method="POST">
                         <button type="submit" class="w-full text-left flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700 text-red-300">
                             <i class="fas fa-sign-out-alt w-5"></i>
                             <span class="sidebar-text">Logout</span>

@@ -15,27 +15,49 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($result && $result->num_rows === 1) {
         $user = $result->fetch_assoc();
 
+        // Verify password
         if (password_verify($password, $user['password'])) {
+
             // Set session variables
             $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['full_name'] = $user['full_name'];
             $_SESSION['email'] = $user['email'];
             $_SESSION['role'] = $user['role'];
 
+            // Optional: set extra info for students
+            if ($user['role'] === 'Student') {
+                // Example: fetch student-specific info if needed
+                $student_stmt = $conn->prepare("SELECT * FROM user_tbl WHERE user_id = ?");
+                $student_stmt->bind_param("i", $user['user_id']);
+                $student_stmt->execute();
+                $student_result = $student_stmt->get_result();
+                if ($student_result->num_rows === 1) {
+                    $student_data = $student_result->fetch_assoc();
+                    $_SESSION['student_number'] = $student_data['student_number'];
+                    // add more fields if needed
+                }
+            }
+
             // Redirect based on role
-            if ($user['role'] === 'Admin') {
-                header("Location: ../admin-pages/admin-dashboard.php");
-            } elseif ($user['role'] === 'Faculty') {
-                header("Location: ../faculty-pages/faculty-dashboard.php");
-            } elseif ($user['role'] === 'Student') {
-                header("Location: ../student_pages/student.php");
-            } else {
-                echo "<script>alert('Unknown user role'); window.history.back();</script>";
+            switch ($user['role']) {
+                case 'Admin':
+                    header("Location: ../admin-pages/admin-dashboard.php");
+                    break;
+                case 'Faculty':
+                    header("Location: ../faculty-pages/faculty-dashboard.php");
+                    break;
+                case 'Student':
+                    header("Location: ../student_pages/student.php");
+                    break;
+                default:
+                    echo "<script>alert('Unknown user role'); window.history.back();</script>";
+                    break;
             }
             exit();
+
         } else {
             echo "<script>alert('Incorrect password'); window.history.back();</script>";
         }
+
     } else {
         echo "<script>alert('No account found with that email'); window.history.back();</script>";
     }

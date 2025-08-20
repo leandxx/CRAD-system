@@ -167,7 +167,7 @@ $greeting = "Hello, " . match($role) {
                 <li>
                     <a href="admin-pages/admin-timeline.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Submission Timeline">
                         <i class="fas fa-file-alt nav-icon"></i>
-                        <span class="nav-text">Research Submission Timeline</span>
+                        <span class="nav-text">Research Timeline & Submission</span>
                     </a>
                 </li>
                 <li>
@@ -181,7 +181,7 @@ $greeting = "Hello, " . match($role) {
                 <li>
                     <a href="admin-pages/panel-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Panel Assignment">
                         <i class="fas fa-users nav-icon"></i>
-                        <span class="nav-text">Panel Management<br>&Assignment</span>
+                        <span class="nav-text">Panel Management & Assignment</span>
                     </a>
                 </li>
 

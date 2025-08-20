@@ -214,7 +214,7 @@ if (isset($_GET['edit_id'])) {
     <div class="min-h-screen flex">
          <!-- Sidebar/header -->
         <?php include('../includes/admin-sidebar.php'); ?>
-        <?php include('../includes/admin-header.php'); ?>
+        
 
        
             <!-- Success/Error Messages -->

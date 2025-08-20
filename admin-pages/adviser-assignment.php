@@ -100,7 +100,7 @@ include('../includes/connection.php'); // Your DB connection
     <div class="flex">
         <!-- Sidebar/header -->
         <?php include('../includes/admin-sidebar.php'); ?>
-        <?php include('../includes/admin-header.php'); ?>
+        
 
 
             <!-- Main content area -->

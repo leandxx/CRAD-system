@@ -138,7 +138,7 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Dashboard</p>
             <ul>
                 <li>
-                    <a href="admin-pages/admin-dashboard.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/admin-dashboard.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700" data-page-title="Admin Dashboard">
                         <i class="fas fa-tachometer-alt nav-icon"></i>
                         <span class="nav-text">Admin Dashboard</span>
                     </a>
@@ -151,7 +151,7 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Account Management</p>
             <ul>
                 <li>
-                    <a href="admin_pages/manage-admins.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin_pages/manage-admins.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700" data-page-title="Admin Management">
                         <i class="fas fa-user-shield nav-icon"></i>
                         <span class="nav-text">Manage Admins</span>
                     </a>
@@ -165,13 +165,13 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Research Management</p>
             <ul>
                 <li>
-                    <a href="admin-pages/admin-timeline.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/admin-timeline.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Submission Timeline">
                         <i class="fas fa-file-alt nav-icon"></i>
                         <span class="nav-text">Research Submission Timeline</span>
                     </a>
                 </li>
                 <li>
-                    <a href="admin-pages/admin-defense.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/admin-defense.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Defense Scheduling">
                         <i class="fas fa-calendar-alt nav-icon"></i>
                         <span class="nav-text">Defense Scheduling</span>
                     </a>
@@ -179,14 +179,14 @@ $greeting = "Hello, " . match($role) {
 
                  <!-- Panel Assignment Module -->
                 <li>
-                    <a href="admin-pages/panel-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/panel-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Panel Assignment">
                         <i class="fas fa-users nav-icon"></i>
                         <span class="nav-text">Panel Management<br>&Assignment</span>
                     </a>
                 </li>
 
                 <li>
-                    <a href="admin-pages/adviser-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/adviser-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Adviser Assignment">
                         <i class="fas fa-user-tie nav-icon"></i>
                         <span class="nav-text">Adviser Assignment</span>
                     </a>
@@ -221,13 +221,70 @@ $greeting = "Hello, " . match($role) {
     </nav>
 </div>
 
+<div class="flex-1 flex flex-col overflow-hidden h-screen">
+           <header class="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-4 shadow-sm">
+    <div class="flex items-center">
+        <h1 id="page-title" class="text-2xl md:text-3xl font-bold text-primary flex items-center">
+        </h1>
+    </div>
+    <div class="flex items-center space-x-4">
+        <button class="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 relative transition-all hover:scale-105">
+            <i class="fas fa-bell"></i>
+            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 notification-dot pulse"></span>
+        </button>
+        <div class="relative group">
+            <button class="flex items-center space-x-2 focus:outline-none">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white">
+                    <i class="fas fa-user text-sm"></i>
+                </div>
+                <i class="fas fa-chevron-down text-xs opacity-70 group-hover:opacity-100 transition"></i>
+            </button>
+            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">
+                <a href="admin-pages/admin-profile.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i>Profile</a>
+                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i>Settings</a>
+                <a href="auth/logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-sign-out-alt mr-2"></i>Logout</a>
+            </div>
+        </div>
+    </div>
+</header>
+
+
 <!-- JS TOGGLE -->
+
 <script>
     const toggleBtn = document.getElementById('toggleSidebar');
     const sidebar = document.getElementById('sidebar');
 
     toggleBtn.addEventListener('click', () => {
         sidebar.classList.toggle('sidebar-collapsed');
+    });
+
+    // Function to update page title based on clicked link
+    function updatePageTitle(linkText) {
+        const titleElement = document.getElementById('page-title');
+        titleElement.textContent = linkText;
+        // Store the title in localStorage
+        localStorage.setItem('selectedPageTitle', linkText);
+    }
+
+    // Add click event listeners to all navigation links
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if there's a stored title and restore it
+        const storedTitle = localStorage.getItem('selectedPageTitle');
+        if (storedTitle) {
+            document.getElementById('page-title').textContent = storedTitle;
+        }
+
+        const navLinks = document.querySelectorAll('nav a');
+        
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                // Use data attribute if available, otherwise use text content
+                const pageTitle = this.dataset.pageTitle || this.querySelector('.nav-text').textContent.trim();
+                updatePageTitle(pageTitle);
+            });
+        });
+
     });
 </script>
 

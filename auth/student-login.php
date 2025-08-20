@@ -38,26 +38,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
 
             // Redirect based on role
-<<<<<<< HEAD:auth/login.php
-            switch ($user['role']) {
-                case 'Admin':
-                    header("Location: ../admin-pages/admin-dashboard.php");
-                    break;
-                case 'Faculty':
-                    header("Location: ../faculty-pages/faculty-dashboard.php");
-                    break;
-                case 'Student':
-                    header("Location: ../student_pages/student.php");
-                    break;
-                default:
-                    echo "<script>alert('Unknown user role'); window.history.back();</script>";
-                    break;
-=======
            if ($user['role'] === 'Student') {
                 header("Location: ../student_pages/student.php");
             } else {
                 echo "<script>alert('Unknown user role'); window.history.back();</script>";
->>>>>>> 955c0682fb0f4adb7f27931011f6176d6b59c395:auth/student-login.php
             }
             exit();
 

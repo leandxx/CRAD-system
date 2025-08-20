@@ -175,12 +175,7 @@ $greeting = "Hello, " . match($role) {
                         <span class="nav-text">Defense Scheduling</span>
                     </a>
                 </li>
-                <li>
-                    <a href="student_pages/documents.php" class="nav-item flex items-center space-x-3 px-3 py-2">
-                        <i class="fas fa-file-alt nav-icon"></i>
-                        <span class="nav-text">Document Tracker</span>
-                    </a>
-                </li>
+                
             </ul>
         </div>
 

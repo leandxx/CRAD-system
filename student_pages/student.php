@@ -127,7 +127,6 @@ $stmt->close();
     <div class="min-h-screen flex">
           <!-- Sidebar/header -->
         <?php include('../includes/student-sidebar.php'); ?>
-        <?php include('../includes/student-header.php'); ?>
 
 
 

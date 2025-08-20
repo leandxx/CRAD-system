@@ -55,7 +55,7 @@ include('../includes/connection.php'); // Your DB connection
     <div class="flex min-h-screen">
           <!-- Sidebar/header -->
         <?php include('../includes/student-sidebar.php'); ?>
-        <?php include('../includes/student-header.php'); ?>
+        
 
 
         

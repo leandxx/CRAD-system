@@ -74,7 +74,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <!-- Right panel -->
     <div class="md:w-1/2 bg-white p-10 flex flex-col justify-center">
       <h3 class="text-2xl font-bold text-blue-900 mb-6 text-center">
-        Log in to your account
+        Welcome Back, Admin
       </h3>
       
       <form id="loginForm" action="admin-login.php" method="POST" class="space-y-6">

@@ -210,7 +210,7 @@ if (isset($_GET['edit_id'])) {
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-gray-50 text-gray-800 font-sans h-screen overflow-hidden">
     <div class="min-h-screen flex">
          <!-- Sidebar/header -->
         <?php include('../includes/admin-sidebar.php'); ?>

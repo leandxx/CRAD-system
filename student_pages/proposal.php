@@ -38,10 +38,6 @@ include('../includes/connection.php'); // Your DB connection
     <div class="min-h-screen flex">
           <!-- Sidebar/header -->
         <?php include('../includes/student-sidebar.php'); ?>
-        
-
-        
-    
 
             <div class="flex-1 overflow-y-auto p-6">
 

@@ -96,7 +96,7 @@ $profile_check->close();
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-gray-50 text-gray-800 font-sans h-screen overflow-hidden">
 
     <div class="min-h-screen flex">
         <!-- Sidebar/header -->
@@ -112,11 +112,7 @@ $profile_check->close();
 
         <!-- Main content area -->
         <main class="flex-1 overflow-y-auto p-6">
-            <div class="max-w-4xl mx-auto">
-                <div class="mb-8">
-                    <h1 class="text-3xl font-bold text-primary">Student Profile</h1>
-                    <p class="text-gray-600">Complete your profile information to help us serve you better.</p>
-                </div>
+           
 
                 <?php if (!empty($message)): ?>
                     <div class="mb-6 p-4 rounded-md <?php echo strpos($message, 'Error') !== false ? 'bg-danger/20 text-danger' : 'bg-success/20 text-success'; ?>">

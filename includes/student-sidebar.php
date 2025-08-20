@@ -246,25 +246,31 @@ $greeting = "Hello, " . match($role) {
         localStorage.setItem('selectedPageTitle', linkText);
     }
 
-    // Add click event listeners to all navigation links
     document.addEventListener('DOMContentLoaded', function() {
-        // Check if there's a stored title and restore it
-        const storedTitle = localStorage.getItem('selectedPageTitle');
-        if (storedTitle) {
-            document.getElementById('page-title').textContent = storedTitle;
-        }
+    // Check if there's a stored title and restore it
+    const storedTitle = localStorage.getItem('selectedPageTitle');
+    if (storedTitle) {
+        document.getElementById('page-title').textContent = storedTitle;
+    }
 
-        const navLinks = document.querySelectorAll('nav a');
-        
-        navLinks.forEach(link => {
-            link.addEventListener('click', function(e) {
-                // Use data attribute if available, otherwise use text content
-                const pageTitle = this.dataset.pageTitle || this.querySelector('.nav-text').textContent.trim();
-                updatePageTitle(pageTitle);
-            });
+    const navLinks = document.querySelectorAll('nav a');
+    
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            // Use data attribute if available, otherwise use text content
+            const pageTitle = this.dataset.pageTitle || this.querySelector('.nav-text').textContent.trim();
+            updatePageTitle(pageTitle);
         });
-
     });
+
+    // Add this for the profile link in the dropdown menu
+    const profileLink = document.querySelector('a[href="student_pages/student-profile.php"]');
+    if (profileLink) {
+        profileLink.addEventListener('click', function(e) {
+            updatePageTitle('Student Profile');
+        });
+    }
+});
 </script>
 
 </body>

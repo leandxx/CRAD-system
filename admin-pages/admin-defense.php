@@ -316,100 +316,100 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
             </div>
 
-            <!-- Defense Schedule Table -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table id="defenseTable" class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group/Title</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Panel</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <?php foreach ($defense_schedules as $schedule): 
-                                $status = 'scheduled';
-                                $current_date = date('Y-m-d');
-                                if ($schedule['defense_date'] < $current_date) {
-                                    $status = 'completed';
-                                }
-                            ?>
-                            <tr data-status="<?php echo $status; ?>">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="font-medium text-gray-900"><?php echo $schedule['proposal_title'] ?? 'No Title'; ?></div>
-                                    <div class="text-sm text-gray-500"><?php echo $schedule['group_name']; ?></div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900"><?php echo date('M j, Y', strtotime($schedule['defense_date'])); ?></div>
-                                    <div class="text-sm text-gray-500"><?php echo date('g:i A', strtotime($schedule['start_time'])); ?> - <?php echo date('g:i A', strtotime($schedule['end_time'])); ?></div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <?php echo $schedule['building'] . ' ' . $schedule['room_name']; ?>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <?php 
-                                    $panel_names = [];
-                                    foreach ($schedule['panel_members'] as $panel) {
-                                        $name = '';
-                                        if (!empty($panel['first_name'])) $name .= $panel['first_name'] . ' ';
-                                        if (!empty($panel['middle_name'])) $name .= substr($panel['middle_name'], 0, 1) . '. ';
-                                        if (!empty($panel['last_name'])) $name .= $panel['last_name'];
-                                        $panel_names[] = $name;
-                                    }
-                                    echo implode(', ', $panel_names);
-                                    ?>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <?php if ($status == 'completed'): ?>
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Completed</span>
-                                    <?php else: ?>
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Scheduled</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button class="text-indigo-600 hover:text-indigo-900 mr-3"><i class="fas fa-edit"></i></button>
-                                    <button onclick="confirmDelete(<?php echo $schedule['id']; ?>, '<?php echo $schedule['group_name']; ?>')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                            
-                            <!-- Show groups without defense schedules -->
-                            <?php 
-                            $unscheduled_query = "SELECT g.*, p.title as proposal_title 
-                                                FROM groups g 
-                                                JOIN proposals p ON g.id = p.group_id 
-                                                WHERE g.id NOT IN (SELECT group_id FROM defense_schedules) 
-                                                ORDER BY g.name";
-                            $unscheduled_result = mysqli_query($conn, $unscheduled_query);
-                            
-                            while ($group = mysqli_fetch_assoc($unscheduled_result)): 
-                            ?>
-                            <tr data-status="pending">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="font-medium text-gray-900"><?php echo $group['proposal_title']; ?></div>
-                                    <div class="text-sm text-gray-500"><?php echo $group['name']; ?></div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">Not scheduled</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Not assigned</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button onclick="toggleModal()" class="text-primary hover:text-blue-900 mr-3"><i class="fas fa-calendar-plus"></i></button>
-                                </td>
-                            </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
+          <!-- Defense Schedule Cards -->
+<div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-xl font-semibold text-gray-800 mb-6">Defense Schedule</h2>
+
+    <!-- Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <?php foreach ($defense_schedules as $schedule): 
+            $status = 'scheduled';
+            $current_date = date('Y-m-d');
+            if ($schedule['defense_date'] < $current_date) {
+                $status = 'completed';
+            }
+        ?>
+        <!-- Scheduled Defense Card -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900"><?php echo $schedule['proposal_title'] ?? 'No Title'; ?></h3>
+                <p class="text-sm text-gray-500 mb-3"><?php echo $schedule['group_name']; ?></p>
+
+                <p class="text-sm text-gray-700 mb-1">
+                    <i class="fas fa-calendar mr-2 text-gray-400"></i>
+                    <?php echo date('M j, Y', strtotime($schedule['defense_date'])); ?>
+                </p>
+                <p class="text-sm text-gray-700 mb-1">
+                    <i class="fas fa-clock mr-2 text-gray-400"></i>
+                    <?php echo date('g:i A', strtotime($schedule['start_time'])); ?> - 
+                    <?php echo date('g:i A', strtotime($schedule['end_time'])); ?>
+                </p>
+                <p class="text-sm text-gray-700 mb-1">
+                    <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>
+                    <?php echo $schedule['building'] . ' ' . $schedule['room_name']; ?>
+                </p>
+                <p class="text-sm text-gray-700 mb-3">
+                    <i class="fas fa-users mr-2 text-gray-400"></i>
+                    <?php 
+                        $panel_names = [];
+                        foreach ($schedule['panel_members'] as $panel) {
+                            $name = '';
+                            if (!empty($panel['first_name'])) $name .= $panel['first_name'] . ' ';
+                            if (!empty($panel['middle_name'])) $name .= substr($panel['middle_name'], 0, 1) . '. ';
+                            if (!empty($panel['last_name'])) $name .= $panel['last_name'];
+                            $panel_names[] = $name;
+                        }
+                        echo implode(', ', $panel_names);
+                    ?>
+                </p>
+            </div>
+
+            <!-- Status & Actions -->
+            <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                <?php if ($status == 'completed'): ?>
+                    <span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Completed</span>
+                <?php else: ?>
+                    <span class="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Scheduled</span>
+                <?php endif; ?>
+                
+                <div>
+                    <button class="text-indigo-600 hover:text-indigo-900 mr-3"><i class="fas fa-edit"></i></button>
+                    <button onclick="confirmDelete(<?php echo $schedule['id']; ?>, '<?php echo $schedule['group_name']; ?>')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
+        </div>
+        <?php endforeach; ?>
+
+
+        <!-- Pending / Unscheduled Groups -->
+        <?php 
+        $unscheduled_query = "SELECT g.*, p.title as proposal_title 
+                              FROM groups g 
+                              JOIN proposals p ON g.id = p.group_id 
+                              WHERE g.id NOT IN (SELECT group_id FROM defense_schedules) 
+                              ORDER BY g.name";
+        $unscheduled_result = mysqli_query($conn, $unscheduled_query);
+
+        while ($group = mysqli_fetch_assoc($unscheduled_result)): ?>
+        <div class="bg-gray-50 border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900"><?php echo $group['proposal_title']; ?></h3>
+                <p class="text-sm text-gray-500 mb-3"><?php echo $group['name']; ?></p>
+                <p class="text-sm text-gray-700 mb-2"><i class="fas fa-calendar-times mr-2 text-gray-400"></i> Not scheduled</p>
+                <p class="text-sm text-gray-700 mb-2"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> - </p>
+                <p class="text-sm text-gray-700 mb-3"><i class="fas fa-users mr-2 text-gray-400"></i> Not assigned</p>
+            </div>
+
+            <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                <span class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                <button onclick="toggleModal()" class="text-primary hover:text-blue-900 mr-3">
+                    <i class="fas fa-calendar-plus"></i>
+                </button>
+            </div>
+        </div>
+        <?php endwhile; ?>
+    </div>
+</div>
 
             <!-- Upcoming Defenses Section -->
             <h2 class="text-xl font-bold mt-8 mb-4 text-gray-700">Upcoming Defenses</h2>

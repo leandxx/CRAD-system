@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $description = mysqli_real_escape_string($conn, $_POST['description']);
         
         // File upload handling
-        $target_dir = "../uploads/proposals/";
+        $target_dir = "../assets/uploads";
         if (!file_exists($target_dir)) {
             mkdir($target_dir, 0777, true);
         }
@@ -162,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (mysqli_query($conn, $payment_query)) {
             $success_message = "Payment processed successfully!";
             $has_paid = true;
-            header("Location: proposal.php");
+            header("Location: ../student_pages/proposal.php");
             exit();
         } else {
             $error_message = "Error processing payment: " . mysqli_error($conn);
@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $remove_query = "DELETE FROM group_members WHERE group_id = '$group_id' AND student_id = '$member_id'";
         if (mysqli_query($conn, $remove_query)) {
             $success_message = "Member removed successfully!";
-            header("Location: proposal.php");
+            header("Location: ../student_pages/proposal.php");
             exit();
         } else {
             $error_message = "Error removing member: " . mysqli_error($conn);
@@ -451,7 +451,7 @@ while ($member = mysqli_fetch_assoc($members_result)) {
                         </div>
                     <?php endif; ?>
                     
-                    <form action="proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo ($has_proposal || !$has_paid) ? 'onsubmit="return false;"' : ''; ?>>
+                    <form action="/CRAD-system/student_pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo ($has_proposal || !$has_paid) ? 'onsubmit="return false;"' : ''; ?>>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Title</label>
                             <input type="text" name="title" required 

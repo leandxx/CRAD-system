@@ -3,7 +3,6 @@ session_start();
 date_default_timezone_set('Asia/Manila');
 include("../includes/connection.php");
 
-
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Create timeline
@@ -106,6 +105,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: " . $_SERVER['REQUEST_URI']);
         exit();
     }
+
+    // Handle proposal status update
+    if (isset($_POST['update_proposal_status'])) {
+        $proposal_id = (int)($_POST['proposal_id'] ?? 0);
+        $status = $_POST['status'] ?? '';
+        $feedback = $_POST['feedback'] ?? '';
+
+        $stmt = $conn->prepare("UPDATE proposals SET status = ?, feedback = ?, reviewed_at = NOW() WHERE id = ?");
+        $stmt->bind_param("ssi", $status, $feedback, $proposal_id);
+        $stmt->execute();
+        $stmt->close();
+
+        $_SESSION['success_message'] = "Proposal status updated successfully!";
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit();
+    }
 }
 
 // Get active timeline
@@ -135,6 +150,31 @@ foreach ($milestones as $m) {
     }
 }
 
+// Get all submitted proposals for review
+$proposals_query = "SELECT 
+    p.*, 
+    g.name AS group_name, 
+    g.id AS group_id, 
+    CONCAT(sp.full_name) AS submitted_by
+FROM proposals p
+JOIN groups g ON p.group_id = g.id
+JOIN group_members gm ON g.id = gm.group_id
+JOIN student_profiles sp ON gm.student_id = sp.user_id
+WHERE gm.student_id = (
+    SELECT student_id 
+    FROM group_members 
+    WHERE group_id = g.id 
+    LIMIT 1
+)
+ORDER BY p.submitted_at DESC;
+";
+$proposals_result = mysqli_query($conn, $proposals_query);
+$proposals = [];
+
+while ($proposal = mysqli_fetch_assoc($proposals_result)) {
+    $proposals[] = $proposal;
+}
+
 // Preformat ISO deadline for JS countdown to avoid timezone parse bugs
 $isoDeadline = $current_milestone
     ? date('c', strtotime($current_milestone['deadline'])) // ISO 8601
@@ -155,6 +195,18 @@ $isoDeadline = $current_milestone
     .modal-container{display:flex;align-items:center;justify-content:center;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50}
     .modal-content{background:#fff;border-radius:.5rem;box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04);width:100%;max-width:42rem;max-height:90vh;overflow-y:auto}
     .milestone-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+    .proposal-status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .status-pending { background-color: #fef3c7; color: #92400e; }
+    .status-under-review { background-color: #dbeafe; color: #1e40af; }
+    .status-approved { background-color: #d1fae5; color: #065f46; }
+    .status-rejected { background-color: #fee2e2; color: #b91c1c; }
+    .status-revision-requested { background-color: #fef3c7; color: #92400e; }
   </style>
   <script>
     tailwind.config = {
@@ -173,9 +225,8 @@ $isoDeadline = $current_milestone
 
   <div class="min-h-screen flex">
     <!-- Sidebar/header -->
-        <?php include('../includes/admin-sidebar.php'); ?>
-        
-
+    <?php include('../includes/admin-sidebar.php'); ?>
+    
     <div class="flex-1 overflow-y-auto p-6">
       <!-- Success message -->
       <?php if (isset($_SESSION['success_message'])): ?>
@@ -322,7 +373,97 @@ $isoDeadline = $current_milestone
           </div>
         <?php endif; ?>
       </div>
+
+    <!-- Proposal Review Section -->
+<div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center">
+      <div class="bg-primary/10 p-3 rounded-full mr-4">
+        <i class="fas fa-file-alt text-primary text-xl"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-gray-800">Proposal Review</h2>
     </div>
+    <span class="bg-gray-100 text-gray-800 text-sm font-medium px-3 py-1 rounded-full">
+      <?php echo count($proposals); ?> Submitted
+    </span>
+  </div>
+
+  <?php if (!empty($proposals)): ?>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <?php foreach ($proposals as $proposal): 
+        // Default status
+        $status_class = 'bg-yellow-100 text-yellow-800';
+        $status_text = 'Pending';
+        
+        if (!empty($proposal['status'])) {
+          switch ($proposal['status']) {
+            case 'approved':
+              $status_class = 'bg-green-100 text-green-800';
+              $status_text = 'Approved';
+              break;
+            case 'rejected':
+              $status_class = 'bg-red-100 text-red-800';
+              $status_text = 'Rejected';
+              break;
+            case 'under_review':
+              $status_class = 'bg-blue-100 text-blue-800';
+              $status_text = 'Under Review';
+              break;
+            case 'revision_requested':
+              $status_class = 'bg-purple-100 text-purple-800';
+              $status_text = 'Revision Requested';
+              break;
+          }
+        }
+      ?>
+      
+      <div class="bg-white border border-gray-200 shadow-md rounded-xl p-6 flex flex-col justify-between">
+        <!-- Header -->
+        <div>
+          <div class="flex justify-between items-start mb-3">
+            <h3 class="text-lg font-semibold text-gray-900">
+              <?php echo htmlspecialchars($proposal['title']); ?>
+            </h3>
+            <span class="px-3 py-1 text-xs font-medium rounded-full <?php echo $status_class; ?>">
+              <?php echo $status_text; ?>
+            </span>
+          </div>
+
+          <p class="text-sm text-gray-700 mb-2">
+            <span class="font-semibold">Group:</span> <?php echo htmlspecialchars($proposal['group_name']); ?>
+          </p>
+          <p class="text-sm text-gray-700 mb-2">
+            <span class="font-semibold">Submitted By:</span> <?php echo htmlspecialchars($proposal['submitted_by']); ?>
+          </p>
+          <p class="text-sm text-gray-500 mb-4">
+            <span class="font-semibold">Date:</span> <?php echo date('M j, Y', strtotime($proposal['submitted_at'])); ?>
+          </p>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+          <button onclick='openProposalReviewModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)'
+            class="inline-flex items-center px-3 py-2 bg-primary text-white text-sm font-medium rounded-lg shadow hover:bg-secondary transition">
+            <i class="fas fa-eye mr-2"></i> Review
+          </button>
+          
+          <a href="<?php echo htmlspecialchars($proposal['file_path']); ?>" 
+             target="_blank" 
+             class="inline-flex items-center text-gray-600 hover:text-gray-900 text-sm font-medium">
+            <i class="fas fa-download mr-2"></i> Download
+          </a>
+        </div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+  <?php else: ?>
+    <div class="text-center py-8">
+      <i class="fas fa-file-alt text-4xl text-gray-300 mb-4"></i>
+      <h3 class="text-lg font-medium text-gray-500">No proposals submitted yet</h3>
+      <p class="text-gray-400">Proposals will appear here once students submit them</p>
+    </div>
+  <?php endif; ?>
+</div>
 
     <!-- Create Timeline Modal -->
     <div id="createTimelineModal" class="modal-container hidden">
@@ -425,6 +566,85 @@ $isoDeadline = $current_milestone
                   Update Timeline
                 </button>
               </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Proposal Review Modal -->
+    <div id="proposalReviewModal" class="modal-container hidden">
+      <div class="modal-content" style="max-width: 800px;">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Review Proposal</h3>
+            <button type="button" onclick="toggleModal('proposalReviewModal')" class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <form method="POST">
+            <input type="hidden" id="review_proposal_id" name="proposal_id">
+            <input type="hidden" name="update_proposal_status" value="1">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
+                <p id="review_group_name" class="text-sm text-gray-900 p-2 bg-gray-100 rounded-md"></p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Submitted By</label>
+                <p id="review_submitted_by" class="text-sm text-gray-900 p-2 bg-gray-100 rounded-md"></p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Submission Date</label>
+                <p id="review_submission_date" class="text-sm text-gray-900 p-2 bg-gray-100 rounded-md"></p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Current Status</label>
+                <p id="review_current_status" class="text-sm text-gray-900 p-2 bg-gray-100 rounded-md"></p>
+              </div>
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Title</label>
+              <p id="review_proposal_title" class="text-lg font-medium text-gray-900 p-2 bg-gray-100 rounded-md"></p>
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Description</label>
+              <p id="review_proposal_description" class="text-sm text-gray-900 p-2 bg-gray-100 rounded-md h-32 overflow-y-auto"></p>
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Download Proposal</label>
+              <a id="review_proposal_download" href="#" target="_blank" class="inline-flex items-center text-primary hover:text-secondary">
+                <i class="fas fa-download mr-2"></i> Download PDF File
+              </a>
+            </div>
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                <option value="pending">Pending</option>
+                <option value="under_review">Under Review</option>
+                <option value="approved">Approved</option>
+                <option value="revision_requested">Revision Requested</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            
+            <div class="mb-6">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Feedback</label>
+              <textarea name="feedback" rows="4" placeholder="Provide feedback for the group..." class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+              <button type="button" onclick="toggleModal('proposalReviewModal')" class="px-4 py-2 border border-gray-300 rounded-md">
+                Cancel
+              </button>
+              <button type="submit" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md">
+                Update Status
+              </button>
             </div>
           </form>
         </div>
@@ -564,6 +784,43 @@ $isoDeadline = $current_milestone
         </div>
       `;
       return element;
+    }
+
+    // Proposal Review Modal
+    function openProposalReviewModal(proposal) {
+      document.getElementById('review_proposal_id').value = proposal.id;
+      document.getElementById('review_group_name').textContent = proposal.group_name;
+      document.getElementById('review_submitted_by').textContent = proposal.submitted_by;
+      document.getElementById('review_submission_date').textContent = new Date(proposal.submitted_at).toLocaleDateString();
+      document.getElementById('review_proposal_title').textContent = proposal.title;
+      document.getElementById('review_proposal_description').textContent = proposal.description;
+      document.getElementById('review_proposal_download').href = proposal.file_path;
+      
+      // Set current status
+      let statusText = 'Pending';
+      if (proposal.status) {
+        switch (proposal.status) {
+          case 'approved': statusText = 'Approved'; break;
+          case 'rejected': statusText = 'Rejected'; break;
+          case 'under_review': statusText = 'Under Review'; break;
+          case 'revision_requested': statusText = 'Revision Requested'; break;
+        }
+      }
+      document.getElementById('review_current_status').textContent = statusText;
+      
+      // Set the status dropdown to current value
+      const statusSelect = document.querySelector('select[name="status"]');
+      if (statusSelect) {
+        statusSelect.value = proposal.status || 'pending';
+      }
+      
+      // Set existing feedback
+      const feedbackTextarea = document.querySelector('textarea[name="feedback"]');
+      if (feedbackTextarea && proposal.feedback) {
+        feedbackTextarea.value = proposal.feedback;
+      }
+      
+      toggleModal('proposalReviewModal');
     }
 
     // Global remove handler (works for both modals)

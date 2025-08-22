@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Aug 22, 2025 at 06:33 AM
+-- Generation Time: Aug 22, 2025 at 07:47 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -29,11 +29,18 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `defense_panel` (
   `id` int(11) NOT NULL,
-  `defense_id` int(11) DEFAULT NULL,
-  `faculty_id` int(11) DEFAULT NULL,
-  `role` enum('chair','member','adviser') DEFAULT NULL,
+  `defense_id` int(11) NOT NULL,
+  `faculty_id` int(11) NOT NULL,
+  `role` enum('chair','member') DEFAULT 'member',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `defense_panel`
+--
+
+INSERT INTO `defense_panel` (`id`, `defense_id`, `faculty_id`, `role`, `created_at`) VALUES
+(1, 5, 5, 'member', '2025-08-22 05:46:02');
 
 -- --------------------------------------------------------
 
@@ -51,6 +58,13 @@ CREATE TABLE `defense_schedules` (
   `status` enum('scheduled','completed','cancelled') DEFAULT 'scheduled',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `defense_schedules`
+--
+
+INSERT INTO `defense_schedules` (`id`, `group_id`, `defense_date`, `start_time`, `end_time`, `room_id`, `status`, `created_at`) VALUES
+(5, 4, '2025-08-23', '08:00:00', '08:30:00', 5, 'scheduled', '2025-08-22 05:46:02');
 
 -- --------------------------------------------------------
 
@@ -152,7 +166,7 @@ CREATE TABLE `proposals` (
 --
 
 INSERT INTO `proposals` (`id`, `group_id`, `title`, `description`, `file_path`, `submitted_at`, `status`, `feedback`, `reviewed_at`) VALUES
-(1, 4, 'SCHOOL MANAGEMENT SYSTEM 1: CENTER FOR RESEARCH AND DEVELOPMENT INTELLIGENT PROGRESSIVE RESEARCH SUBMISSION AND TRACKING SYSTEM USING OPENAI', 'The Center for Research and Development Intelligent Progressive Research Submission and Tracking System is a web-based platform designed to streamline the research submission, monitoring, and evaluation process for students and faculty members. Leveraging OpenAIâ€™s intelligent capabilities, the system provides an automated, efficient, and user-friendly solution to manage research proposals, ongoing projects, and final outputs.', 'assets/uploadsproposal_4_1755754752.pdf', '2025-08-21 05:39:12', 'Under Review', 'goods', '2025-08-21 18:17:26');
+(1, 4, 'SCHOOL MANAGEMENT SYSTEM 1: CENTER FOR RESEARCH AND DEVELOPMENT INTELLIGENT PROGRESSIVE RESEARCH SUBMISSION AND TRACKING SYSTEM USING OPENAI', 'The Center for Research and Development Intelligent Progressive Research Submission and Tracking System is a web-based platform designed to streamline the research submission, monitoring, and evaluation process for students and faculty members. Leveraging OpenAIâ€™s intelligent capabilities, the system provides an automated, efficient, and user-friendly solution to manage research proposals, ongoing projects, and final outputs.', 'assets/uploadsproposal_4_1755754752.pdf', '2025-08-21 05:39:12', 'Approved', 'goods', '2025-08-22 04:42:20');
 
 -- --------------------------------------------------------
 
@@ -179,6 +193,22 @@ CREATE TABLE `rooms` (
   `building` varchar(100) DEFAULT NULL,
   `capacity` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `rooms`
+--
+
+INSERT INTO `rooms` (`id`, `room_name`, `building`, `capacity`) VALUES
+(1, 'Room 101', 'Main Building', 40),
+(2, 'Room 102', 'Main Building', 35),
+(3, 'Room 201', 'Science Building', 50),
+(4, 'Room 202', 'Science Building', 45),
+(5, 'Room 301', 'Engineering Building', 60),
+(6, 'Room 302', 'Engineering Building', 55),
+(7, 'Auditorium', 'Main Building', 200),
+(8, 'Library Conference Room', 'Library Building', 25),
+(9, 'IT Lab 1', 'Tech Building', 40),
+(10, 'IT Lab 2', 'Tech Building', 40);
 
 -- --------------------------------------------------------
 
@@ -379,13 +409,13 @@ ALTER TABLE `user_tbl`
 -- AUTO_INCREMENT for table `defense_panel`
 --
 ALTER TABLE `defense_panel`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `defense_schedules`
 --
 ALTER TABLE `defense_schedules`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `document_submissions`
@@ -427,7 +457,7 @@ ALTER TABLE `required_documents`
 -- AUTO_INCREMENT for table `rooms`
 --
 ALTER TABLE `rooms`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `student_profiles`
@@ -456,13 +486,6 @@ ALTER TABLE `user_tbl`
 --
 -- Constraints for dumped tables
 --
-
---
--- Constraints for table `defense_panel`
---
-ALTER TABLE `defense_panel`
-  ADD CONSTRAINT `defense_panel_ibfk_1` FOREIGN KEY (`defense_id`) REFERENCES `defense_schedules` (`id`),
-  ADD CONSTRAINT `defense_panel_ibfk_2` FOREIGN KEY (`faculty_id`) REFERENCES `user_tbl` (`user_id`);
 
 --
 -- Constraints for table `defense_schedules`

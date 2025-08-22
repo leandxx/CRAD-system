@@ -63,6 +63,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $error_message = "Error deleting defense schedule: " . mysqli_error($conn);
         }
     }
+
+    if (isset($_POST['edit_defense'])) {
+        $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
+        $group_id = mysqli_real_escape_string($conn, $_POST['group_id']);
+        $defense_date = mysqli_real_escape_string($conn, $_POST['defense_date']);
+        $start_time = mysqli_real_escape_string($conn, $_POST['start_time']);
+        $end_time = mysqli_real_escape_string($conn, $_POST['end_time']);
+        $room_id = mysqli_real_escape_string($conn, $_POST['room_id']);
+        $panel_members = isset($_POST['panel_members']) ? $_POST['panel_members'] : [];
+
+        // Update defense schedule
+        $update_query = "UPDATE defense_schedules 
+                         SET group_id = '$group_id', defense_date = '$defense_date', 
+                             start_time = '$start_time', end_time = '$end_time', 
+                             room_id = '$room_id', status = 'scheduled' 
+                         WHERE id = '$defense_id'";
+
+        if (mysqli_query($conn, $update_query)) {
+            // Update panel members
+            $delete_panel_query = "DELETE FROM defense_panel WHERE defense_id = '$defense_id'";
+            mysqli_query($conn, $delete_panel_query);
+
+            foreach ($panel_members as $faculty_id) {
+                $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
+                $panel_query = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
+                               VALUES ('$defense_id', '$faculty_id', 'member')";
+                mysqli_query($conn, $panel_query);
+            }
+
+            $_SESSION['success_message'] = "Defense schedule updated successfully!";
+            header("Location: admin-defense.php");
+            exit();
+        } else {
+            $error_message = "Error updating defense schedule: " . mysqli_error($conn);
+        }
+    }
 }
 
 // Get all defense schedules
@@ -186,6 +222,12 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
         function toggleModal() {
             const modal = document.getElementById('proposalModal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+        }
+
+        function toggleEditModal() {
+            const modal = document.getElementById('editDefenseModal');
             modal.classList.toggle('hidden');
             modal.classList.toggle('flex');
         }
@@ -379,7 +421,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                             <?php endif; ?>
                             
                             <div>
-                                <button class="text-indigo-600 hover:text-indigo-900 mr-3"><i class="fas fa-edit"></i></button>
+                                <button class="text-indigo-600 hover:text-indigo-900 mr-3" onclick="populateEditForm(<?php echo htmlspecialchars(json_encode($schedule)); ?>)"><i class="fas fa-edit"></i></button>
                                 <button onclick="confirmDelete(<?php echo $schedule['id']; ?>, '<?php echo $schedule['group_name']; ?>')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
                             </div>
                         </div>
@@ -478,14 +520,14 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
     <!-- Schedule Defense Modal -->
     <div id="proposalModal" class="fixed inset-0 w-full h-full flex items-center justify-center z-50 hidden bg-black bg-opacity-50">
-        <div class="bg-white rounded-lg shadow-xl w-11/12 md:w-3/4 lg:w-2/3 max-h-screen overflow-y-auto">
-            <div class="border-b px-6 py-4 flex justify-between items-center">
-                <h3 class="text-lg font-semibold">Schedule Defense</h3>
-                <button onclick="toggleModal()" class="text-gray-400 hover:text-gray-500">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-auto max-h-[90vh] overflow-y-auto border border-gray-200">
+            <div class="flex justify-between items-center border-b px-6 py-4">
+                <h3 class="text-xl font-bold text-primary">Schedule Defense</h3>
+                <button type="button" onclick="toggleModal()" class="text-gray-400 hover:text-gray-500 text-2xl">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="p-6">
+            <div class="p-8">
                 <form method="POST" action="admin-pages/admin-defense.php">
                     <input type="hidden" name="schedule_defense" value="1">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -496,7 +538,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                             <select id="group_id" name="group_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                                 <option value="">-- Select a group --</option>
                                 <?php foreach ($groups as $group): ?>
-                                <option value="<?php echo $group['id']; ?>"><?php echo $group['name'] . ' - ' . $group['proposal_title']; ?></option>
+                                <option value="<?php echo $group['id']; ?>"><?php echo $group['name'] ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -560,6 +602,83 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         </div>
     </div>
 
+    <!-- Edit Defense Modal -->
+    <div id="editDefenseModal" class="fixed inset-0 w-full h-full flex items-center justify-center z-50 hidden bg-black bg-opacity-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-auto max-h-[90vh] overflow-y-auto border border-gray-200">
+            <div class="flex justify-between items-center border-b px-6 py-4">
+                <h3 class="text-xl font-bold text-primary">Edit Defense Schedule</h3>
+                <button type="button" onclick="toggleEditModal()" class="text-gray-400 hover:text-gray-500 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-8">
+                <form id="editDefenseForm" method="POST" action="admin-pages/admin-defense.php">
+                    <input type="hidden" name="edit_defense" value="1">
+                    <input type="hidden" id="edit_defense_id" name="defense_id">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_group_id">
+                                Group
+                            </label>
+                            <select id="edit_group_id" name="group_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" disabled>
+                                <?php foreach ($groups as $group): ?>
+                                <option value="<?php echo $group['id']; ?>"><?php echo $group['name'] . ' - ' . $group['proposal_title']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_defense_date">
+                                Defense Date
+                            </label>
+                            <input type="date" id="edit_defense_date" name="defense_date" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_start_time">
+                                Start Time
+                            </label>
+                            <input type="time" id="edit_start_time" name="start_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_end_time">
+                                End Time
+                            </label>
+                            <input type="time" id="edit_end_time" name="end_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_room_id">
+                                Venue
+                            </label>
+                            <select id="edit_room_id" name="room_id" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                                <?php foreach ($rooms as $room): ?>
+                                <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_panel_members">
+                                Panel Members
+                            </label>
+                            <select id="edit_panel_members" name="panel_members[]" multiple class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary h-32">
+                                <?php foreach ($faculty_members as $faculty): ?>
+                                <option value="<?php echo $faculty['user_id']; ?>"><?php echo $faculty['email'] . ' (' . $faculty['role'] . ')'; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple panel members</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" onclick="toggleEditModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                            Cancel
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Hidden form for deletion -->
     <form id="deleteForm" method="POST" action="admin-pages/admin-defense.php" class="hidden">
         <input type="hidden" name="delete_schedule" value="1">
@@ -568,3 +687,29 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
 </body>
 </html>
+
+<script>
+    // Populate edit form with defense schedule data
+    function populateEditForm(schedule) {
+        document.getElementById('edit_defense_id').value = schedule.id;
+        document.getElementById('edit_group_id').value = schedule.group_id;
+        document.getElementById('edit_defense_date').value = schedule.defense_date;
+        document.getElementById('edit_start_time').value = schedule.start_time;
+        document.getElementById('edit_end_time').value = schedule.end_time;
+        document.getElementById('edit_room_id').value = schedule.room_id;
+
+        // Set selected panel members
+        const panelMembers = schedule.panel_members.map(member => member.user_id);
+        const panelSelect = document.getElementById('edit_panel_members');
+        for (let i = 0; i < panelSelect.options.length; i++) {
+            const option = panelSelect.options[i];
+            if (panelMembers.includes(option.value)) {
+                option.selected = true;
+            } else {
+                option.selected = false;
+            }
+        }
+
+        toggleEditModal();
+    }
+</script>

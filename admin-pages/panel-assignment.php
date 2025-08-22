@@ -1,4 +1,5 @@
 <?php
+session_start();
 include('../includes/connection.php');
 
 // Handle CRUD operations

@@ -112,8 +112,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $status = $_POST['status'] ?? '';
         $feedback = $_POST['feedback'] ?? '';
 
+        // Convert to proper case to match database enum
+        $status_map = [
+            'pending' => 'Pending',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            'under_review' => 'Under Review',
+            'revision_requested' => 'Revision Requested'
+        ];
+        
+        $db_status = $status_map[$status] ?? 'Pending';
+
         $stmt = $conn->prepare("UPDATE proposals SET status = ?, feedback = ?, reviewed_at = NOW() WHERE id = ?");
-        $stmt->bind_param("ssi", $status, $feedback, $proposal_id);
+        $stmt->bind_param("ssi", $db_status, $feedback, $proposal_id);
         $stmt->execute();
         $stmt->close();
 
@@ -397,22 +408,25 @@ $isoDeadline = $current_milestone
         
         if (!empty($proposal['status'])) {
           switch ($proposal['status']) {
-            case 'approved':
+            case 'Approved':
               $status_class = 'bg-green-100 text-green-800';
               $status_text = 'Approved';
               break;
-            case 'rejected':
+            case 'Rejected':
               $status_class = 'bg-red-100 text-red-800';
               $status_text = 'Rejected';
               break;
-            case 'under_review':
+            case 'Under Review':
               $status_class = 'bg-blue-100 text-blue-800';
               $status_text = 'Under Review';
               break;
-            case 'revision_requested':
+            case 'Revision Requested':
               $status_class = 'bg-purple-100 text-purple-800';
               $status_text = 'Revision Requested';
               break;
+            default:
+              $status_class = 'bg-yellow-100 text-yellow-800';
+              $status_text = 'Pending';
           }
         }
       ?>
@@ -796,22 +810,40 @@ $isoDeadline = $current_milestone
       document.getElementById('review_proposal_description').textContent = proposal.description;
       document.getElementById('review_proposal_download').href = proposal.file_path;
       
-      // Set current status
+      // Set current status - handle both cases
       let statusText = 'Pending';
+      let statusValue = 'pending';
+      
       if (proposal.status) {
-        switch (proposal.status) {
-          case 'approved': statusText = 'Approved'; break;
-          case 'rejected': statusText = 'Rejected'; break;
-          case 'under_review': statusText = 'Under Review'; break;
-          case 'revision_requested': statusText = 'Revision Requested'; break;
+        switch (proposal.status.toLowerCase()) {
+          case 'approved':
+            statusText = 'Approved';
+            statusValue = 'approved';
+            break;
+          case 'rejected':
+            statusText = 'Rejected';
+            statusValue = 'rejected';
+            break;
+          case 'under review':
+            statusText = 'Under Review';
+            statusValue = 'under_review';
+            break;
+          case 'revision requested':
+            statusText = 'Revision Requested';
+            statusValue = 'revision_requested';
+            break;
+          default:
+            statusText = 'Pending';
+            statusValue = 'pending';
         }
       }
+      
       document.getElementById('review_current_status').textContent = statusText;
       
       // Set the status dropdown to current value
       const statusSelect = document.querySelector('select[name="status"]');
       if (statusSelect) {
-        statusSelect.value = proposal.status || 'pending';
+        statusSelect.value = statusValue;
       }
       
       // Set existing feedback

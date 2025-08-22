@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $description = mysqli_real_escape_string($conn, $_POST['description']);
         
         // File upload handling
-        $target_dir = "../assets/uploads";
+        $target_dir = "assets/uploads";
         if (!file_exists($target_dir)) {
             mkdir($target_dir, 0777, true);
         }
@@ -289,127 +289,135 @@ $user_data = mysqli_fetch_assoc($user_result);
             <?php endif; ?>
 
             <!-- Group Status Card -->
-            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center">
-                        <div class="bg-primary/10 p-3 rounded-full mr-4">
-                            <i class="fas fa-users text-primary text-xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-gray-800">Group Status</h2>
-                    </div>
-                    
-                    <?php if ($has_group): ?>
-                        <form method="POST" onsubmit="return confirmLeaveGroup();">
-                            <button type="submit" name="leave_group" class="bg-danger text-white px-4 py-2 rounded-lg hover:bg-danger-dark flex items-center">
-                                <i class="fas fa-sign-out-alt mr-2"></i> Leave Group
-                            </button>
-                        </form>
-                    <?php endif; ?>
-                </div>
-                
-                <?php if ($has_group): ?>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="bg-blue-50 p-4 rounded-lg">
-                            <h3 class="font-semibold text-blue-800">Group Name</h3>
-                            <p class="text-lg"><?php echo $group['name']; ?></p>
-                        </div>
-                        
-                        <div class="bg-<?php echo $has_paid ? 'green' : 'yellow'; ?>-50 p-4 rounded-lg">
-                            <h3 class="font-semibold text-<?php echo $has_paid ? 'green' : 'yellow'; ?>-800">Payment Status</h3>
-                            <p class="text-lg"><?php echo $has_paid ? 'Completed' : 'Pending'; ?></p>
-                            <?php if (!$has_paid): ?>
-                                <form method="POST" class="mt-2">
-                                    <button type="submit" name="make_payment" class="bg-success text-white px-3 py-1 rounded text-sm">
-                                        <i class="fas fa-credit-card mr-1"></i> Pay Now
-                                    </button>
-                                </form>
-                            <?php endif; ?>
-                        </div>
-                        
-                        <div class="bg-<?php echo $has_proposal ? 'green' : 'gray'; ?>-50 p-4 rounded-lg">
-                            <h3 class="font-semibold text-<?php echo $has_proposal ? 'green' : 'gray'; ?>-800">Proposal Status</h3>
-                            <p class="text-lg"><?php echo $has_proposal ? ucfirst($proposal['status']) : 'Not Submitted'; ?></p>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-6">
-                        <h3 class="font-semibold mb-2">Group Members</h3>
-                        <ul class="divide-y divide-gray-200">
-                            <?php
-$members_query = "SELECT u.*, sp.full_name
-                  FROM group_members gm
-                  JOIN user_tbl u ON gm.student_id = u.user_id
-                  JOIN student_profiles sp ON u.user_id = sp.user_id
-                  WHERE gm.group_id = '$group_id'";
-$members_result = mysqli_query($conn, $members_query);
+<div class="bg-white rounded-2xl shadow-xl p-6 mb-8 border border-gray-100">
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-3">
+            <div class="bg-primary/10 p-3 rounded-full">
+                <i class="fas fa-users text-primary text-xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">Group Status</h2>
+        </div>
 
-while ($member = mysqli_fetch_assoc($members_result)) {
-    echo '<li class="py-2 flex justify-between items-center">';
-    echo '<div>';
-    echo '<p class="font-medium">' . htmlspecialchars($member['full_name']) . '</p>';
-    echo '<p class="text-sm text-gray-500">' . ucfirst($member['role']) . '</p>';
-    echo '</div>';
-    echo '<div class="flex items-center">';
-    if ($member['user_id'] == $user_id) {
-        echo '<span class="bg-primary/10 text-primary text-xs font-medium px-2.5 py-0.5 rounded mr-2">You</span>';
-    }
-    echo '</div>';
-    echo '</li>';
-}
-?>
+        <?php if ($has_group): ?>
+            <form method="POST" onsubmit="return confirmLeaveGroup();">
+                <button type="submit" name="leave_group" 
+                    class="flex items-center bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow-sm transition-all duration-200">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Leave Group
+                </button>
+            </form>
+        <?php endif; ?>
+    </div>
 
-                        </ul>
-                    </div>
-                    
-                    <div class="mt-6">
-                        <h3 class="font-semibold mb-2">Group Join Code</h3>
-                        <form id="updateCodeForm" method="POST">
-                            <input type="hidden" name="update_join_code" value="1">
-                            <input type="hidden" name="new_join_code" id="new_join_code" value="">
-                            
-                            <div class="flex items-center mb-2">
-                                <div class="relative flex-grow">
-                                    <div id="joinCodeDisplay" class="flex items-center">
-                                        <input type="text" id="join_code_value" value="<?php echo $group['join_code']; ?>" readonly 
-                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-lg">
-                                        <button type="button" onclick="copyJoinCode()" class="ml-2 p-2 text-gray-500 hover:text-primary" title="Copy to clipboard">
-                                            <i class="far fa-copy"></i>
-                                        </button>
-                                    </div>
-                                    <div id="joinCodeLoading" class="hidden flex items-center justify-center py-2">
-                                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                                        <span class="ml-2">Generating new code...</span>
-                                    </div>
-                                </div>
-                                <button type="button" onclick="generateJoinCode()" class="ml-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark flex items-center">
-                                    <i class="fas fa-sync-alt mr-2"></i> Generate New Code
-                                </button>
-                            </div>
-                        </form>
-                        <p class="text-sm text-gray-500">Share this code with other students to let them join your group.</p>
-                        
-                        <!-- Copy notification -->
-                        <div id="copyNotification" class="hidden mt-2 bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded text-sm">
-                            <i class="fas fa-check-circle mr-1"></i> Code copied to clipboard!
-                        </div>
-                    </div>
-                    
-                <?php else: ?>
-                    <div class="text-center py-8">
-                        <i class="fas fa-users text-gray-300 text-5xl mb-4"></i>
-                        <h3 class="text-xl font-semibold text-gray-600">You are not in a group yet</h3>
-                        <p class="text-gray-500 mb-6">Join an existing group or create a new one to submit a proposal.</p>
-                        <div class="flex justify-center space-x-4">
-                            <button onclick="toggleModal('createGroupModal')" class="bg-primary text-white px-4 py-2 rounded-lg">
-                                <i class="fas fa-plus mr-2"></i> Create Group
-                            </button>
-                            <button onclick="toggleModal('joinGroupModal')" class="bg-secondary text-white px-4 py-2 rounded-lg">
-                                <i class="fas fa-sign-in-alt mr-2"></i> Join Group
-                            </button>
-                        </div>
-                    </div>
+    <?php if ($has_group): ?>
+        <!-- Status Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Group Name -->
+            <div class="p-5 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                <h3 class="font-semibold text-blue-800">Group Name</h3>
+                <p class="text-lg font-medium text-gray-900 mt-1"><?php echo $group['name']; ?></p>
+            </div>
+
+            <!-- Payment Status -->
+            <div class="p-5 bg-gradient-to-r from-<?php echo $has_paid ? 'green' : 'yellow'; ?>-50 to-white rounded-xl border border-<?php echo $has_paid ? 'green' : 'yellow'; ?>-200">
+                <h3 class="font-semibold text-<?php echo $has_paid ? 'green' : 'yellow'; ?>-800">Payment Status</h3>
+                <p class="text-lg font-medium mt-1">
+                    <?php echo $has_paid ? '✅ Completed' : '⏳ Pending'; ?>
+                </p>
+                <?php if (!$has_paid): ?>
+                    <form method="POST" class="mt-3">
+                        <button type="submit" name="make_payment" 
+                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center shadow-sm transition-all">
+                            <i class="fas fa-credit-card mr-2"></i> Pay Now
+                        </button>
+                    </form>
                 <?php endif; ?>
             </div>
+
+            <!-- Proposal Status -->
+            <div class="p-5 bg-gradient-to-r from-<?php echo $has_proposal ? 'green' : 'gray'; ?>-50 to-white rounded-xl border border-<?php echo $has_proposal ? 'green' : 'gray'; ?>-200">
+                <h3 class="font-semibold text-<?php echo $has_proposal ? 'green' : 'gray'; ?>-800">Proposal Status</h3>
+                <p class="text-lg font-medium mt-1">
+                    <?php echo $has_proposal ? ucfirst($proposal['status']) : 'Not Submitted'; ?>
+                </p>
+            </div>
+        </div>
+
+        <!-- Members List -->
+        <div class="mt-8">
+            <h3 class="font-semibold mb-3 text-gray-700">Group Members</h3>
+            <ul class="divide-y divide-gray-200 bg-gray-50 rounded-xl border border-gray-200">
+                <?php
+                $members_query = "SELECT u.*, sp.full_name
+                                FROM group_members gm
+                                JOIN user_tbl u ON gm.student_id = u.user_id
+                                JOIN student_profiles sp ON u.user_id = sp.user_id
+                                WHERE gm.group_id = '$group_id'";
+                $members_result = mysqli_query($conn, $members_query);
+
+                while ($member = mysqli_fetch_assoc($members_result)) {
+                    echo '<li class="py-3 px-4 flex justify-between items-center hover:bg-white transition">';
+                    echo '<div>';
+                    echo '<p class="font-medium text-gray-800">' . htmlspecialchars($member['full_name']) . '</p>';
+                    echo '<p class="text-sm text-gray-500">' . ucfirst($member['role']) . '</p>';
+                    echo '</div>';
+                    if ($member['user_id'] == $user_id) {
+                        echo '<span class="bg-primary/10 text-primary text-xs font-medium px-2.5 py-1 rounded">You</span>';
+                    }
+                    echo '</li>';
+                }
+                ?>
+            </ul>
+        </div>
+
+        <!-- Join Code -->
+        <div class="mt-8">
+            <h3 class="font-semibold mb-3 text-gray-700">Group Join Code</h3>
+            <form id="updateCodeForm" method="POST">
+                <input type="hidden" name="update_join_code" value="1">
+                <input type="hidden" name="new_join_code" id="new_join_code" value="">
+
+                <div class="flex items-center space-x-3">
+                    <div class="relative flex-grow">
+                        <input type="text" id="join_code_value" value="<?php echo $group['join_code']; ?>" readonly 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-lg text-gray-800 shadow-sm">
+                        <button type="button" onclick="copyJoinCode()" 
+                            class="absolute right-2 top-2 p-2 text-gray-500 hover:text-primary transition" title="Copy to clipboard">
+                            <i class="far fa-copy"></i>
+                        </button>
+                    </div>
+                    <button type="button" onclick="generateJoinCode()" 
+                        class="flex items-center bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg shadow-sm transition">
+                        <i class="fas fa-sync-alt mr-2"></i> New Code
+                    </button>
+                </div>
+            </form>
+            <p class="text-sm text-gray-500 mt-2">Share this code with other students to let them join your group.</p>
+
+            <!-- Copy notification -->
+            <div id="copyNotification" class="hidden mt-3 bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded-lg text-sm shadow-sm">
+                <i class="fas fa-check-circle mr-1"></i> Code copied to clipboard!
+            </div>
+        </div>
+
+    <?php else: ?>
+        <!-- Empty State -->
+        <div class="text-center py-10">
+            <i class="fas fa-users text-gray-300 text-6xl mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-700">You are not in a group yet</h3>
+            <p class="text-gray-500 mb-6">Join an existing group or create a new one to submit a proposal.</p>
+            <div class="flex justify-center space-x-4">
+                <button onclick="toggleModal('createGroupModal')" 
+                    class="flex items-center bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-lg shadow-sm transition">
+                    <i class="fas fa-plus mr-2"></i> Create Group
+                </button>
+                <button onclick="toggleModal('joinGroupModal')" 
+                    class="flex items-center bg-secondary hover:bg-secondary-dark text-white px-5 py-2.5 rounded-lg shadow-sm transition">
+                    <i class="fas fa-sign-in-alt mr-2"></i> Join Group
+                </button>
+            </div>
+        </div>
+    <?php endif; ?>
+</div>
 
             <!-- Submission Form (only show if in a group) -->
             <?php if ($has_group): ?>

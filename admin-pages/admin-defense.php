@@ -17,15 +17,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $end_time = mysqli_real_escape_string($conn, $_POST['end_time']);
         $room_id = mysqli_real_escape_string($conn, $_POST['room_id']);
         $panel_members = isset($_POST['panel_members']) ? $_POST['panel_members'] : [];
-        $notes = mysqli_real_escape_string($conn, $_POST['notes']);
-        
+
+        // Default status = scheduled
+        $status = 'scheduled';
+
         // Insert defense schedule
-        $schedule_query = "INSERT INTO defense_schedules (group_id, defense_date, start_time, end_time, room_id, notes) 
-                          VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$notes')";
-        
+        $schedule_query = "INSERT INTO defense_schedules 
+                          (group_id, defense_date, start_time, end_time, room_id, status) 
+                          VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status')";
+
         if (mysqli_query($conn, $schedule_query)) {
             $defense_id = mysqli_insert_id($conn);
-            
+
             // Insert panel members
             foreach ($panel_members as $faculty_id) {
                 $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
@@ -33,28 +36,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                VALUES ('$defense_id', '$faculty_id', 'member')";
                 mysqli_query($conn, $panel_query);
             }
-            
+
             $_SESSION['success_message'] = "Defense scheduled successfully!";
-            header("Location: defense_scheduling.php");
+            header("Location: admin-defense.php");
             exit();
         } else {
             $error_message = "Error scheduling defense: " . mysqli_error($conn);
         }
     }
-    
+
     if (isset($_POST['delete_schedule'])) {
         $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
-        
+
         // Delete panel members first
         $delete_panel_query = "DELETE FROM defense_panel WHERE defense_id = '$defense_id'";
         mysqli_query($conn, $delete_panel_query);
-        
+
         // Delete defense schedule
         $delete_schedule_query = "DELETE FROM defense_schedules WHERE id = '$defense_id'";
-        
+
         if (mysqli_query($conn, $delete_schedule_query)) {
             $_SESSION['success_message'] = "Defense schedule deleted successfully!";
-            header("Location: defense_scheduling.php");
+            header("Location: admin-defense.php");
             exit();
         } else {
             $error_message = "Error deleting defense schedule: " . mysqli_error($conn);
@@ -63,27 +66,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // Get all defense schedules
-$defense_query = "SELECT ds.*, g.name as group_name, r.room_name, r.building 
+$defense_query = "SELECT ds.*, g.name as group_name, r.room_name, r.building, p.title as proposal_title
                  FROM defense_schedules ds 
                  LEFT JOIN groups g ON ds.group_id = g.id 
                  LEFT JOIN rooms r ON ds.room_id = r.id 
+                 LEFT JOIN proposals p ON g.id = p.group_id
                  ORDER BY ds.defense_date, ds.start_time";
 $defense_result = mysqli_query($conn, $defense_query);
 $defense_schedules = [];
 
 while ($schedule = mysqli_fetch_assoc($defense_result)) {
     // Get panel members for each defense
-    $panel_query = "SELECT u.user_id, u.first_name, u.last_name, u.middle_name 
+    $panel_query = "SELECT u.user_id, u.email 
                    FROM defense_panel dp 
                    JOIN user_tbl u ON dp.faculty_id = u.user_id 
                    WHERE dp.defense_id = '{$schedule['id']}'";
     $panel_result = mysqli_query($conn, $panel_query);
     $panel_members = [];
-    
+
     while ($panel = mysqli_fetch_assoc($panel_result)) {
         $panel_members[] = $panel;
     }
-    
+
+    // If defense_date < today → mark as completed
+    $current_date = date('Y-m-d');
+    if ($schedule['defense_date'] < $current_date && $schedule['status'] == 'scheduled') {
+        // Update status in database
+        $update_query = "UPDATE defense_schedules SET status = 'completed' WHERE id = '{$schedule['id']}'";
+        mysqli_query($conn, $update_query);
+        $schedule['status'] = 'completed';
+    }
+
     $schedule['panel_members'] = $panel_members;
     $defense_schedules[] = $schedule;
 }
@@ -92,6 +105,7 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
 $groups_query = "SELECT g.*, p.title as proposal_title 
                 FROM groups g 
                 JOIN proposals p ON g.id = p.group_id 
+                WHERE p.status = 'Approved'
                 ORDER BY g.name";
 $groups_result = mysqli_query($conn, $groups_query);
 $groups = [];
@@ -100,7 +114,7 @@ while ($group = mysqli_fetch_assoc($groups_result)) {
     $groups[] = $group;
 }
 
-// Get all faculty members
+// Get all faculty members (Admin and Faculty roles)
 $faculty_query = "SELECT * FROM user_tbl WHERE role = 'Faculty' OR role = 'Admin'";
 $faculty_result = mysqli_query($conn, $faculty_query);
 $faculty_members = [];
@@ -119,10 +133,10 @@ while ($room = mysqli_fetch_assoc($rooms_result)) {
 }
 
 // Get stats for dashboard
-$total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals"));
-$scheduled_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules"));
-$pending_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE id NOT IN (SELECT group_id FROM defense_schedules)"));
-$completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE defense_date < CURDATE()"));
+$total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE status = 'Approved'"));
+$scheduled_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'scheduled'"));
+$pending_defenses = $total_proposals - $scheduled_defenses;
+$completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'completed'"));
 ?>
 
 <!DOCTYPE html>
@@ -178,16 +192,16 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         
         // Function to handle status filtering
         function filterStatus(status) {
-            const rows = document.querySelectorAll('#defenseTable tbody tr');
-            rows.forEach(row => {
+            const cards = document.querySelectorAll('.defense-card');
+            cards.forEach(card => {
                 if (status === 'all') {
-                    row.classList.remove('hidden');
+                    card.classList.remove('hidden');
                 } else {
-                    const rowStatus = row.getAttribute('data-status');
-                    if (rowStatus === status) {
-                        row.classList.remove('hidden');
+                    const cardStatus = card.getAttribute('data-status');
+                    if (cardStatus === status) {
+                        card.classList.remove('hidden');
                     } else {
-                        row.classList.add('hidden');
+                        card.classList.add('hidden');
                     }
                 }
             });
@@ -207,14 +221,14 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         // Function to handle search
         function handleSearch() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const rows = document.querySelectorAll('#defenseTable tbody tr');
+            const cards = document.querySelectorAll('.defense-card');
             
-            rows.forEach(row => {
-                const textContent = row.textContent.toLowerCase();
+            cards.forEach(card => {
+                const textContent = card.textContent.toLowerCase();
                 if (textContent.includes(searchTerm)) {
-                    row.classList.remove('hidden');
+                    card.classList.remove('hidden');
                 } else {
-                    row.classList.add('hidden');
+                    card.classList.add('hidden');
                 }
             });
         }
@@ -316,113 +330,105 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
             </div>
 
-          <!-- Defense Schedule Cards -->
-<div class="bg-white rounded-lg shadow p-6">
-    <h2 class="text-xl font-semibold text-gray-800 mb-6">Defense Schedule</h2>
+            <!-- Defense Schedule Cards -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-6">Defense Schedule</h2>
 
-    <!-- Cards Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <?php foreach ($defense_schedules as $schedule): 
-            $status = 'scheduled';
-            $current_date = date('Y-m-d');
-            if ($schedule['defense_date'] < $current_date) {
-                $status = 'completed';
-            }
-        ?>
-        <!-- Scheduled Defense Card -->
-        <div class="bg-white border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between">
-            <div>
-                <h3 class="text-lg font-semibold text-gray-900"><?php echo $schedule['proposal_title'] ?? 'No Title'; ?></h3>
-                <p class="text-sm text-gray-500 mb-3"><?php echo $schedule['group_name']; ?></p>
+                <!-- Cards Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <?php foreach ($defense_schedules as $schedule): ?>
+                    <!-- Scheduled Defense Card -->
+                    <div class="defense-card bg-white border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between" data-status="<?php echo $schedule['status']; ?>">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900"><?php echo $schedule['proposal_title'] ?? 'No Title'; ?></h3>
+                            <p class="text-sm text-gray-500 mb-3"><?php echo $schedule['group_name']; ?></p>
 
-                <p class="text-sm text-gray-700 mb-1">
-                    <i class="fas fa-calendar mr-2 text-gray-400"></i>
-                    <?php echo date('M j, Y', strtotime($schedule['defense_date'])); ?>
-                </p>
-                <p class="text-sm text-gray-700 mb-1">
-                    <i class="fas fa-clock mr-2 text-gray-400"></i>
-                    <?php echo date('g:i A', strtotime($schedule['start_time'])); ?> - 
-                    <?php echo date('g:i A', strtotime($schedule['end_time'])); ?>
-                </p>
-                <p class="text-sm text-gray-700 mb-1">
-                    <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>
-                    <?php echo $schedule['building'] . ' ' . $schedule['room_name']; ?>
-                </p>
-                <p class="text-sm text-gray-700 mb-3">
-                    <i class="fas fa-users mr-2 text-gray-400"></i>
+                            <p class="text-sm text-gray-700 mb-1">
+                                <i class="fas fa-calendar mr-2 text-gray-400"></i>
+                                <?php echo date('M j, Y', strtotime($schedule['defense_date'])); ?>
+                            </p>
+                            <p class="text-sm text-gray-700 mb-1">
+                                <i class="fas fa-clock mr-2 text-gray-400"></i>
+                                <?php echo date('g:i A', strtotime($schedule['start_time'])); ?> - 
+                                <?php echo date('g:i A', strtotime($schedule['end_time'])); ?>
+                            </p>
+                            <p class="text-sm text-gray-700 mb-1">
+                                <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>
+                                <?php echo $schedule['building'] . ' ' . $schedule['room_name']; ?>
+                            </p>
+                            <p class="text-sm text-gray-700 mb-3">
+                                <i class="fas fa-users mr-2 text-gray-400"></i>
+                                <?php 
+                                    $panel_emails = [];
+                                    foreach ($schedule['panel_members'] as $panel) {
+                                        $panel_emails[] = $panel['email'];
+                                    }
+                                    echo !empty($panel_emails) ? implode(', ', $panel_emails) : 'No panel assigned';
+                                ?>
+                            </p>
+                        </div>
+
+                        <!-- Status & Actions -->
+                        <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                            <?php if ($schedule['status'] == 'completed'): ?>
+                                <span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Completed</span>
+                            <?php elseif ($schedule['status'] == 'cancelled'): ?>
+                                <span class="px-3 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Cancelled</span>
+                            <?php else: ?>
+                                <span class="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Scheduled</span>
+                            <?php endif; ?>
+                            
+                            <div>
+                                <button class="text-indigo-600 hover:text-indigo-900 mr-3"><i class="fas fa-edit"></i></button>
+                                <button onclick="confirmDelete(<?php echo $schedule['id']; ?>, '<?php echo $schedule['group_name']; ?>')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+
+                    <!-- Pending / Unscheduled Groups -->
                     <?php 
-                        $panel_names = [];
-                        foreach ($schedule['panel_members'] as $panel) {
-                            $name = '';
-                            if (!empty($panel['first_name'])) $name .= $panel['first_name'] . ' ';
-                            if (!empty($panel['middle_name'])) $name .= substr($panel['middle_name'], 0, 1) . '. ';
-                            if (!empty($panel['last_name'])) $name .= $panel['last_name'];
-                            $panel_names[] = $name;
-                        }
-                        echo implode(', ', $panel_names);
-                    ?>
-                </p>
-            </div>
+                    $unscheduled_query = "SELECT g.*, p.title as proposal_title 
+                                        FROM groups g 
+                                        JOIN proposals p ON g.id = p.group_id 
+                                        WHERE g.id NOT IN (SELECT group_id FROM defense_schedules) 
+                                        AND p.status = 'Approved'
+                                        ORDER BY g.name";
+                    $unscheduled_result = mysqli_query($conn, $unscheduled_query);
 
-            <!-- Status & Actions -->
-            <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-                <?php if ($status == 'completed'): ?>
-                    <span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Completed</span>
-                <?php else: ?>
-                    <span class="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Scheduled</span>
-                <?php endif; ?>
-                
-                <div>
-                    <button class="text-indigo-600 hover:text-indigo-900 mr-3"><i class="fas fa-edit"></i></button>
-                    <button onclick="confirmDelete(<?php echo $schedule['id']; ?>, '<?php echo $schedule['group_name']; ?>')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
+                    while ($group = mysqli_fetch_assoc($unscheduled_result)): ?>
+                    <div class="defense-card bg-gray-50 border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between" data-status="pending">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900"><?php echo $group['proposal_title']; ?></h3>
+                            <p class="text-sm text-gray-500 mb-3"><?php echo $group['name']; ?></p>
+                            <p class="text-sm text-gray-700 mb-2"><i class="fas fa-calendar-times mr-2 text-gray-400"></i> Not scheduled</p>
+                            <p class="text-sm text-gray-700 mb-2"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> - </p>
+                            <p class="text-sm text-gray-700 mb-3"><i class="fas fa-users mr-2 text-gray-400"></i> Not assigned</p>
+                        </div>
+
+                        <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                            <span class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                            <button onclick="toggleModal()" class="text-primary hover:text-blue-900 mr-3">
+                                <i class="fas fa-calendar-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <?php endwhile; ?>
                 </div>
             </div>
-        </div>
-        <?php endforeach; ?>
-
-
-        <!-- Pending / Unscheduled Groups -->
-        <?php 
-        $unscheduled_query = "SELECT g.*, p.title as proposal_title 
-                              FROM groups g 
-                              JOIN proposals p ON g.id = p.group_id 
-                              WHERE g.id NOT IN (SELECT group_id FROM defense_schedules) 
-                              ORDER BY g.name";
-        $unscheduled_result = mysqli_query($conn, $unscheduled_query);
-
-        while ($group = mysqli_fetch_assoc($unscheduled_result)): ?>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between">
-            <div>
-                <h3 class="text-lg font-semibold text-gray-900"><?php echo $group['proposal_title']; ?></h3>
-                <p class="text-sm text-gray-500 mb-3"><?php echo $group['name']; ?></p>
-                <p class="text-sm text-gray-700 mb-2"><i class="fas fa-calendar-times mr-2 text-gray-400"></i> Not scheduled</p>
-                <p class="text-sm text-gray-700 mb-2"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> - </p>
-                <p class="text-sm text-gray-700 mb-3"><i class="fas fa-users mr-2 text-gray-400"></i> Not assigned</p>
-            </div>
-
-            <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-                <span class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                <button onclick="toggleModal()" class="text-primary hover:text-blue-900 mr-3">
-                    <i class="fas fa-calendar-plus"></i>
-                </button>
-            </div>
-        </div>
-        <?php endwhile; ?>
-    </div>
-</div>
 
             <!-- Upcoming Defenses Section -->
             <h2 class="text-xl font-bold mt-8 mb-4 text-gray-700">Upcoming Defenses</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 <?php 
                 $upcoming_query = "SELECT ds.*, g.name as group_name, p.title as proposal_title, r.room_name, r.building 
-                                 FROM defense_schedules ds 
-                                 JOIN groups g ON ds.group_id = g.id 
-                                 JOIN proposals p ON g.id = p.group_id 
-                                 LEFT JOIN rooms r ON ds.room_id = r.id 
-                                 WHERE ds.defense_date >= CURDATE() 
-                                 ORDER BY ds.defense_date, ds.start_time 
-                                 LIMIT 3";
+                                FROM defense_schedules ds 
+                                JOIN groups g ON ds.group_id = g.id 
+                                JOIN proposals p ON g.id = p.group_id 
+                                LEFT JOIN rooms r ON ds.room_id = r.id 
+                                WHERE ds.defense_date >= CURDATE() AND ds.status = 'scheduled'
+                                ORDER BY ds.defense_date, ds.start_time 
+                                LIMIT 3";
                 $upcoming_result = mysqli_query($conn, $upcoming_query);
                 
                 while ($upcoming = mysqli_fetch_assoc($upcoming_result)): 
@@ -480,7 +486,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </button>
             </div>
             <div class="p-6">
-                <form method="POST" action="defense_scheduling.php">
+                <form method="POST" action="admin-pages/admin-defense.php">
                     <input type="hidden" name="schedule_defense" value="1">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
@@ -528,13 +534,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 Panel Members
                             </label>
                             <select id="panel_members" name="panel_members[]" multiple class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary h-32">
-                                <?php foreach ($faculty_members as $faculty): 
-                                    $name = '';
-                                    if (!empty($faculty['first_name'])) $name .= $faculty['first_name'] . ' ';
-                                    if (!empty($faculty['middle_name'])) $name .= substr($faculty['middle_name'], 0, 1) . '. ';
-                                    if (!empty($faculty['last_name'])) $name .= $faculty['last_name'];
-                                ?>
-                                <option value="<?php echo $faculty['user_id']; ?>"><?php echo $name . ' (' . $faculty['role'] . ')'; ?></option>
+                                <?php foreach ($faculty_members as $faculty): ?>
+                                <option value="<?php echo $faculty['user_id']; ?>"><?php echo $faculty['email'] . ' (' . $faculty['role'] . ')'; ?></option>
                                 <?php endforeach; ?>
                             </select>
                             <p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple panel members</p>
@@ -560,7 +561,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     </div>
 
     <!-- Hidden form for deletion -->
-    <form id="deleteForm" method="POST" action="defense_scheduling.php" class="hidden">
+    <form id="deleteForm" method="POST" action="admin-pages/admin-defense.php" class="hidden">
         <input type="hidden" name="delete_schedule" value="1">
         <input type="hidden" id="defense_id" name="defense_id" value="">
     </form>

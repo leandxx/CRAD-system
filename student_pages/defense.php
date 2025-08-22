@@ -42,8 +42,8 @@ if ($has_group) {
     if (mysqli_num_rows($defense_result) > 0) {
         $defense_schedule = mysqli_fetch_assoc($defense_result);
         
-        // Get panel members
-        $panel_query = "SELECT u.user_id, u.email, u.first_name, u.last_name, u.middle_name, dp.role 
+        // Get panel members - fixed to use only available columns
+        $panel_query = "SELECT u.user_id, u.email, dp.role 
                        FROM defense_panel dp 
                        JOIN user_tbl u ON dp.faculty_id = u.user_id 
                        WHERE dp.defense_id = '{$defense_schedule['id']}' 
@@ -288,10 +288,8 @@ if ($has_group) {
                                 <h3 class="font-medium text-gray-600">Panel Members</h3>
                                 <div class="mt-1 space-y-2">
                                     <?php foreach ($panel_members as $panel): 
-                                        $initials = '';
-                                        if (!empty($panel['first_name'])) $initials .= substr($panel['first_name'], 0, 1);
-                                        if (!empty($panel['last_name'])) $initials .= substr($panel['last_name'], 0, 1);
-                                        if (empty($initials)) $initials = substr($panel['email'], 0, 2);
+                                        // Use email for initials since name columns don't exist
+                                        $initials = substr($panel['email'], 0, 2);
                                         
                                         $colors = ['blue', 'purple', 'green', 'yellow', 'red'];
                                         $color = $colors[array_rand($colors)];
@@ -302,12 +300,8 @@ if ($has_group) {
                                         </div>
                                         <span>
                                             <?php 
-                                            $name = '';
-                                            if (!empty($panel['first_name'])) $name .= $panel['first_name'] . ' ';
-                                            if (!empty($panel['middle_name'])) $name .= substr($panel['middle_name'], 0, 1) . '. ';
-                                            if (!empty($panel['last_name'])) $name .= $panel['last_name'];
-                                            if (empty($name)) $name = $panel['email'];
-                                            echo $name . ' (' . ucfirst($panel['role']) . ')';
+                                            // Display email since name columns don't exist
+                                            echo $panel['email'] . ' (' . ucfirst($panel['role']) . ')';
                                             ?>
                                         </span>
                                     </div>

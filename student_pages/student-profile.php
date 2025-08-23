@@ -5,13 +5,10 @@ session_start();
 // Debug: Check what's in the session
 error_log("Session data: " . print_r($_SESSION, true));
 
-
 if (!isset($_SESSION['user_id']) || strcasecmp($_SESSION['role'], 'student') !== 0) {
     header("Location: ../auth/student-login.php");
     exit();
 }
-
-
 
 $user_id = $_SESSION['user_id'];
 $message = '';
@@ -27,18 +24,18 @@ $existing_profile = $profile_result->fetch_assoc();
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $school_id = $_POST['school_id'];
     $full_name = $_POST['full_name'];
-    $department = $_POST['department'];
+    $course = $_POST['course']; // Changed from department to course
     $section = $_POST['section'];
     $school_year = $_POST['school_year'];
     
     if ($existing_profile) {
         // Update existing profile
-        $stmt = $conn->prepare("UPDATE student_profiles SET school_id=?, full_name=?, department=?, section=?, school_year=? WHERE user_id=?");
-        $stmt->bind_param("sssssi", $school_id, $full_name, $department, $section, $school_year, $user_id);
+        $stmt = $conn->prepare("UPDATE student_profiles SET school_id=?, full_name=?, course=?, section=?, school_year=? WHERE user_id=?");
+        $stmt->bind_param("sssssi", $school_id, $full_name, $course, $section, $school_year, $user_id);
     } else {
         // Insert new profile
-        $stmt = $conn->prepare("INSERT INTO student_profiles (user_id, school_id, full_name, department, section, school_year) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssss", $user_id, $school_id, $full_name, $department, $section, $school_year);
+        $stmt = $conn->prepare("INSERT INTO student_profiles (user_id, school_id, full_name, course, section, school_year) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssss", $user_id, $school_id, $full_name, $course, $section, $school_year);
     }
     
     if ($stmt->execute()) {
@@ -153,19 +150,20 @@ $profile_check->close();
                             </div>
                             
                             <div>
-                                <label for="department" class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                                <label for="course" class="block text-sm font-medium text-gray-700 mb-1">Course</label>
                                 <select 
-                                    id="department" 
-                                    name="department" 
+                                    id="course" 
+                                    name="course" 
                                     class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition input-field"
                                     required
                                 >
-                                    <option value="">Select Department</option>
-                                    <option value="Computer Science" <?php echo (isset($existing_profile['department']) && $existing_profile['department'] == 'Computer Science') ? 'selected' : ''; ?>>Computer Science</option>
-                                    <option value="Engineering" <?php echo (isset($existing_profile['department']) && $existing_profile['department'] == 'Engineering') ? 'selected' : ''; ?>>Engineering</option>
-                                    <option value="Business Administration" <?php echo (isset($existing_profile['department']) && $existing_profile['department'] == 'Business Administration') ? 'selected' : ''; ?>>Business Administration</option>
-                                    <option value="Education" <?php echo (isset($existing_profile['department']) && $existing_profile['department'] == 'Education') ? 'selected' : ''; ?>>Education</option>
-                                    <option value="Arts and Sciences" <?php echo (isset($existing_profile['department']) && $existing_profile['department'] == 'Arts and Sciences') ? 'selected' : ''; ?>>Arts and Sciences</option>
+                                   <option value="">Select Course</option>
+                                    <option value="BSCS" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSCS') ? 'selected' : ''; ?>>BSCS - Computer Science</option>
+                                    <option value="BSBA" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSBA') ? 'selected' : ''; ?>>BSBA - Business Administration</option>
+                                    <option value="BSED" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSED') ? 'selected' : ''; ?>>BSED - Education</option>
+                                    <option value="BSIT" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSIT') ? 'selected' : ''; ?>>BSIT - Information Technology</option>
+                                    <option value="BSCRIM" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSCRIM') ? 'selected' : ''; ?>>BSCRIM - Criminology</option>
+
                                 </select>
                             </div>
                             
@@ -245,11 +243,11 @@ $profile_check->close();
                             
                             <div class="flex items-center p-4 bg-gray-50 rounded-lg">
                                 <div class="bg-primary/10 p-3 rounded-full mr-4">
-                                    <i class="fas fa-building text-primary text-xl"></i>
+                                    <i class="fas fa-book text-primary text-xl"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-gray-500">Department</p>
-                                    <p class="font-medium"><?php echo htmlspecialchars($existing_profile['department']); ?></p>
+                                    <p class="text-sm text-gray-500">Course</p>
+                                    <p class="font-medium"><?php echo htmlspecialchars($existing_profile['course']); ?></p>
                                 </div>
                             </div>
                             

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Aug 22, 2025 at 07:47 AM
+-- Generation Time: Aug 23, 2025 at 10:16 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -40,7 +40,7 @@ CREATE TABLE `defense_panel` (
 --
 
 INSERT INTO `defense_panel` (`id`, `defense_id`, `faculty_id`, `role`, `created_at`) VALUES
-(1, 5, 5, 'member', '2025-08-22 05:46:02');
+(3, 6, 5, 'member', '2025-08-23 03:08:57');
 
 -- --------------------------------------------------------
 
@@ -64,7 +64,7 @@ CREATE TABLE `defense_schedules` (
 --
 
 INSERT INTO `defense_schedules` (`id`, `group_id`, `defense_date`, `start_time`, `end_time`, `room_id`, `status`, `created_at`) VALUES
-(5, 4, '2025-08-23', '08:00:00', '08:30:00', 5, 'scheduled', '2025-08-22 05:46:02');
+(6, 4, '2025-08-23', '11:10:00', '11:11:00', 1, 'completed', '2025-08-22 05:48:48');
 
 -- --------------------------------------------------------
 
@@ -120,6 +120,53 @@ CREATE TABLE `group_members` (
 INSERT INTO `group_members` (`id`, `group_id`, `student_id`) VALUES
 (4, 4, 1),
 (5, 4, 2);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `panel_invitations`
+--
+
+CREATE TABLE `panel_invitations` (
+  `id` int(11) NOT NULL,
+  `defense_id` int(11) NOT NULL,
+  `panel_id` int(11) NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `status` enum('pending','accepted','rejected') DEFAULT 'pending',
+  `invited_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `responded_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `panel_invitations`
+--
+
+INSERT INTO `panel_invitations` (`id`, `defense_id`, `panel_id`, `token`, `status`, `invited_at`, `responded_at`) VALUES
+(1, 6, 1, '500b1c08ba8b155ea7b60c931c1304e078cde970c93437ba91774eb8e7621749', 'accepted', '2025-08-23 11:41:29', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `panel_members`
+--
+
+CREATE TABLE `panel_members` (
+  `id` int(11) NOT NULL,
+  `first_name` varchar(100) NOT NULL,
+  `last_name` varchar(100) NOT NULL,
+  `email` varchar(150) NOT NULL,
+  `specialization` varchar(255) NOT NULL,
+  `status` enum('active','inactive') DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `panel_members`
+--
+
+INSERT INTO `panel_members` (`id`, `first_name`, `last_name`, `email`, `specialization`, `status`, `created_at`, `updated_at`) VALUES
+(1, 'John Marvic', 'Giray', 'girayjohnmarvic09@gmail.com', 'Information Technology', 'active', '2025-08-23 03:41:13', '2025-08-23 03:41:13');
 
 -- --------------------------------------------------------
 
@@ -349,6 +396,22 @@ ALTER TABLE `group_members`
   ADD KEY `student_id` (`student_id`);
 
 --
+-- Indexes for table `panel_invitations`
+--
+ALTER TABLE `panel_invitations`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `token` (`token`),
+  ADD UNIQUE KEY `unique_invitation` (`defense_id`,`panel_id`),
+  ADD KEY `panel_id` (`panel_id`);
+
+--
+-- Indexes for table `panel_members`
+--
+ALTER TABLE `panel_members`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
 -- Indexes for table `payments`
 --
 ALTER TABLE `payments`
@@ -409,13 +472,13 @@ ALTER TABLE `user_tbl`
 -- AUTO_INCREMENT for table `defense_panel`
 --
 ALTER TABLE `defense_panel`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `defense_schedules`
 --
 ALTER TABLE `defense_schedules`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `document_submissions`
@@ -434,6 +497,18 @@ ALTER TABLE `groups`
 --
 ALTER TABLE `group_members`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `panel_invitations`
+--
+ALTER TABLE `panel_invitations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `panel_members`
+--
+ALTER TABLE `panel_members`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `payments`
@@ -507,6 +582,13 @@ ALTER TABLE `group_members`
   ADD CONSTRAINT `group_members_ibfk_2` FOREIGN KEY (`student_id`) REFERENCES `user_tbl` (`user_id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `panel_invitations`
+--
+ALTER TABLE `panel_invitations`
+  ADD CONSTRAINT `panel_invitations_ibfk_1` FOREIGN KEY (`defense_id`) REFERENCES `defense_schedules` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `panel_invitations_ibfk_2` FOREIGN KEY (`panel_id`) REFERENCES `panel_members` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `payments`
 --
 ALTER TABLE `payments`
@@ -517,6 +599,18 @@ ALTER TABLE `payments`
 --
 ALTER TABLE `proposals`
   ADD CONSTRAINT `proposals_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE;
+
+DELIMITER $$
+--
+-- Events
+--
+CREATE DEFINER=`root`@`localhost` EVENT `defense_schedules` ON SCHEDULE EVERY 1 MINUTE STARTS '2025-08-23 11:13:12' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE defense_schedules
+  SET status = 'completed'
+  WHERE end_time < CURTIME() 
+    AND defense_date <= CURDATE()
+    AND status = 'scheduled'$$
+
+DELIMITER ;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

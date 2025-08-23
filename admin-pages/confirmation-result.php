@@ -33,9 +33,11 @@
             <p class="text-gray-700 mb-6">An error occurred processing your response.</p>
         <?php endif; ?>
         
-        <a href="../index.php" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
-            <i class="fas fa-home mr-2"></i> Return to Home
-        </a>
+        <a href="#" 
+   onclick="window.close(); return false;" 
+   class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+   <i class="fas fa-home mr-2"></i> Return to Home
+</a>
     </div>
 </body>
 </html>

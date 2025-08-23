@@ -1,6 +1,6 @@
 <?php
 session_start();
-include('includes/connection.php');
+include('../includes/connection.php');
 
 if (isset($_GET['token']) && isset($_GET['status'])) {
     $token = mysqli_real_escape_string($conn, $_GET['token']);
@@ -54,5 +54,5 @@ if (isset($_GET['token']) && isset($_GET['status'])) {
     $_SESSION['confirmation_message'] = "Invalid confirmation request.";
 }
 
-header("Location: ../confirmation-result.php");
+header("Location: ../admin-pages/confirmation-result.php");
 exit();

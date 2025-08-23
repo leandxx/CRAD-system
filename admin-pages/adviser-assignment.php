@@ -13,60 +13,10 @@ include('../includes/connection.php'); // Your DB connection
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-  /* Add this to your existing styles */
-  .scroll-container {
-    max-height: calc(100vh - 80px);
-    overflow-y: auto;
-  }
-</style>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#2563eb',
-                        secondary: '#7c3aed',
-                        success: '#10b981',
-                        warning: '#f59e0b',
-                        danger: '#ef4444'
-                    }
-                }
-            }
+        .scroll-container {
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
         }
-
-        function toggleModal() {
-            const modal = document.getElementById('assignmentModal');
-            modal.classList.toggle('hidden');
-            modal.classList.toggle('flex');
-        }
-        
-        // Function to handle search
-        function handleSearch() {
-            const searchValue = document.getElementById('searchInput').value.toLowerCase();
-            const cards = document.querySelectorAll('.section-card');
-            
-            cards.forEach(card => {
-                const text = card.textContent.toLowerCase();
-                card.style.display = text.includes(searchValue) ? '' : 'none';
-            });
-        }
-        
-        // Function to filter by status
-        function filterByStatus() {
-            const statusValue = document.getElementById('statusFilter').value;
-            const cards = document.querySelectorAll('.section-card');
-            
-            cards.forEach(card => {
-                const status = card.getAttribute('data-status');
-                if (statusValue === 'all' || status === statusValue) {
-                    card.style.display = '';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        }
-    </script>
-    <style>
         .notification-dot.pulse {
             animation: pulse 2s infinite;
         }
@@ -96,8 +46,6 @@ include('../includes/connection.php'); // Your DB connection
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans h-screen overflow-hidden">
-
-    <body class="bg-gray-50 text-gray-800 font-sans h-screen">
     <div class="flex">
         <!-- Sidebar/header -->
         <?php include('../includes/admin-sidebar.php'); ?>
@@ -364,21 +312,8 @@ include('../includes/connection.php'); // Your DB connection
                     <div class="section-card bg-white rounded-lg shadow-sm p-6 card-hover" data-status="pending">
                         <div class="flex justify-between items-start mb-4">
                             <div>
-                                <h3 class="text-xl font-bold text-gray-900">Section E</h3>
-                                <p class="text-sm text-gray-500">4th Year - Psychology</p>
-                            </div>
-                            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-warning text-white">
-                                Pending
-                            </span>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <div class="flex justify-between text-sm text-gray-500 mb-1">
-                                <span>Students: 0/26</span>
-                                <span>0%</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill bg-warning" style="width: 0%"></div>
+                                <p class="text-sm font-medium"><?php echo $section['first_name'] . ' ' . $section['last_name']; ?></p>
+                                <p class="text-xs text-gray-500"><?php echo $section['faculty_department']; ?> Department</p>
                             </div>
                         </div>
                         
@@ -491,7 +426,7 @@ include('../includes/connection.php'); // Your DB connection
                     </div>
                     
                     <div class="flex items-center mb-4">
-                        <input type="checkbox" id="sendEmail" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                        <input type="checkbox" id="sendEmail" name="send_email" class="h-4 w-4 text-blue-500 focus:ring-blue-500 border-gray-300 rounded">
                         <label for="sendEmail" class="ml-2 block text-sm text-gray-700">Send notification email to adviser</label>
                     </div>
                 </form>

@@ -7,15 +7,9 @@ if (isset($_GET['token']) && isset($_GET['status'])) {
     $status = mysqli_real_escape_string($conn, $_GET['status']);
     
     // Check if token exists and is valid
-    $query = "SELECT pi.*, pm.first_name, pm.last_name, pm.email, 
-             ds.defense_date, ds.start_time, ds.end_time, g.name as group_name,
-             p.title as proposal_title, r.room_name, r.building
+    $query = "SELECT pi.*, pm.first_name, pm.last_name, pm.email
              FROM panel_invitations pi
              JOIN panel_members pm ON pi.panel_id = pm.id
-             JOIN defense_schedules ds ON pi.defense_id = ds.id
-             JOIN groups g ON ds.group_id = g.id
-             JOIN proposals p ON g.id = p.group_id
-             LEFT JOIN rooms r ON ds.room_id = r.id
              WHERE pi.token = '$token' 
              AND pi.status = 'pending'";
     
@@ -25,23 +19,18 @@ if (isset($_GET['token']) && isset($_GET['status'])) {
         $invitation = mysqli_fetch_assoc($result);
         
         // Update invitation status
-        $update_query = "UPDATE panel_invitations SET status = '$status', responded_at = NOW() 
-                       WHERE token = '$token'";
+        $update_query = "UPDATE panel_invitations 
+                        SET status = '$status', responded_at = NOW() 
+                        WHERE token = '$token'";
         
         if (mysqli_query($conn, $update_query)) {
             if ($status == 'accepted') {
-                // Add to defense panel if not already added
-                $check_panel = "SELECT * FROM defense_panel 
-                              WHERE defense_id = '{$invitation['defense_id']}' 
-                              AND faculty_id = '{$invitation['panel_id']}'";
-                $panel_result = mysqli_query($conn, $check_panel);
-                
-                if (mysqli_num_rows($panel_result) == 0) {
-                    $insert_panel = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
-                                   VALUES ('{$invitation['defense_id']}', '{$invitation['panel_id']}', 'member')";
-                    mysqli_query($conn, $insert_panel);
-                }
-                
+                /**
+                 * NOTE:
+                 * Since defense_id is not stored in panel_invitations,
+                 * you cannot directly insert into defense_panel here
+                 * unless you later modify invitations to include defense_id.
+                 */
                 $_SESSION['confirmation_message'] = "Thank you for accepting the panel invitation!";
             } else {
                 $_SESSION['confirmation_message'] = "You have declined the panel invitation.";

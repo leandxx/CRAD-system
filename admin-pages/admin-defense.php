@@ -101,11 +101,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // Get all defense schedules
-$defense_query = "SELECT ds.*, g.name as group_name, r.room_name, r.building, p.title as proposal_title
+$defense_query = "SELECT ds.*, g.name as group_name, r.room_name, r.building, p.title as proposal_title,
+                 GROUP_CONCAT(CONCAT(pm.first_name, ' ', pm.last_name) SEPARATOR ', ') as panel_names
                  FROM defense_schedules ds 
                  LEFT JOIN groups g ON ds.group_id = g.id 
                  LEFT JOIN rooms r ON ds.room_id = r.id 
                  LEFT JOIN proposals p ON g.id = p.group_id
+                 LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
+                 LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
+                 GROUP BY ds.id
                  ORDER BY ds.defense_date, ds.start_time";
 $defense_result = mysqli_query($conn, $defense_query);
 $defense_schedules = [];
@@ -160,6 +164,20 @@ $faculty_members = [];
 
 while ($faculty = mysqli_fetch_assoc($faculty_result)) {
     $faculty_members[] = $faculty;
+}
+
+// Get accepted panel members from panel management system
+$accepted_panel_query = "SELECT pm.*, pi.status as invitation_status 
+                        FROM panel_members pm 
+                        LEFT JOIN panel_invitations pi ON pm.id = pi.panel_id 
+                        WHERE pi.status = 'accepted' OR pm.status = 'active'
+                        GROUP BY pm.id
+                        ORDER BY pm.last_name, pm.first_name";
+$accepted_panel_result = mysqli_query($conn, $accepted_panel_query);
+$accepted_panel_members = [];
+
+while ($panel_member = mysqli_fetch_assoc($accepted_panel_result)) {
+    $accepted_panel_members[] = $panel_member;
 }
 
 // Get all rooms
@@ -225,6 +243,27 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         .detail-icon {
             margin-top: 0.25rem;
             color: #6b7280;
+        }
+        .panel-tabs {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
+        }
+        .panel-tab {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .panel-tab.active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+            font-weight: 500;
+        }
+        .panel-content {
+            display: none;
+        }
+        .panel-content.active {
+            display: block;
         }
     </style>
     <script>
@@ -352,10 +391,34 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             }
         }
         
+        // Function to switch between panel member tabs
+        function switchPanelTab(tabName) {
+            // Update active tab
+            document.querySelectorAll('.panel-tab').forEach(tab => {
+                if (tab.getAttribute('data-tab') === tabName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // Show active content
+            document.querySelectorAll('.panel-content').forEach(content => {
+                if (content.getAttribute('data-tab') === tabName) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+        
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
             // Set default filter to 'all'
             filterStatus('all');
+            
+            // Set default panel tab to 'accepted'
+            switchPanelTab('accepted');
         });
     </script>
 </head>
@@ -470,15 +533,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <?php echo $schedule['building'] . ' ' . $schedule['room_name']; ?>
                             </p>
                             <p class="text-sm text-gray-700 mb-3">
-                                <i class="fas fa-users mr-2 text-gray-400"></i>
-                                <?php 
-                                    $panel_emails = [];
-                                    foreach ($schedule['panel_members'] as $panel) {
-                                        $panel_emails[] = $panel['email'];
-                                    }
-                                    echo !empty($panel_emails) ? implode(', ', $panel_emails) : 'No panel assigned';
-                                ?>
-                            </p>
+    <i class="fas fa-users mr-2 text-gray-400"></i>
+    <?php echo !empty($schedule['panel_names']) ? $schedule['panel_names'] : 'No panel assigned'; ?>
+</p>
                         </div>
 
                         <!-- Status & Actions -->
@@ -554,35 +611,23 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <p class="text-gray-600 text-sm mb-3"><?php echo $upcoming['group_name']; ?></p>
                     <div class="flex items-center text-sm text-gray-500 mb-2">
                         <i class="far fa-calendar-alt mr-2"></i>
-                        <span><?php echo date('M j, Y', strtotime($upcoming['defense_date'])); ?> | <?php echo date('g:i A', strtotime($upcoming['start_time'])); ?> - <?php echo date('g:i A', strtotime($upcoming['end_time'])); ?></span>
+                        <span><?php echo date('M j, Y', strtotime($upcoming['defense_date'])); ?>
                     </div>
-                    <div class="flex items-center text-sm text-gray-500 mb-3">
-                        <i class="far fa-building mr-2"></i>
+                    <div class="flex items-center text-sm text-gray-500 mb-2">
+                        <i class="far fa-clock mr-2"></i>
+                        <span><?php echo date('g:i A', strtotime($upcoming['start_time'])); ?> - <?php echo date('g:i A', strtotime($upcoming['end_time'])); ?></span>
+                    </div>
+                    <div class="flex items-center text-sm text-gray-500">
+                        <i class="fas fa-map-marker-alt mr-2"></i>
                         <span><?php echo $upcoming['building'] . ' ' . $upcoming['room_name']; ?></span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <div class="text-sm text-gray-500">Panel assigned</div>
-                        <button onclick="viewDefenseDetails(<?php echo $upcoming['id']; ?>)" class="text-xs bg-primary hover:bg-blue-700 text-white px-2 py-1 rounded">View Details</button>
                     </div>
                 </div>
                 <?php endwhile; ?>
                 
-                <!-- Show if no upcoming defenses -->
-                <?php if (mysqli_num_rows($upcoming_result) == 0): ?>
-                <div class="schedule-card bg-white rounded-lg shadow p-4 border-l-4 border-warning">
-                    <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-bold text-lg">No Upcoming Defenses</h3>
-                        <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">Info</span>
-                    </div>
-                    <p class="text-gray-600 text-sm mb-3">There are no defense schedules in the upcoming days.</p>
-                    <div class="flex items-center text-sm text-gray-500 mb-2">
-                        <i class="far fa-calendar-alt mr-2"></i>
-                        <span>No dates scheduled</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <div class="text-sm text-gray-500">Schedule a defense now</div>
-                        <button onclick="toggleModal()" class="text-xs bg-primary hover:bg-blue-700 text-white px-2 py-1 rounded">Schedule Now</button>
-                    </div>
+                <?php if (mysqli_num_rows($upcoming_result) === 0): ?>
+                <div class="schedule-card bg-white rounded-lg shadow p-4 border-l-4 border-gray-300 col-span-3 text-center py-8">
+                    <i class="far fa-calendar-alt text-4xl text-gray-400 mb-3"></i>
+                    <p class="text-gray-500">No upcoming defenses scheduled</p>
                 </div>
                 <?php endif; ?>
             </div>
@@ -590,243 +635,302 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     </div>
 
     <!-- Schedule Defense Modal -->
-    <div id="proposalModal" class="fixed inset-0 w-full h-full flex items-center justify-center z-50 hidden bg-black bg-opacity-50">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-auto max-h-[90vh] overflow-y-auto border border-gray-200">
-            <div class="flex justify-between items-center border-b px-6 py-4">
-                <h3 class="text-xl font-bold text-primary">Schedule Defense</h3>
-                <button type="button" onclick="toggleModal()" class="text-gray-400 hover:text-gray-500 text-2xl">
+    <div id="proposalModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-auto my-auto">
+            <div class="border-b px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-semibold">Schedule Defense</h3>
+                <button onclick="toggleModal()" class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="p-8">
-                <form method="POST" action="admin-pages/admin-defense.php">
-                    <input type="hidden" name="schedule_defense" value="1">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="group_id">
-                                Select Group
-                            </label>
-                            <select id="group_id" name="group_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                                <option value="">-- Select a group --</option>
-                                <?php foreach ($groups as $group): ?>
-                                <option value="<?php echo $group['id']; ?>"><?php echo $group['name'] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="defense_date">
-                                Defense Date
-                            </label>
-                            <input type="date" id="defense_date" name="defense_date" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="start_time">
-                                Start Time
-                            </label>
-                            <input type="time" id="start_time" name="start_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="end_time">
-                                End Time
-                            </label>
-                            <input type="time" id="end_time" name="end_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="room_id">
-                                Venue
-                            </label>
-                            <select id="room_id" name="room_id" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                                <option value="">-- Select a room --</option>
-                                <?php foreach ($rooms as $room): ?>
-                                <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="panel_members">
-                                Panel Members
-                            </label>
-                            <select id="panel_members" name="panel_members[]" multiple class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary h-32">
-                                <?php foreach ($faculty_members as $faculty): ?>
-                                <option value="<?php echo $faculty['user_id']; ?>"><?php echo $faculty['email'] . ' (' . $faculty['role'] . ')'; ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple panel members</p>
-                        </div>
+            <form method="POST" action="" class="p-6">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-medium mb-2" for="group_id">Select Group</label>
+                    <select name="group_id" id="group_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">Select a group</option>
+                        <?php foreach ($groups as $group): ?>
+                        <option value="<?php echo $group['id']; ?>"><?php echo $group['name'] . ' - ' . $group['proposal_title']; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="defense_date">Defense Date</label>
+                        <input type="date" name="defense_date" id="defense_date" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                     </div>
-                    <div class="mb-4">
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="notes">
-                            Additional Notes
-                        </label>
-                        <textarea id="notes" name="notes" rows="3" placeholder="Any additional information..." class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="room_id">Room</label>
+                        <select name="room_id" id="room_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">Select a room</option>
+                            <?php foreach ($rooms as $room): ?>
+                            <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button type="button" onclick="toggleModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
-                            Cancel
-                        </button>
-                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">
-                            Schedule Defense
-                        </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="start_time">Start Time</label>
+                        <input type="time" name="start_time" id="start_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                     </div>
-                </form>
-            </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="end_time">End Time</label>
+                        <input type="time" name="end_time" id="end_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Panel Members</label>
+                    
+                    <!-- Panel Tabs -->
+                    <div class="panel-tabs mb-3">
+                        <div class="panel-tab active" data-tab="accepted" onclick="switchPanelTab('accepted')">Accepted Panel</div>
+                        <div class="panel-tab" data-tab="faculty" onclick="switchPanelTab('faculty')">All Faculty</div>
+                    </div>
+                    
+                    <!-- Accepted Panel Content -->
+                    <div class="panel-content active" data-tab="accepted">
+                        <?php if (!empty($accepted_panel_members)): ?>
+                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg">
+                            <?php foreach ($accepted_panel_members as $panel_member): ?>
+                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-2 rounded text-primary focus:ring-primary">
+                                <span><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name'] . ' (' . $panel_member['email'] . ')'; ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php else: ?>
+                        <p class="text-gray-500 text-sm p-2 border rounded-lg">No accepted panel members found.</p>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <!-- All Faculty Content -->
+                    <div class="panel-content" data-tab="faculty">
+                        <?php if (!empty($faculty_members)): ?>
+                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg">
+                            <?php foreach ($faculty_members as $faculty): ?>
+                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $faculty['user_id']; ?>" class="mr-2 rounded text-primary focus:ring-primary">
+                                <span><?php echo $faculty['first_name'] . ' ' . $faculty['last_name'] . ' (' . $faculty['email'] . ')'; ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php else: ?>
+                        <p class="text-gray-500 text-sm p-2 border rounded-lg">No faculty members found.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" onclick="toggleModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" name="schedule_defense" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">Schedule Defense</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <!-- Edit Defense Modal -->
-    <div id="editDefenseModal" class="fixed inset-0 w-full h-full flex items-center justify-center z-50 hidden bg-black bg-opacity-50">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-auto max-h-[90vh] overflow-y-auto border border-gray-200">
-            <div class="flex justify-between items-center border-b px-6 py-4">
-                <h3 class="text-xl font-bold text-primary">Edit Defense Schedule</h3>
-                <button type="button" onclick="toggleEditModal()" class="text-gray-400 hover:text-gray-500 text-2xl">
+    <div id="editDefenseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-auto my-auto">
+            <div class="border-b px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-semibold">Edit Defense Schedule</h3>
+                <button onclick="toggleEditModal()" class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="p-8">
-                <form id="editDefenseForm" method="POST" action="admin-pages/admin-defense.php">
-                    <input type="hidden" name="edit_defense" value="1">
-                    <input type="hidden" id="edit_defense_id" name="defense_id">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_group_id">
-                                Group
-                            </label>
-                            <select id="edit_group_id" name="group_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" disabled>
-                                <?php foreach ($groups as $group): ?>
-                                <option value="<?php echo $group['id']; ?>"><?php echo $group['name'] . ' - ' . $group['proposal_title']; ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_defense_date">
-                                Defense Date
-                            </label>
-                            <input type="date" id="edit_defense_date" name="defense_date" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_start_time">
-                                Start Time
-                            </label>
-                            <input type="time" id="edit_start_time" name="start_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_end_time">
-                                End Time
-                            </label>
-                            <input type="time" id="edit_end_time" name="end_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_room_id">
-                                Venue
-                            </label>
-                            <select id="edit_room_id" name="room_id" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                                <?php foreach ($rooms as $room): ?>
-                                <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="edit_panel_members">
-                                Panel Members
-                            </label>
-                            <select id="edit_panel_members" name="panel_members[]" multiple class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary h-32">
-                                <?php foreach ($faculty_members as $faculty): ?>
-                                <option value="<?php echo $faculty['user_id']; ?>"><?php echo $faculty['email'] . ' (' . $faculty['role'] . ')'; ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple panel members</p>
-                        </div>
+            <form method="POST" action="" class="p-6">
+                <input type="hidden" name="defense_id" id="edit_defense_id">
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Group</label>
+                    <p id="edit_group_name" class="px-3 py-2 bg-gray-100 rounded-lg"></p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_defense_date">Defense Date</label>
+                        <input type="date" name="defense_date" id="edit_defense_date" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                     </div>
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button type="button" onclick="toggleEditModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
-                            Cancel
-                        </button>
-                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">
-                            Save Changes
-                        </button>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_room_id">Room</label>
+                        <select name="room_id" id="edit_room_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">Select a room</option>
+                            <?php foreach ($rooms as $room): ?>
+                            <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-                </form>
-            </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_start_time">Start Time</label>
+                        <input type="time" name="start_time" id="edit_start_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_end_time">End Time</label>
+                        <input type="time" name="end_time" id="edit_end_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Panel Members</label>
+                    
+                    <!-- Panel Tabs -->
+                    <div class="panel-tabs mb-3">
+                        <div class="panel-tab active" data-tab="edit_accepted" onclick="switchEditPanelTab('edit_accepted')">Accepted Panel</div>
+                        <div class="panel-tab" data-tab="edit_faculty" onclick="switchEditPanelTab('edit_faculty')">All Faculty</div>
+                    </div>
+                    
+                    <!-- Accepted Panel Content -->
+                    <div class="panel-content active" data-tab="edit_accepted">
+                        <?php if (!empty($accepted_panel_members)): ?>
+                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg" id="edit_accepted_panel">
+                            <?php foreach ($accepted_panel_members as $panel_member): ?>
+                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="edit-panel-member mr-2 rounded text-primary focus:ring-primary" data-id="<?php echo $panel_member['id']; ?>">
+                                <span><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name'] . ' (' . $panel_member['email'] . ')'; ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php else: ?>
+                        <p class="text-gray-500 text-sm p-2 border rounded-lg">No accepted panel members found.</p>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <!-- All Faculty Content -->
+                    <div class="panel-content" data-tab="edit_faculty">
+                        <?php if (!empty($faculty_members)): ?>
+                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg" id="edit_faculty_panel">
+                            <?php foreach ($faculty_members as $faculty): ?>
+                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $faculty['user_id']; ?>" class="edit-panel-member mr-2 rounded text-primary focus:ring-primary" data-id="<?php echo $faculty['user_id']; ?>">
+                                <span><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name'] . ' (' . $panel_member['email'] . ')'; ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php else: ?>
+                        <p class="text-gray-500 text-sm p-2 border rounded-lg">No faculty members found.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" onclick="toggleEditModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" name="edit_defense" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">Update Schedule</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- View Details Modal -->
-    <div id="detailsModal" class="fixed inset-0 w-full h-full flex items-center justify-center z-50 hidden bg-black bg-opacity-50">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto border border-gray-200 modal overflow-y-auto max-h-[90vh]">
-            <div class="flex justify-between items-center border-b px-6 py-4 bg-primary text-white rounded-t-xl">
-                <h3 class="text-xl font-bold">Defense Details</h3>
-                <button type="button" onclick="toggleDetailsModal()" class="text-white hover:text-gray-200 text-2xl">
+    <!-- Defense Details Modal -->
+    <div id="detailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="border-b px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-semibold">Defense Details</h3>
+                <button onclick="toggleDetailsModal()" class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="p-6">
-                <div class="mb-6 space-y-4">
+                <h3 id="detailTitle" class="text-xl font-semibold text-gray-900 mb-2"></h3>
+                <p id="detailGroup" class="text-gray-600 mb-6"></p>
+                
+                <div class="details-grid mb-6">
+                    <i class="fas fa-calendar detail-icon"></i>
                     <div>
-                        <h4 id="detailTitle" class="text-lg font-semibold text-gray-900 mb-1"></h4>
-                        <p id="detailGroup" class="text-sm text-gray-600"></p>
+                        <p class="text-sm text-gray-500">Date</p>
+                        <p id="detailDate" class="font-medium"></p>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <span class="inline-flex items-center px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs font-medium" id="detailStatus"></span>
+                    
+                    <i class="fas fa-clock detail-icon"></i>
+                    <div>
+                        <p class="text-sm text-gray-500">Time</p>
+                        <p id="detailTime" class="font-medium"></p>
                     </div>
-                    <div class="space-y-2">
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-calendar text-gray-400"></i>
-                            <span id="detailDate" class="text-sm text-gray-800"></span>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-clock text-gray-400"></i>
-                            <span id="detailTime" class="text-sm text-gray-800"></span>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <i class="fas fa-map-marker-alt text-gray-400"></i>
-                            <span id="detailLocation" class="text-sm text-gray-800"></span>
-                        </div>
-                        <div class="flex items-start gap-3">
-                            <i class="fas fa-users text-gray-400 mt-1"></i>
-                            <div id="detailPanel" class="text-sm text-gray-800 space-y-1"></div>
-                        </div>
+                    
+                    <i class="fas fa-map-marker-alt detail-icon"></i>
+                    <div>
+                        <p class="text-sm text-gray-500">Location</p>
+                        <p id="detailLocation" class="font-medium"></p>
+                    </div>
+                    
+                    <i class="fas fa-users detail-icon"></i>
+                    <div>
+                        <p class="text-sm text-gray-500">Panel Members</p>
+                        <p id="detailPanel" class="font-medium"></p>
+                    </div>
+                    
+                    <i class="fas fa-info-circle detail-icon"></i>
+                    <div>
+                        <p class="text-sm text-gray-500">Status</p>
+                        <p id="detailStatus" class="font-medium"></p>
                     </div>
                 </div>
-                <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-100">
-                    <button type="button" onclick="toggleDetailsModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
-                        Close
-                    </button>
+                
+                <div class="flex justify-end pt-4 border-t">
+                    <button onclick="toggleDetailsModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">Close</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Hidden form for deletion -->
-    <form id="deleteForm" method="POST" action="admin-pages/admin-defense.php" class="hidden">
+    <!-- Delete Form (Hidden) -->
+    <form id="deleteForm" method="POST" action="" class="hidden">
+        <input type="hidden" name="defense_id" id="defense_id">
         <input type="hidden" name="delete_schedule" value="1">
-        <input type="hidden" id="defense_id" name="defense_id" value="">
     </form>
 
+    <script>
+        // Function to populate edit form with defense data
+        function populateEditForm(schedule) {
+            document.getElementById('edit_defense_id').value = schedule.id;
+            document.getElementById('edit_group_name').textContent = schedule.group_name + ' - ' + (schedule.proposal_title || 'No Title');
+            document.getElementById('edit_defense_date').value = schedule.defense_date;
+            document.getElementById('edit_room_id').value = schedule.room_id;
+            document.getElementById('edit_start_time').value = schedule.start_time;
+            document.getElementById('edit_end_time').value = schedule.end_time;
+            
+            // Clear all checkboxes first
+            document.querySelectorAll('.edit-panel-member').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Check the panel members for this defense
+            if (schedule.panel_members && schedule.panel_members.length > 0) {
+                schedule.panel_members.forEach(panel => {
+                    const checkbox = document.querySelector(`.edit-panel-member[data-id="${panel.user_id}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
+            
+            toggleEditModal();
+        }
+        
+        // Function to switch between panel member tabs in edit modal
+        function switchEditPanelTab(tabName) {
+            // Update active tab
+            document.querySelectorAll('.panel-tab[data-tab^="edit_"]').forEach(tab => {
+                if (tab.getAttribute('data-tab') === tabName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // Show active content
+            document.querySelectorAll('.panel-content[data-tab^="edit_"]').forEach(content => {
+                if (content.getAttribute('data-tab') === tabName) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+    </script>
 </body>
 </html>
-
-<script>
-    // Populate edit form with defense schedule data
-    function populateEditForm(schedule) {
-        document.getElementById('edit_defense_id').value = schedule.id;
-        document.getElementById('edit_group_id').value = schedule.group_id;
-        document.getElementById('edit_defense_date').value = schedule.defense_date;
-        document.getElementById('edit_start_time').value = schedule.start_time;
-        document.getElementById('edit_end_time').value = schedule.end_time;
-        document.getElementById('edit_room_id').value = schedule.room_id;
-
-        // Set selected panel members
-        const panelMembers = schedule.panel_members.map(member => member.user_id);
-        const panelSelect = document.getElementById('edit_panel_members');
-        for (let i = 0; i < panelSelect.options.length; i++) {
-            const option = panelSelect.options[i];
-            if (panelMembers.includes(option.value)) {
-                option.selected = true;
-            } else {
-                option.selected = false;
-            }
-        }
-
-        toggleEditModal();
-    }
-</script>

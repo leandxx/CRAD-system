@@ -32,26 +32,29 @@ if ($has_group) {
     $group = mysqli_fetch_assoc($group_result);
     $group_id = $group['id'];
     
-    // Check defense schedule
-    $defense_query = "SELECT ds.*, r.room_name, r.building 
+    // Check defense schedule - updated query to include panel member names
+    $defense_query = "SELECT ds.*, r.room_name, r.building,
+                     pm.first_name, pm.last_name, dp.role
                      FROM defense_schedules ds 
                      LEFT JOIN rooms r ON ds.room_id = r.id 
+                     LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
+                     LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
                      WHERE ds.group_id = '$group_id'";
     $defense_result = mysqli_query($conn, $defense_query);
     
     if (mysqli_num_rows($defense_result) > 0) {
         $defense_schedule = mysqli_fetch_assoc($defense_result);
         
-        // Get panel members - fixed to use only available columns
-        $panel_query = "SELECT u.user_id, u.email, dp.role 
-                       FROM defense_panel dp 
-                       JOIN user_tbl u ON dp.faculty_id = u.user_id 
-                       WHERE dp.defense_id = '{$defense_schedule['id']}' 
-                       ORDER BY dp.role";
-        $panel_result = mysqli_query($conn, $panel_query);
-        
-        while ($panel = mysqli_fetch_assoc($panel_result)) {
-            $panel_members[] = $panel;
+        // Reset and fetch all panel members with names
+        mysqli_data_seek($defense_result, 0);
+        while ($row = mysqli_fetch_assoc($defense_result)) {
+            if (!empty($row['first_name']) && !empty($row['last_name'])) {
+                $panel_members[] = [
+                    'name' => $row['first_name'] . ' ' . $row['last_name'],
+                    'role' => $row['role'],
+                    'initials' => substr($row['first_name'], 0, 1) . substr($row['last_name'], 0, 1)
+                ];
+            }
         }
     }
     
@@ -287,22 +290,17 @@ if ($has_group) {
                             <div>
                                 <h3 class="font-medium text-gray-600">Panel Members</h3>
                                 <div class="mt-1 space-y-2">
-                                    <?php foreach ($panel_members as $panel): 
-                                        // Use email for initials since name columns don't exist
-                                        $initials = substr($panel['email'], 0, 2);
-                                        
+                                    <?php 
+                                    foreach ($panel_members as $panel): 
                                         $colors = ['blue', 'purple', 'green', 'yellow', 'red'];
                                         $color = $colors[array_rand($colors)];
                                     ?>
                                     <div class="flex items-center">
                                         <div class="w-6 h-6 rounded-full bg-<?php echo $color; ?>-200 flex items-center justify-center text-<?php echo $color; ?>-700 text-xs mr-2">
-                                            <?php echo strtoupper($initials); ?>
+                                            <?php echo strtoupper($panel['initials']); ?>
                                         </div>
                                         <span>
-                                            <?php 
-                                            // Display email since name columns don't exist
-                                            echo $panel['email'] . ' (' . ucfirst($panel['role']) . ')';
-                                            ?>
+                                            <?php echo $panel['name'] . ' (' . ucfirst($panel['role']) . ')'; ?>
                                         </span>
                                     </div>
                                     <?php endforeach; ?>

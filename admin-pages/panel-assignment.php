@@ -46,8 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 if ($conn->query($sql)) {
                     $success = "Panel member added successfully";
-                    // Clear POST data to prevent form repopulation
-                    unset($_POST);
+                    // Redirect to avoid resubmission
+                    header("Location: panel-assignment.php?success=" . urlencode($success));
+                    exit();
                 } else {
                     $error = "Error adding panel member: " . $conn->error;
                 }
@@ -66,6 +67,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Validate inputs
         if (empty($first_name) || empty($last_name) || empty($email) || empty($specialization)) {
             $error = "All fields are required";
+            // Keep $editData populated so the modal stays open with the entered data
+            $editData = [
+                'id' => $id,
+                'first_name' => $first_name,
+                'last_name' => $last_name,
+                'email' => $email,
+                'specialization' => $specialization,
+                'status' => $status
+            ];
         } else {
             // Check if email already exists for another panel member
             $check_sql = "SELECT id FROM panel_members WHERE email = '$email' AND id != $id";
@@ -73,6 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             if ($check_result->num_rows > 0) {
                 $error = "A panel member with this email already exists";
+                $editData = [
+                    'id' => $id,
+                    'first_name' => $first_name,
+                    'last_name' => $last_name,
+                    'email' => $email,
+                    'specialization' => $specialization,
+                    'status' => $status
+                ];
             } else {
                 $sql = "UPDATE panel_members SET 
                         first_name = '$first_name',
@@ -84,11 +102,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 if ($conn->query($sql)) {
                     $success = "Panel member updated successfully";
-                    // Redirect to clear the edit_id from URL
-                    header("Location: panel-management.php?success=Panel+member+updated+successfully");
+                    // Redirect to remove edit_id from URL
+                    header("Location: panel-assignment.php?success=" . urlencode($success));
                     exit();
                 } else {
                     $error = "Error updating panel member: " . $conn->error;
+                    $editData = [
+                        'id' => $id,
+                        'first_name' => $first_name,
+                        'last_name' => $last_name,
+                        'email' => $email,
+                        'specialization' => $specialization,
+                        'status' => $status
+                    ];
                 }
             }
         }
@@ -101,13 +127,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         if ($conn->query($sql)) {
             $success = "Panel member deleted successfully";
+            header("Location: panel-assignment.php?success=" . urlencode($success));
+            exit();
         } else {
             $error = "Error deleting panel member: " . $conn->error;
         }
     }
     elseif ($action == 'send_invitation') {
         $panel_ids = $_POST['panel_ids'] ?? [];
-        $defense_id = intval($_POST['defense_id']);
         $subject = $conn->real_escape_string($_POST['subject']);
         $message = $conn->real_escape_string($_POST['message']);
         
@@ -124,93 +151,76 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Generate unique token
                 $token = bin2hex(random_bytes(32));
                 
-                // Check if invitation already exists
-                $check_query = "SELECT id FROM panel_invitations WHERE defense_id = $defense_id AND panel_id = $panel_id";
-                $check_result = $conn->query($check_query);
                 
-                if ($check_result->num_rows == 0) {
-                    // Insert invitation
-                    $invite_query = "INSERT INTO panel_invitations (defense_id, panel_id, token, status, invited_at) 
-                                VALUES ($defense_id, $panel_id, '$token', 'pending', NOW())";
+                $invite_query = "INSERT INTO panel_invitations (panel_id, token, status, invited_at) 
+                            VALUES ($panel_id, '$token', 'pending', NOW())";
+                
+                if ($conn->query($invite_query)) {
+                    // Get panel member details
+                    $panel_query = "SELECT * FROM panel_members WHERE id = $panel_id";
+                    $panel_result = $conn->query($panel_query);
+                    $panel = $panel_result->fetch_assoc();
                     
-                    if ($conn->query($invite_query)) {
-                        // Get panel member details
-                        $panel_query = "SELECT * FROM panel_members WHERE id = $panel_id";
-                        $panel_result = $conn->query($panel_query);
-                        $panel = $panel_result->fetch_assoc();
+                    // Send email using PHPMailer
+                    $mail = new PHPMailer(true);
+                    
+                    try {
+                        // Server settings (configure these based on your email provider)
+                        $mail->isSMTP();
+                        $mail->Host       = 'smtp.gmail.com'; // Your SMTP server
+                        $mail->SMTPAuth   = true;
+                        $mail->Username   = 'cl6.crad@gmail.com'; // SMTP username
+                        $mail->Password   = 'fafn bcnq rcqe qgke'; // SMTP password (use app password for Gmail)
+                        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                        $mail->Port       = 587;
                         
-                        // Get defense details
-                        $defense_query = "SELECT ds.*, g.name as group_name, p.title as proposal_title 
-                                        FROM defense_schedules ds 
-                                        JOIN groups g ON ds.group_id = g.id 
-                                        JOIN proposals p ON g.id = p.group_id 
-                                        WHERE ds.id = $defense_id";
-                        $defense_result = $conn->query($defense_query);
-                        $defense = $defense_result->fetch_assoc();
+                        // Recipients
+                        $mail->setFrom('noreply@example.com', 'Thesis Defense System');
+                        $mail->addAddress($panel['email'], $panel['first_name'] . ' ' . $panel['last_name']);
                         
-                        // Send email using PHPMailer
-                        $mail = new PHPMailer(true);
+                        // Content
+                        $mail->isHTML(true);
+                        $mail->Subject = $subject;
                         
-                        try {
-                            // Server settings (configure these based on your email provider)
-                            $mail->isSMTP();
-                            $mail->Host       = 'smtp.gmail.com'; // Your SMTP server
-                            $mail->SMTPAuth   = true;
-                            $mail->Username   = 'girayjohnmarvic09@gmail.com'; // SMTP username
-                            $mail->Password   = 'vyxk qizb chng pjec'; // SMTP password (use app password for Gmail)
-                            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                            $mail->Port       = 587;
-                            
-                            // Recipients
-                            $mail->setFrom('noreply@example.com', 'Thesis Defense System');
-                            $mail->addAddress($panel['email'], $panel['first_name'] . ' ' . $panel['last_name']);
-                            
-                            // Content
-                            $mail->isHTML(true);
-                            $mail->Subject = $subject;
-                            
-                            // Create HTML email content
-                            $emailContent = "
-                                <html>
-                                <body>
-                                    <p>Dear {$panel['first_name']},</p>
-                                    <p>{$message}</p>
-                                    <p><strong>Defense Details:</strong></p>
-                                    <ul>
-                                        <li><strong>Title:</strong> {$defense['proposal_title']}</li>
-                                        <li><strong>Date:</strong> " . date('M j, Y', strtotime($defense['defense_date'])) . "</li>
-                                        <li><strong>Time:</strong> " . date('g:i A', strtotime($defense['start_time'])) . "</li>
-                                    </ul>
-                                    <p>Please respond to this invitation by clicking one of the links below:</p>
-                                    <p>
-                                        <a href='http://localhost/CRAD-system/admin-pages/confirm-invitation.php?token=$token&status=accepted' style='background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; margin-right: 10px;'>Accept Invitation</a>
-                                        <a href='http://localhost/CRAD-system/admin-pages/confirm-invitation.php?token=$token&status=rejected' style='background-color: #f44336; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;'>Decline Invitation</a>
-                                    </p>
-                                    <p>Best regards,<br>Thesis Coordinator</p>
-                                </body>
-                                </html>
-                            ";
-                            
-                            $mail->Body = $emailContent;
-                            
-                            // Plain text version for non-HTML email clients
-                            $mail->AltBody = "Dear {$panel['first_name']},\n\n{$message}\n\nDefense: {$defense['proposal_title']}\nDate: " . date('M j, Y', strtotime($defense['defense_date'])) . "\nTime: " . date('g:i A', strtotime($defense['start_time'])) . "\n\nAccept: http://localhost/CRAD-system/confirm-invitation.php?token=$token&status=accepted\nDecline: http://localhost/CRAD-system/confirm-invitation.php?token=$token&status=rejected\n\nBest regards,\nThesis Coordinator";
-                            
-                            $mail->send();
-                            $sent_count++;
-                        } catch (Exception $e) {
-                            $error_count++;
-                            $error_details[] = "Message could not be sent to {$panel['email']}. Mailer Error: {$mail->ErrorInfo}";
-                            error_log("Message could not be sent to {$panel['email']}. Mailer Error: {$mail->ErrorInfo}");
-                        }
+                        // Create HTML email content
+                        $emailContent = "
+                            <html>
+                            <body>
+                                <p>Dear {$panel['first_name']},</p>
+                                <p>{$message}</p>
+                                <p>Please respond to this invitation by clicking one of the links below:</p>
+                                <p>
+                                    <a href='http://localhost/CRAD-system/admin-pages/confirm-invitation.php?token=$token&status=accepted' style='background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; margin-right: 10px;'>Accept Invitation</a>
+                                    <a href='http://localhost/CRAD-system/admin-pages/confirm-invitation.php?token=$token&status=rejected' style='background-color: #f44336; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;'>Decline Invitation</a>
+                                </p>
+                                <p>Best regards,<br>Thesis Coordinator</p>
+                            </body>
+                            </html>
+                        ";
+                        
+                        $mail->Body = $emailContent;
+                        
+                        // Plain text version for non-HTML email clients
+                        $mail->AltBody = "Dear {$panel['first_name']},\n\n{$message}\n\nAccept: http://localhost/CRAD-system/confirm-invitation.php?token=$token&status=accepted\nDecline: http://localhost/CRAD-system/confirm-invitation.php?token=$token&status=rejected\n\nBest regards,\nThesis Coordinator";
+                        
+                        $mail->send();
+                        $sent_count++;
+                    } catch (Exception $e) {
+                        $error_count++;
+                        $error_details[] = "Message could not be sent to {$panel['email']}. Mailer Error: {$mail->ErrorInfo}";
+                        error_log("Message could not be sent to {$panel['email']}. Mailer Error: {$mail->ErrorInfo}");
                     }
                 }
             }
             
             if ($error_count > 0) {
                 $error = "Sent {$sent_count} invitations, but failed to send {$error_count}. " . implode("; ", $error_details);
+                header("Location: panel-assignment.php?error=" . urlencode($error));
+                exit();
             } else {
                 $success = "Successfully sent {$sent_count} invitations!";
+                header("Location: panel-assignment.php?success=" . urlencode($success));
+                exit();
             }
         }
     }
@@ -240,20 +250,6 @@ while ($row = $panel_result->fetch_assoc()) {
     $panel_members[] = $row;
 }
 
-// Get all defense schedules
-$defense_query = "SELECT ds.*, g.name as group_name, p.title as proposal_title 
-                FROM defense_schedules ds 
-                JOIN groups g ON ds.group_id = g.id 
-                JOIN proposals p ON g.id = p.group_id 
-                WHERE ds.defense_date >= CURDATE()
-                ORDER BY ds.defense_date DESC";
-$defense_result = $conn->query($defense_query);
-$defenses = [];
-
-while ($row = $defense_result->fetch_assoc()) {
-    $defenses[] = $row;
-}
-
 // Get invitation statistics
 $stats_query = "SELECT 
     COUNT(*) as total_invitations,
@@ -264,21 +260,6 @@ $stats_query = "SELECT
 $stats_result = $conn->query($stats_query);
 $stats = $stats_result->fetch_assoc();
 
-// Create panel_invitations table if it doesn't exist
-$create_table_query = "
-CREATE TABLE IF NOT EXISTS panel_invitations (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    defense_id INT NOT NULL,
-    panel_id INT NOT NULL,
-    token VARCHAR(64) NOT NULL UNIQUE,
-    status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
-    invited_at DATETIME NOT NULL,
-    responded_at DATETIME NULL,
-    FOREIGN KEY (defense_id) REFERENCES defense_schedules(id) ON DELETE CASCADE,
-    FOREIGN KEY (panel_id) REFERENCES panel_members(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_invitation (defense_id, panel_id)
-)";
-$conn->query($create_table_query);
 ?>
 
 <!DOCTYPE html>
@@ -412,7 +393,7 @@ $conn->query($create_table_query);
                         <h3 class="text-2xl font-bold"><?php echo count($panel_members); ?></h3>
                     </div>
                     <div class="bg-blue-100 p-3 rounded-full">
-                        <i class="fas fa-users text-primary text-xl"></i>
+                        <i class="fas fa-users text-blue-500 text-xl"></i>
                     </div>
                 </div>
                 <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between card-hover">
@@ -421,7 +402,7 @@ $conn->query($create_table_query);
                         <h3 class="text-2xl font-bold"><?php echo $stats['pending'] ?? 0; ?></h3>
                     </div>
                     <div class="bg-yellow-100 p-3 rounded-full">
-                        <i class="fas fa-clock text-warning text-xl"></i>
+                        <i class="fas fa-clock text-yellow-500 text-xl"></i>
                     </div>
                 </div>
                 <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between card-hover">
@@ -430,7 +411,7 @@ $conn->query($create_table_query);
                         <h3 class="text-2xl font-bold"><?php echo $stats['accepted'] ?? 0; ?></h3>
                     </div>
                     <div class="bg-green-100 p-3 rounded-full">
-                        <i class="fas fa-check-circle text-success text-xl"></i>
+                        <i class="fas fa-check-circle text-green-500 text-xl"></i>
                     </div>
                 </div>
                 <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between card-hover">
@@ -439,7 +420,7 @@ $conn->query($create_table_query);
                         <h3 class="text-2xl font-bold"><?php echo $stats['rejected'] ?? 0; ?></h3>
                     </div>
                     <div class="bg-red-100 p-3 rounded-full">
-                        <i class="fas fa-times-circle text-danger text-xl"></i>
+                        <i class="fas fa-times-circle text-red-500 text-xl"></i>
                     </div>
                 </div>
             </div>
@@ -460,25 +441,25 @@ $conn->query($create_table_query);
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 required">First Name</label>
                                 <input type="text" name="first_name" required 
-                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary">
+                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 required">Last Name</label>
                                 <input type="text" name="last_name" required 
-                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary">
+                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                             </div>
                         </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 required">Email</label>
                             <input type="email" name="email" required 
-                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary">
+                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 required">Specialization</label>
                             <input type="text" name="specialization" required 
-                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary">
+                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         
                         <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
@@ -498,21 +479,9 @@ $conn->query($create_table_query);
                         <input type="hidden" name="action" value="send_invitation">
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 required">Select Defense</label>
-                            <select name="defense_id" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary" id="defenseSelect">
-                                <option value="">-- Select a defense --</option>
-                                <?php foreach ($defenses as $defense): ?>
-                                <option value="<?php echo $defense['id']; ?>" data-title="<?php echo htmlspecialchars($defense['proposal_title']); ?>" data-date="<?php echo $defense['defense_date']; ?>" data-time="<?php echo $defense['start_time']; ?>">
-                                    <?php echo $defense['proposal_title'] . ' - ' . date('M j, Y', strtotime($defense['defense_date'])); ?>
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        
-                        <div>
                             <label class="block text-sm font-medium text-gray-700 required">Select Panel Members</label>
                             <select name="panel_ids[]" multiple required 
-                                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary h-32" id="panelSelect">
+                                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 h-32" id="panelSelect">
                                 <?php foreach ($panel_members as $panel): ?>
                                 <option value="<?php echo $panel['id']; ?>" data-email="<?php echo $panel['email']; ?>" data-name="<?php echo htmlspecialchars($panel['first_name'] . ' ' . $panel['last_name']); ?>">
                                     <?php echo $panel['first_name'] . ' ' . $panel['last_name'] . ' (' . $panel['specialization'] . ')'; ?>
@@ -524,17 +493,19 @@ $conn->query($create_table_query);
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 required">Email Subject</label>
-                            <input type="text" name="subject" value="Panel Invitation for Thesis Defense" required 
-                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary" id="emailSubject">
+                            <input type="text" name="subject" value="Invitation to Join Thesis Defense Panel" required 
+                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500" id="emailSubject">
                         </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 required">Message</label>
-                            <textarea name="message" rows="5" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary" id="emailMessage">Dear Panel Member,
+                            <textarea name="message" rows="5" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500" id="emailMessage">Dear Panel Member,
 
-You have been invited to serve on a thesis defense panel. Please click the link below to confirm your availability.
+We would like to invite you to join our thesis defense panel. Your expertise would be highly valuable in evaluating our students' research work.
 
-Thank you for your participation.
+Please confirm your availability by clicking the appropriate link below.
+
+Thank you for considering this invitation.
 
 Best regards,
 Thesis Coordinator</textarea>
@@ -544,20 +515,14 @@ Thesis Coordinator</textarea>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Email Preview</label>
                             <div class="email-template mt-2" id="emailPreview">
-                                <p><strong>Subject:</strong> <span id="previewSubject">Panel Invitation for Thesis Defense</span></p>
+                                <p><strong>Subject:</strong> <span id="previewSubject">Invitation to Join Thesis Defense Panel</span></p>
                                 <div id="previewContent">
                                     <p>Dear <span id="previewName">Panel Member</span>,</p>
-                                    <p>You have been invited to serve on a thesis defense panel. Please click the link below to confirm your availability.</p>
-                                    <p>Thank you for your participation.</p>
-                                    <p><strong>Defense Details:</strong></p>
-                                    <ul>
-                                        <li><strong>Title:</strong> <span id="previewTitle">Selected defense title will appear here</span></li>
-                                        <li><strong>Date:</strong> <span id="previewDate">Selected date will appear here</span></li>
-                                        <li><strong>Time:</strong> <span id="previewTime">Selected time will appear here</span></li>
-                                    </ul>
-                                    <p>Please respond to this invitation by clicking one of the links below:</p>
+                                    <p>We would like to invite you to join our thesis defense panel. Your expertise would be highly valuable in evaluating our students' research work.</p>
+                                    <p>Please confirm your availability by clicking the appropriate link below.</p>
+                                    <p>Thank you for considering this invitation.</p>
                                     <p>
-                                        <a href="../admin-pages/confirm-result.php" class="button accept-button">Accept Invitation</a>
+                                        <a href="#" class="button accept-button">Accept Invitation</a>
                                         <a href="#" class="button decline-button">Decline Invitation</a>
                                     </p>
                                     <p>Best regards,<br>Thesis Coordinator</p>
@@ -657,13 +622,10 @@ Thesis Coordinator</textarea>
                 </h2>
                 
                 <?php
-                $recent_query = "SELECT pi.*, pm.first_name, pm.last_name, pm.email, 
-                               ds.defense_date, p.title as proposal_title,
+                $recent_query = "SELECT pi.*, pm.first_name, pm.last_name, pm.email,
                                DATEDIFF(NOW(), pi.invited_at) as days_ago
                                FROM panel_invitations pi
                                JOIN panel_members pm ON pi.panel_id = pm.id
-                               JOIN defense_schedules ds ON pi.defense_id = ds.id
-                               JOIN proposals p ON ds.group_id = p.group_id
                                ORDER BY pi.invited_at DESC LIMIT 5";
                 $recent_result = $conn->query($recent_query);
                 $recent_invitations = [];
@@ -679,8 +641,7 @@ Thesis Coordinator</textarea>
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Panel Member</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Defense</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invited</th>
                                 </tr>
@@ -690,13 +651,9 @@ Thesis Coordinator</textarea>
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm font-medium text-gray-900"><?php echo $invite['first_name'] . ' ' . $invite['last_name']; ?></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-500"><?php echo $invite['email']; ?></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900"><?php echo $invite['proposal_title']; ?></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900"><?php echo date('M j, Y', strtotime($invite['defense_date'])); ?></div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">  
                                           <span class="status-badge status-<?php echo $invite['status']; ?>">
@@ -757,30 +714,30 @@ Thesis Coordinator</textarea>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 required">First Name</label>
                                 <input type="text" name="first_name" value="<?php echo htmlspecialchars($editData['first_name']); ?>" required 
-                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary">
+                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 required">Last Name</label>
                                 <input type="text" name="last_name" value="<?php echo htmlspecialchars($editData['last_name']); ?>" required 
-                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary">
+                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                             </div>
                         </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 required">Email</label>
                             <input type="email" name="email" value="<?php echo htmlspecialchars($editData['email']); ?>" required 
-                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary">
+                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 required">Specialization</label>
                             <input type="text" name="specialization" value="<?php echo htmlspecialchars($editData['specialization']); ?>" required 
-                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary">
+                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 required">Status</label>
-                            <select name="status" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary">
+                            <select name="status" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                 <option value="active" <?php echo $editData['status'] == 'active' ? 'selected' : ''; ?>>Active</option>
                                 <option value="inactive" <?php echo $editData['status'] == 'inactive' ? 'selected' : ''; ?>>Inactive</option>
                             </select>
@@ -790,7 +747,7 @@ Thesis Coordinator</textarea>
                             <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
                                 Update Panel Member
                             </button>
-                            <button type="button" onclick="closeModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            <button type="button" onclick="closeModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                                 Cancel
                             </button>
                         </div>
@@ -802,106 +759,92 @@ Thesis Coordinator</textarea>
     <?php endif; ?>
 
     <script>
-        // Show modal if editing
+        // Modal functionality
         <?php if (!empty($editData)): ?>
         document.addEventListener('DOMContentLoaded', function() {
             const modal = document.getElementById('editModal');
             modal.classList.add('modal-active');
-            modal.classList.remove('opacity-0');
             modal.classList.remove('pointer-events-none');
+            modal.classList.remove('opacity-0');
             
             const modalContent = modal.querySelector('.modal-content');
             modalContent.classList.add('modal-content-active');
         });
-        <?php endif; ?>
-
+        
         function closeModal() {
             const modal = document.getElementById('editModal');
             modal.classList.remove('modal-active');
-            modal.classList.add('opacity-0');
             modal.classList.add('pointer-events-none');
+            modal.classList.add('opacity-0');
             
             const modalContent = modal.querySelector('.modal-content');
             modalContent.classList.remove('modal-content-active');
             
-            // Redirect to clear the edit_id parameter
-            setTimeout(() => {
-                window.location.href = 'panel-management.php';
-            }, 200);
+            // Remove edit_id from URL without reloading
+            const url = new URL(window.location);
+            url.searchParams.delete('edit_id');
+            window.history.replaceState({}, '', url);
         }
+        <?php endif; ?>
 
         // Email preview functionality
         document.addEventListener('DOMContentLoaded', function() {
-            const defenseSelect = document.getElementById('defenseSelect');
+            const subjectInput = document.getElementById('emailSubject');
+            const messageInput = document.getElementById('emailMessage');
             const panelSelect = document.getElementById('panelSelect');
-            const emailSubject = document.getElementById('emailSubject');
-            const emailMessage = document.getElementById('emailMessage');
             
             const previewSubject = document.getElementById('previewSubject');
+            const previewContent = document.getElementById('previewContent');
             const previewName = document.getElementById('previewName');
-            const previewTitle = document.getElementById('previewTitle');
-            const previewDate = document.getElementById('previewDate');
-            const previewTime = document.getElementById('previewTime');
-            
-            // Update preview when defense selection changes
-            defenseSelect.addEventListener('change', updatePreview);
-            
-            // Update preview when panel selection changes
-            panelSelect.addEventListener('change', updatePreview);
-            
-            // Update preview when subject changes
-            emailSubject.addEventListener('input', function() {
-                previewSubject.textContent = this.value;
-            });
-            
-            // Update preview when message changes
-            emailMessage.addEventListener('input', updatePreview);
             
             function updatePreview() {
-                // Update defense details
-                const selectedDefense = defenseSelect.options[defenseSelect.selectedIndex];
-                if (selectedDefense && selectedDefense.value) {
-                    previewTitle.textContent = selectedDefense.getAttribute('data-title');
-                    previewDate.textContent = new Date(selectedDefense.getAttribute('data-date')).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
-                    });
-                    
-                    const timeValue = selectedDefense.getAttribute('data-time');
-                    if (timeValue) {
-                        const timeParts = timeValue.split(':');
-                        let hours = parseInt(timeParts[0]);
-                        const minutes = timeParts[1];
-                        const ampm = hours >= 12 ? 'PM' : 'AM';
-                        hours = hours % 12;
-                        hours = hours ? hours : 12; // the hour '0' should be '12'
-                        previewTime.textContent = hours + ':' + minutes + ' ' + ampm;
-                    }
-                }
+                previewSubject.textContent = subjectInput.value;
                 
-                // Update panel member name
-                const selectedPanel = panelSelect.options[panelSelect.selectedIndex];
-                if (selectedPanel && selectedPanel.value) {
-                    previewName.textContent = selectedPanel.getAttribute('data-name');
+                // Update the name in the preview if a panel member is selected
+                if (panelSelect.selectedOptions.length > 0) {
+                    const firstName = panelSelect.selectedOptions[0].dataset.name.split(' ')[0];
+                    previewName.textContent = firstName;
                 } else {
                     previewName.textContent = 'Panel Member';
                 }
+                
+                // Update message content (simplified preview)
+                const messageLines = messageInput.value.split('\n');
+                let htmlContent = '';
+                
+                messageLines.forEach(line => {
+                    if (line.trim() !== '') {
+                        htmlContent += `<p>${line.trim()}</p>`;
+                    }
+                });
+                
+                // Add the action buttons
+                htmlContent += `
+                    <p>
+                        <a href="#" class="button accept-button">Accept Invitation</a>
+                        <a href="#" class="button decline-button">Decline Invitation</a>
+                    </p>
+                    <p>Best regards,<br>Thesis Coordinator</p>
+                `;
+                
+                previewContent.innerHTML = htmlContent;
             }
             
-            // Initialize the preview
+            subjectInput.addEventListener('input', updatePreview);
+            messageInput.addEventListener('input', updatePreview);
+            panelSelect.addEventListener('change', updatePreview);
+            
+            // Initial preview update
             updatePreview();
             
-            // Add confirmation for delete actions
-            const deleteButtons = document.querySelectorAll('form button[type="submit"]');
-            deleteButtons.forEach(button => {
-                const form = button.closest('form');
-                if (form && form.querySelector('input[name="action"]').value === 'delete') {
-                    button.addEventListener('click', function(e) {
-                        if (!confirm('Are you sure you want to delete this panel member?')) {
-                            e.preventDefault();
-                        }
-                    });
+            // Multi-select enhancement
+            const selectElement = document.getElementById('panelSelect');
+            selectElement.addEventListener('change', function() {
+                const selectedCount = this.selectedOptions.length;
+                if (selectedCount > 0) {
+                    this.setAttribute('title', `${selectedCount} panel member${selectedCount > 1 ? 's' : ''} selected`);
+                } else {
+                    this.removeAttribute('title');
                 }
             });
         });

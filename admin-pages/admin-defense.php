@@ -66,18 +66,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if (isset($_POST['edit_defense'])) {
         $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
-        $group_id = mysqli_real_escape_string($conn, $_POST['group_id']);
         $defense_date = mysqli_real_escape_string($conn, $_POST['defense_date']);
         $start_time = mysqli_real_escape_string($conn, $_POST['start_time']);
         $end_time = mysqli_real_escape_string($conn, $_POST['end_time']);
         $room_id = mysqli_real_escape_string($conn, $_POST['room_id']);
         $panel_members = isset($_POST['panel_members']) ? $_POST['panel_members'] : [];
 
-        // Update defense schedule
+        // Update defense schedule (don't update group_id as it shouldn't change)
         $update_query = "UPDATE defense_schedules 
-                         SET group_id = '$group_id', defense_date = '$defense_date', 
+                         SET defense_date = '$defense_date', 
                              start_time = '$start_time', end_time = '$end_time', 
-                             room_id = '$room_id', status = 'scheduled' 
+                             room_id = '$room_id'
                          WHERE id = '$defense_id'";
 
         if (mysqli_query($conn, $update_query)) {
@@ -113,7 +112,7 @@ $defense_schedules = [];
 
 while ($schedule = mysqli_fetch_assoc($defense_result)) {
     // Get panel members for each defense
-    $panel_query = "SELECT u.user_id, u.email 
+    $panel_query = "SELECT u.user_id, u.email
                    FROM defense_panel dp 
                    JOIN user_tbl u ON dp.faculty_id = u.user_id 
                    WHERE dp.defense_id = '{$schedule['id']}'";
@@ -126,11 +125,15 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
 
     // If defense_date < today → mark as completed
     $current_date = date('Y-m-d');
-    if ($schedule['defense_date'] < $current_date && $schedule['status'] == 'scheduled') {
-        // Update status in database
-        $update_query = "UPDATE defense_schedules SET status = 'completed' WHERE id = '{$schedule['id']}'";
-        mysqli_query($conn, $update_query);
-        $schedule['status'] = 'completed';
+    $current_time = date('H:i:s');
+    if ($schedule['defense_date'] < $current_date || 
+        ($schedule['defense_date'] == $current_date && $schedule['end_time'] < $current_time)) {
+        // Update status in database if not already completed
+        if ($schedule['status'] != 'completed') {
+            $update_query = "UPDATE defense_schedules SET status = 'completed' WHERE id = '{$schedule['id']}'";
+            mysqli_query($conn, $update_query);
+            $schedule['status'] = 'completed';
+        }
     }
 
     $schedule['panel_members'] = $panel_members;
@@ -204,6 +207,25 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             transform: translateY(-2px);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
+        .modal {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: scale(0.95);
+            opacity: 0;
+        }
+        .modal.active {
+            transform: scale(1);
+            opacity: 1;
+        }
+        .details-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.75rem 1rem;
+            align-items: start;
+        }
+        .detail-icon {
+            margin-top: 0.25rem;
+            color: #6b7280;
+        }
     </style>
     <script>
         tailwind.config = {
@@ -230,6 +252,15 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             const modal = document.getElementById('editDefenseModal');
             modal.classList.toggle('hidden');
             modal.classList.toggle('flex');
+        }
+        
+        function toggleDetailsModal() {
+            const modal = document.getElementById('detailsModal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+            setTimeout(() => {
+                modal.classList.toggle('active');
+            }, 10);
         }
         
         // Function to handle status filtering
@@ -280,6 +311,44 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             if (confirm(`Are you sure you want to delete the defense schedule for ${groupName}?`)) {
                 document.getElementById('defense_id').value = defenseId;
                 document.getElementById('deleteForm').submit();
+            }
+        }
+        
+        // Function to view defense details
+        function viewDefenseDetails(defenseId) {
+            // Find the defense schedule by ID
+            const defenseCard = document.querySelector(`.defense-card[data-defense-id="${defenseId}"]`);
+            if (defenseCard) {
+                // Extract details from the card
+                const title = defenseCard.querySelector('h3').textContent;
+                const group = defenseCard.querySelector('.text-gray-500').textContent;
+                const date = defenseCard.querySelector('.fa-calendar').parentNode.textContent.trim();
+                const time = defenseCard.querySelector('.fa-clock').parentNode.textContent.trim();
+                const location = defenseCard.querySelector('.fa-map-marker-alt').parentNode.textContent.trim();
+                const panel = defenseCard.querySelector('.fa-users').parentNode.textContent.trim();
+                const status = defenseCard.querySelector('.px-3').textContent.trim();
+                
+                // Populate the details modal
+                document.getElementById('detailTitle').textContent = title;
+                document.getElementById('detailGroup').textContent = group;
+                document.getElementById('detailDate').textContent = date;
+                document.getElementById('detailTime').textContent = time;
+                document.getElementById('detailLocation').textContent = location;
+                document.getElementById('detailPanel').textContent = panel;
+                document.getElementById('detailStatus').textContent = status;
+                
+                // Set status color
+                const statusElement = document.getElementById('detailStatus');
+                statusElement.className = 'px-3 py-1 text-xs font-medium rounded-full';
+                if (status === 'Completed') {
+                    statusElement.classList.add('bg-green-100', 'text-green-800');
+                } else if (status === 'Cancelled') {
+                    statusElement.classList.add('bg-red-100', 'text-red-800');
+                } else {
+                    statusElement.classList.add('bg-blue-100', 'text-blue-800');
+                }
+                
+                toggleDetailsModal();
             }
         }
         
@@ -380,7 +449,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <?php foreach ($defense_schedules as $schedule): ?>
                     <!-- Scheduled Defense Card -->
-                    <div class="defense-card bg-white border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between" data-status="<?php echo $schedule['status']; ?>">
+                    <div class="defense-card bg-white border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between" 
+                         data-status="<?php echo $schedule['status']; ?>" 
+                         data-defense-id="<?php echo $schedule['id']; ?>">
                         <div>
                             <h3 class="text-lg font-semibold text-gray-900"><?php echo $schedule['proposal_title'] ?? 'No Title'; ?></h3>
                             <p class="text-sm text-gray-500 mb-3"><?php echo $schedule['group_name']; ?></p>
@@ -491,7 +562,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                     <div class="flex justify-between items-center">
                         <div class="text-sm text-gray-500">Panel assigned</div>
-                        <button class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded">View Details</button>
+                        <button onclick="viewDefenseDetails(<?php echo $upcoming['id']; ?>)" class="text-xs bg-primary hover:bg-blue-700 text-white px-2 py-1 rounded">View Details</button>
                     </div>
                 </div>
                 <?php endwhile; ?>
@@ -675,6 +746,52 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Details Modal -->
+    <div id="detailsModal" class="fixed inset-0 w-full h-full flex items-center justify-center z-50 hidden bg-black bg-opacity-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto border border-gray-200 modal overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center border-b px-6 py-4 bg-primary text-white rounded-t-xl">
+                <h3 class="text-xl font-bold">Defense Details</h3>
+                <button type="button" onclick="toggleDetailsModal()" class="text-white hover:text-gray-200 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="mb-6 space-y-4">
+                    <div>
+                        <h4 id="detailTitle" class="text-lg font-semibold text-gray-900 mb-1"></h4>
+                        <p id="detailGroup" class="text-sm text-gray-600"></p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex items-center px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs font-medium" id="detailStatus"></span>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-calendar text-gray-400"></i>
+                            <span id="detailDate" class="text-sm text-gray-800"></span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-clock text-gray-400"></i>
+                            <span id="detailTime" class="text-sm text-gray-800"></span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-map-marker-alt text-gray-400"></i>
+                            <span id="detailLocation" class="text-sm text-gray-800"></span>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-users text-gray-400 mt-1"></i>
+                            <div id="detailPanel" class="text-sm text-gray-800 space-y-1"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-100">
+                    <button type="button" onclick="toggleDetailsModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                        Close
+                    </button>
+                </div>
             </div>
         </div>
     </div>

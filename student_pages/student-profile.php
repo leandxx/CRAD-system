@@ -31,7 +31,7 @@ if ($existing_profile) {
     $adviser_query = "
         SELECT f.* 
         FROM faculty f
-        INNER JOIN sections s ON f.id = s.faculty_id
+        INNER JOIN clusters s ON f.id = s.faculty_id
         WHERE s.course = ? AND s.cluster = ? AND s.school_year = ? AND s.status = 'assigned'
         LIMIT 1
     ";
@@ -52,8 +52,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $school_id = $_POST['school_id'];
     $full_name = $_POST['full_name'];
     $course = $_POST['course'];
-    $cluster = $_POST['cluster'];
     $school_year = $_POST['school_year'];
+    
+    // Get cluster assignment from admin based on course and school year
+    $cluster_query = "
+        SELECT cluster 
+        FROM clusters 
+        WHERE course = ? AND school_year = ? AND status = 'active'
+        LIMIT 1
+    ";
+    
+    $cluster_stmt = $conn->prepare($cluster_query);
+    $cluster_stmt->bind_param("ss", $course, $school_year);
+    $cluster_stmt->execute();
+    $cluster_result = $cluster_stmt->get_result();
+    
+    if ($cluster_result && $cluster_result->num_rows > 0) {
+        $cluster_data = $cluster_result->fetch_assoc();
+        $cluster = $cluster_data['cluster'];
+    } else {
+        // If no cluster is assigned by admin, set a default value
+        $cluster = 'Not Assigned';
+    }
+    $cluster_stmt->close();
     
     if ($existing_profile) {
         // Update existing profile
@@ -84,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $adviser_query = "
                 SELECT f.* 
                 FROM faculty f
-                INNER JOIN sections s ON f.id = s.faculty_id
+                INNER JOIN clusters s ON f.id = s.faculty_id
                 WHERE s.course = ? AND s.cluster = ? AND s.school_year = ? AND s.status = 'assigned'
                 LIMIT 1
             ";
@@ -142,6 +163,15 @@ $profile_check->close();
         }
         .input-field:focus {
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+        .cluster-display {
+            background-color: #f3f4f6;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db;
+            min-height: 3rem;
+            display: flex;
+            align-items: center;
         }
     </style>
 </head>
@@ -221,13 +251,20 @@ $profile_check->close();
                             
                             <div>
                                 <label for="cluster" class="block text-sm font-medium text-gray-700 mb-1">Cluster</label>
+                                <div class="cluster-display">
+                                    <?php 
+                                    if (isset($existing_profile['cluster'])) {
+                                        echo htmlspecialchars($existing_profile['cluster']);
+                                    } else {
+                                        echo 'Cluster will be assigned automatically based on your course and school year';
+                                    }
+                                    ?>
+                                </div>
                                 <input 
-                                    type="text" 
+                                    type="hidden" 
                                     id="cluster" 
                                     name="cluster" 
-                                    value="<?php echo isset($existing_profile['cluster']) ? htmlspecialchars($existing_profile['cluster']) : ''; ?>" 
-                                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition input-field"
-                                    required
+                                    value="<?php echo isset($existing_profile['cluster']) ? htmlspecialchars($existing_profile['cluster']) : ''; ?>"
                                 >
                             </div>
                             

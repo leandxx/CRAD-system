@@ -25,7 +25,7 @@ if ($row['count'] == 0) {
     }
 }
 
-// Fetch student data to create sections
+// Fetch student data to create clusters
 $student_query = "SELECT DISTINCT course, cluster, school_year FROM student_profiles WHERE course IS NOT NULL AND cluster IS NOT NULL AND school_year IS NOT NULL";
 $student_result = mysqli_query($conn, $student_query);
 
@@ -35,20 +35,20 @@ if ($student_result && mysqli_num_rows($student_result) > 0) {
         $cluster = $row['cluster'];
         $school_year = $row['school_year'];
         
-        // Check if section already exists
-        $check_section = "SELECT id FROM sections WHERE course = '$course' AND cluster = '$cluster' AND school_year = '$school_year'";
-        $section_result = mysqli_query($conn, $check_section);
+        // Check if cluster already exists
+        $check_cluster = "SELECT id FROM clusters WHERE course = '$course' AND cluster = '$cluster' AND school_year = '$school_year'";
+        $cluster_result = mysqli_query($conn, $check_cluster);
         
-        if (mysqli_num_rows($section_result) == 0) {
-            // Get student count for this section
+        if (mysqli_num_rows($cluster_result) == 0) {
+            // Get student count for this cluster
             $count_query = "SELECT COUNT(*) as count FROM student_profiles WHERE course = '$course' AND cluster = '$cluster' AND school_year = '$school_year'";
             $count_result = mysqli_query($conn, $count_query);
             $count_row = mysqli_fetch_assoc($count_result);
             $student_count = $count_row['count'];
             
-            // Insert new section
-            $insert_section = "INSERT INTO sections (course, cluster, school_year, student_count, capacity) VALUES ('$course', '$cluster', '$school_year', $student_count, 50)";
-            mysqli_query($conn, $insert_section);
+            // Insert new cluster
+            $insert_cluster = "INSERT INTO clusters (course, cluster, school_year, student_count, capacity) VALUES ('$course', '$cluster', '$school_year', $student_count, 50)";
+            mysqli_query($conn, $insert_cluster);
         }
     }
 }
@@ -64,30 +64,30 @@ if ($faculty_result && mysqli_num_rows($faculty_result) > 0) {
     }
 }
 
-// Fetch sections data
-$sections_query = "SELECT s.*, f.fullname as faculty_name, f.department as faculty_department 
-                   FROM sections s 
-                   LEFT JOIN faculty f ON s.faculty_id = f.id 
-                   ORDER BY s.course, s.cluster";
-$sections_result = mysqli_query($conn, $sections_query);
-$sections = array();
+// Fetch clusters data
+$clusters_query = "SELECT c.*, f.fullname as faculty_name, f.department as faculty_department 
+                   FROM clusters c 
+                   LEFT JOIN faculty f ON c.faculty_id = f.id 
+                   ORDER BY c.course, c.cluster";
+$clusters_result = mysqli_query($conn, $clusters_query);
+$clusters = array();
 
-if ($sections_result && mysqli_num_rows($sections_result) > 0) {
-    while ($row = mysqli_fetch_assoc($sections_result)) {
-        $sections[] = $row;
+if ($clusters_result && mysqli_num_rows($clusters_result) > 0) {
+    while ($row = mysqli_fetch_assoc($clusters_result)) {
+        $clusters[] = $row;
     }
 }
 
 // Count statistics
-$total_sections = count($sections);
-$assigned_sections = 0;
-$pending_sections = 0;
+$total_clusters = count($clusters);
+$assigned_clusters = 0;
+$pending_clusters = 0;
 
-foreach ($sections as $section) {
-    if ($section['status'] == 'assigned') {
-        $assigned_sections++;
+foreach ($clusters as $cluster) {
+    if ($cluster['status'] == 'assigned') {
+        $assigned_clusters++;
     } else {
-        $pending_sections++;
+        $pending_clusters++;
     }
 }
 
@@ -95,18 +95,18 @@ $available_faculty = count($faculty);
 
 // Handle form submission for assigning adviser
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
-    $section_id = $_POST['section_id'];
+    $cluster_id = $_POST['cluster_id'];
     $faculty_id = $_POST['faculty_id'];
     $notes = $_POST['notes'];
     $send_email = isset($_POST['send_email']) ? 1 : 0;
     
-    // Update section with assigned faculty
-    $update_section = "UPDATE sections SET faculty_id = $faculty_id, status = 'assigned', assigned_date = CURDATE() WHERE id = $section_id";
+    // Update cluster with assigned faculty
+    $update_cluster = "UPDATE clusters SET faculty_id = $faculty_id, status = 'assigned', assigned_date = CURDATE() WHERE id = $cluster_id";
     
-    if (mysqli_query($conn, $update_section)) {
+    if (mysqli_query($conn, $update_cluster)) {
         // Insert into assign_adviser table
-        $insert_assign = "INSERT INTO assign_adviser (section_id, faculty_id, assigned_date, notes) 
-                         VALUES ($section_id, $faculty_id, CURDATE(), '$notes')";
+        $insert_assign = "INSERT INTO assign_adviser (cluster_id, faculty_id, assigned_date, notes) 
+                         VALUES ($cluster_id, $faculty_id, CURDATE(), '$notes')";
         mysqli_query($conn, $insert_assign);
         
         // Refresh page to show updated data
@@ -183,8 +183,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
                             <i class="fas fa-layer-group text-xl"></i>
                         </div>
                         <div>
-                            <h3 class="text-sm font-medium text-gray-500">Total Sections</h3>
-                            <p class="text-2xl font-bold"><?php echo $total_sections; ?></p>
+                            <h3 class="text-sm font-medium text-gray-500">Total Clusters</h3>
+                            <p class="text-2xl font-bold"><?php echo $total_clusters; ?></p>
                         </div>
                     </div>
                 </div>
@@ -195,8 +195,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
                             <i class="fas fa-user-check text-xl"></i>
                         </div>
                         <div>
-                            <h3 class="text-sm font-medium text-gray-500">Assigned Sections</h3>
-                            <p class="text-2xl font-bold"><?php echo $assigned_sections; ?></p>
+                            <h3 class="text-sm font-medium text-gray-500">Assigned Clusters</h3>
+                            <p class="text-2xl font-bold"><?php echo $assigned_clusters; ?></p>
                         </div>
                     </div>
                 </div>
@@ -208,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
                         </div>
                         <div>
                             <h3 class="text-sm font-medium text-gray-500">Pending Assignments</h3>
-                            <p class="text-2xl font-bold"><?php echo $pending_sections; ?></p>
+                            <p class="text-2xl font-bold"><?php echo $pending_clusters; ?></p>
                         </div>
                     </div>
                 </div>
@@ -230,7 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
             <div class="bg-white rounded-lg shadow-sm p-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
                 <div class="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
                     <div class="relative">
-                        <input type="text" id="searchInput" placeholder="Search sections..." class="pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary w-full md:w-64">
+                        <input type="text" id="searchInput" placeholder="Search clusters..." class="pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary w-full md:w-64">
                         <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                     </div>
                     
@@ -250,26 +250,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
                 </div>
             </div>
             
-            <!-- Sections Grid -->
+            <!-- Clusters Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <?php foreach ($sections as $section): 
-                    $percentage = ($section['capacity'] > 0) ? round(($section['student_count'] / $section['capacity']) * 100) : 0;
+                <?php foreach ($clusters as $cluster): 
+                    $percentage = ($cluster['capacity'] > 0) ? round(($cluster['student_count'] / $cluster['capacity']) * 100) : 0;
                 ?>
-                <div class="section-card bg-white rounded-lg shadow-sm p-6 card-hover" data-status="<?php echo $section['status']; ?>">
+                <div class="cluster-card bg-white rounded-lg shadow-sm p-6 card-hover" data-status="<?php echo $cluster['status']; ?>">
                     <div class="flex justify-between items-start mb-4">
                         <div>
-                            <h3 class="text-xl font-bold text-gray-900"><?php echo $section['course'] . ' ' . $section['cluster']; ?></h3>
-                            <p class="text-sm text-gray-500"><?php echo $section['school_year']; ?></p>
+                            <h3 class="text-xl font-bold text-gray-900"><?php echo $cluster['course'] . ' ' . $cluster['cluster']; ?></h3>
+                            <p class="text-sm text-gray-500"><?php echo $cluster['school_year']; ?></p>
                         </div>
                         <span class="px-3 py-1 text-xs font-semibold rounded-full 
-                            <?php echo $section['status'] == 'assigned' ? 'bg-success text-white' : 'bg-warning text-white'; ?>">
-                            <?php echo ucfirst($section['status']); ?>
+                            <?php echo $cluster['status'] == 'assigned' ? 'bg-success text-white' : 'bg-warning text-white'; ?>">
+                            <?php echo ucfirst($cluster['status']); ?>
                         </span>
                     </div>
                     
                     <div class="mb-4">
                         <div class="flex justify-between text-sm text-gray-500 mb-1">
-                            <span>Students: <?php echo $section['student_count'] . '/' . $section['capacity']; ?></span>
+                            <span>Students: <?php echo $cluster['student_count'] . '/' . $cluster['capacity']; ?></span>
                             <span><?php echo $percentage; ?>%</span>
                         </div>
                         <div class="progress-bar">
@@ -285,17 +285,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
                     </div>
                     
                     <div class="border-t pt-4">
-                        <?php if ($section['status'] == 'assigned' && $section['faculty_name']): ?>
+                        <?php if ($cluster['status'] == 'assigned' && $cluster['faculty_name']): ?>
                         <div class="flex items-center mb-2">
                             <div class="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center mr-3">
                                 <i class="fas fa-user-tie text-sm"></i>
                             </div>
                             <div>
-                                <p class="text-sm font-medium"><?php echo $section['faculty_name']; ?></p>
-                                <p class="text-xs text-gray-500"><?php echo $section['faculty_department']; ?> Department</p>
+                                <p class="text-sm font-medium"><?php echo $cluster['faculty_name']; ?></p>
+                                <p class="text-xs text-gray-500"><?php echo $cluster['faculty_department']; ?> Department</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2"><i class="far fa-calendar-alt mr-1"></i> Assigned on: <?php echo date('M j, Y', strtotime($section['assigned_date'])); ?></p>
+                        <p class="text-xs text-gray-500 mt-2"><i class="far fa-calendar-alt mr-1"></i> Assigned on: <?php echo date('M j, Y', strtotime($cluster['assigned_date'])); ?></p>
                         <?php else: ?>
                         <div class="flex items-center mb-2">
                             <div class="w-8 h-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mr-3">
@@ -306,12 +306,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
                                 <p class="text-xs text-gray-400">Pending assignment</p>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2"><i class="far fa-calendar-alt mr-1"></i> Created on: <?php echo date('M j, Y', strtotime($section['assigned_date'])); ?></p>
+                        <p class="text-xs text-gray-500 mt-2"><i class="far fa-calendar-alt mr-1"></i> Created on: <?php echo date('M j, Y', strtotime($cluster['assigned_date'])); ?></p>
                         <?php endif; ?>
                     </div>
                     
-                    <div class="mt-4 <?php echo $section['status'] == 'assigned' ? 'flex space-x-2' : ''; ?>">
-                        <?php if ($section['status'] == 'assigned'): ?>
+                    <div class="mt-4 <?php echo $cluster['status'] == 'assigned' ? 'flex space-x-2' : ''; ?>">
+                        <?php if ($cluster['status'] == 'assigned'): ?>
                         <button class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 rounded text-sm transition-colors">
                             <i class="fas fa-eye mr-1"></i> View
                         </button>
@@ -319,7 +319,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
                             <i class="fas fa-edit mr-1"></i> Edit
                         </button>
                         <?php else: ?>
-                        <button onclick="assignAdviser(<?php echo $section['id']; ?>, '<?php echo $section['course']; ?>')" class="w-full bg-primary hover:bg-blue-700 text-white py-2 rounded text-sm transition-colors">
+                        <button onclick="assignAdviser(<?php echo $cluster['id']; ?>, '<?php echo $cluster['course']; ?>')" class="w-full bg-primary hover:bg-blue-700 text-white py-2 rounded text-sm transition-colors">
                             <i class="fas fa-link mr-1"></i> Assign Adviser
                         </button>
                         <?php endif; ?>
@@ -334,23 +334,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
     <div id="assignmentModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300">
         <div class="bg-white rounded-lg shadow-xl w-11/12 md:w-3/4 lg:w-2/3 max-w-4xl max-h-screen overflow-y-auto">
             <div class="border-b px-6 py-4 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">Assign Adviser to Section</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Assign Adviser to Cluster</h3>
                 <button onclick="toggleModal()" class="text-gray-400 hover:text-gray-500">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <form method="POST" action="">
                 <div class="px-6 py-4">
-                    <input type="hidden" id="section_id" name="section_id" value="">
+                    <input type="hidden" id="cluster_id" name="cluster_id" value="">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Select Section</label>
-                            <select id="section_select" class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary" onchange="updateFacultyOptions()">
-                                <option value="">-- Select a section --</option>
-                                <?php foreach ($sections as $section): 
-                                    if ($section['status'] == 'pending'): ?>
-                                    <option value="<?php echo $section['id']; ?>" data-course="<?php echo $section['course']; ?>">
-                                        <?php echo $section['course'] . ' ' . $section['cluster'] . ' - ' . $section['school_year'] . ' (' . $section['student_count'] . ' students)'; ?>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Select Cluster</label>
+                            <select id="cluster_select" class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary" onchange="updateFacultyOptions()">
+                                <option value="">-- Select a cluster --</option>
+                                <?php foreach ($clusters as $cluster): 
+                                    if ($cluster['status'] == 'pending'): ?>
+                                    <option value="<?php echo $cluster['id']; ?>" data-course="<?php echo $cluster['course']; ?>">
+                                        <?php echo $cluster['course'] . ' ' . $cluster['cluster'] . ' - ' . $cluster['school_year'] . ' (' . $cluster['student_count'] . ' students)'; ?>
                                     </option>
                                 <?php endif; endforeach; ?>
                             </select>
@@ -398,15 +398,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
             modal.classList.toggle('hidden');
         }
         
-        // Assign adviser to specific section
-        function assignAdviser(sectionId, course) {
-            document.getElementById('section_id').value = sectionId;
+        // Assign adviser to specific cluster
+        function assignAdviser(clusterId, course) {
+            document.getElementById('cluster_id').value = clusterId;
             
-            // Find and select the section in the dropdown
-            const sectionSelect = document.getElementById('section_select');
-            for (let i = 0; i < sectionSelect.options.length; i++) {
-                if (sectionSelect.options[i].value == sectionId) {
-                    sectionSelect.selectedIndex = i;
+            // Find and select the cluster in the dropdown
+            const clusterSelect = document.getElementById('cluster_select');
+            for (let i = 0; i < clusterSelect.options.length; i++) {
+                if (clusterSelect.options[i].value == clusterId) {
+                    clusterSelect.selectedIndex = i;
                     break;
                 }
             }
@@ -417,15 +417,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
             toggleModal();
         }
         
-        // Update faculty options based on selected section's course
+        // Update faculty options based on selected cluster's course
         function updateFacultyOptions() {
-            const sectionSelect = document.getElementById('section_select');
+            const clusterSelect = document.getElementById('cluster_select');
             const facultySelect = document.getElementById('faculty_select');
-            const selectedOption = sectionSelect.options[sectionSelect.selectedIndex];
+            const selectedOption = clusterSelect.options[clusterSelect.selectedIndex];
             
             if (selectedOption && selectedOption.value) {
                 const course = selectedOption.getAttribute('data-course');
-                document.getElementById('section_id').value = selectedOption.value;
+                document.getElementById('cluster_id').value = selectedOption.value;
                 
                 // Enable all options first
                 for (let i = 0; i < facultySelect.options.length; i++) {
@@ -462,11 +462,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
         // Search functionality
         function handleSearch() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const sectionCards = document.querySelectorAll('.section-card');
+            const clusterCards = document.querySelectorAll('.cluster-card');
             
-            sectionCards.forEach(card => {
-                const sectionText = card.textContent.toLowerCase();
-                if (sectionText.includes(searchTerm)) {
+            clusterCards.forEach(card => {
+                const clusterText = card.textContent.toLowerCase();
+                if (clusterText.includes(searchTerm)) {
                     card.style.display = 'block';
                 } else {
                     card.style.display = 'none';
@@ -477,9 +477,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_adviser'])) {
         // Filter by status
         function filterByStatus() {
             const status = document.getElementById('statusFilter').value;
-            const sectionCards = document.querySelectorAll('.section-card');
+            const clusterCards = document.querySelectorAll('.cluster-card');
             
-            sectionCards.forEach(card => {
+            clusterCards.forEach(card => {
                 if (status === 'all' || card.getAttribute('data-status') === status) {
                     card.style.display = 'block';
                 } else {

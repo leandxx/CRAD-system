@@ -12,6 +12,7 @@ if (!isset($_SESSION['user_id']) || strcasecmp($_SESSION['role'], 'student') !==
 
 $user_id = $_SESSION['user_id'];
 $message = '';
+$assigned_adviser = null;
 
 // Check if profile already exists
 $profile_check = $conn->prepare("SELECT * FROM student_profiles WHERE user_id = ?");
@@ -20,22 +21,48 @@ $profile_check->execute();
 $profile_result = $profile_check->get_result();
 $existing_profile = $profile_result->fetch_assoc();
 
+// If profile exists, fetch assigned adviser
+if ($existing_profile) {
+    $course = $existing_profile['course'];
+    $cluster = $existing_profile['cluster'];
+    $school_year = $existing_profile['school_year'];
+    
+    // Query to get assigned adviser based on course, cluster, and school_year
+    $adviser_query = "
+        SELECT f.* 
+        FROM faculty f
+        INNER JOIN sections s ON f.id = s.faculty_id
+        WHERE s.course = ? AND s.cluster = ? AND s.school_year = ? AND s.status = 'assigned'
+        LIMIT 1
+    ";
+    
+    $adviser_stmt = $conn->prepare($adviser_query);
+    $adviser_stmt->bind_param("sss", $course, $cluster, $school_year);
+    $adviser_stmt->execute();
+    $adviser_result = $adviser_stmt->get_result();
+    
+    if ($adviser_result && $adviser_result->num_rows > 0) {
+        $assigned_adviser = $adviser_result->fetch_assoc();
+    }
+    $adviser_stmt->close();
+}
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $school_id = $_POST['school_id'];
     $full_name = $_POST['full_name'];
-    $course = $_POST['course']; // Changed from department to course
-    $section = $_POST['section'];
+    $course = $_POST['course'];
+    $cluster = $_POST['cluster'];
     $school_year = $_POST['school_year'];
     
     if ($existing_profile) {
         // Update existing profile
-        $stmt = $conn->prepare("UPDATE student_profiles SET school_id=?, full_name=?, course=?, section=?, school_year=? WHERE user_id=?");
-        $stmt->bind_param("sssssi", $school_id, $full_name, $course, $section, $school_year, $user_id);
+        $stmt = $conn->prepare("UPDATE student_profiles SET school_id=?, full_name=?, course=?, cluster=?, school_year=? WHERE user_id=?");
+        $stmt->bind_param("sssssi", $school_id, $full_name, $course, $cluster, $school_year, $user_id);
     } else {
         // Insert new profile
-        $stmt = $conn->prepare("INSERT INTO student_profiles (user_id, school_id, full_name, course, section, school_year) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssss", $user_id, $school_id, $full_name, $course, $section, $school_year);
+        $stmt = $conn->prepare("INSERT INTO student_profiles (user_id, school_id, full_name, course, cluster, school_year) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssss", $user_id, $school_id, $full_name, $course, $cluster, $school_year);
     }
     
     if ($stmt->execute()) {
@@ -47,6 +74,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $profile_check->execute();
         $profile_result = $profile_check->get_result();
         $existing_profile = $profile_result->fetch_assoc();
+        
+        // Refresh adviser data if profile was updated
+        if ($existing_profile) {
+            $course = $existing_profile['course'];
+            $cluster = $existing_profile['cluster'];
+            $school_year = $existing_profile['school_year'];
+            
+            $adviser_query = "
+                SELECT f.* 
+                FROM faculty f
+                INNER JOIN sections s ON f.id = s.faculty_id
+                WHERE s.course = ? AND s.cluster = ? AND s.school_year = ? AND s.status = 'assigned'
+                LIMIT 1
+            ";
+            
+            $adviser_stmt = $conn->prepare($adviser_query);
+            $adviser_stmt->bind_param("sss", $course, $cluster, $school_year);
+            $adviser_stmt->execute();
+            $adviser_result = $adviser_stmt->get_result();
+            
+            if ($adviser_result && $adviser_result->num_rows > 0) {
+                $assigned_adviser = $adviser_result->fetch_assoc();
+            }
+            $adviser_stmt->close();
+        }
     } else {
         $message = "Error saving profile: " . $conn->error;
     }
@@ -109,7 +161,8 @@ $profile_check->close();
 
         <!-- Main content area -->
         <main class="flex-1 overflow-y-auto p-6">
-           
+            <div class="max-w-4xl mx-auto">
+                
 
                 <?php if (!empty($message)): ?>
                     <div class="mb-6 p-4 rounded-md <?php echo strpos($message, 'Error') !== false ? 'bg-danger/20 text-danger' : 'bg-success/20 text-success'; ?>">
@@ -163,17 +216,16 @@ $profile_check->close();
                                     <option value="BSED" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSED') ? 'selected' : ''; ?>>BSED - Education</option>
                                     <option value="BSIT" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSIT') ? 'selected' : ''; ?>>BSIT - Information Technology</option>
                                     <option value="BSCRIM" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSCRIM') ? 'selected' : ''; ?>>BSCRIM - Criminology</option>
-
                                 </select>
                             </div>
                             
                             <div>
-                                <label for="section" class="block text-sm font-medium text-gray-700 mb-1">Section</label>
+                                <label for="cluster" class="block text-sm font-medium text-gray-700 mb-1">Cluster</label>
                                 <input 
                                     type="text" 
-                                    id="section" 
-                                    name="section" 
-                                    value="<?php echo isset($existing_profile['section']) ? htmlspecialchars($existing_profile['section']) : ''; ?>" 
+                                    id="cluster" 
+                                    name="cluster" 
+                                    value="<?php echo isset($existing_profile['cluster']) ? htmlspecialchars($existing_profile['cluster']) : ''; ?>" 
                                     class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition input-field"
                                     required
                                 >
@@ -256,8 +308,8 @@ $profile_check->close();
                                     <i class="fas fa-users text-primary text-xl"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-gray-500">Section</p>
-                                    <p class="font-medium"><?php echo htmlspecialchars($existing_profile['section']); ?></p>
+                                    <p class="text-sm text-gray-500">Cluster</p>
+                                    <p class="font-medium"><?php echo htmlspecialchars($existing_profile['cluster']); ?></p>
                                 </div>
                             </div>
                             
@@ -271,6 +323,58 @@ $profile_check->close();
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Assigned Adviser Section -->
+                <?php if (isset($existing_profile) && $existing_profile): ?>
+                <div class="mt-8 bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="bg-secondary p-6 text-white">
+                        <h2 class="text-2xl font-semibold">Assigned Adviser</h2>
+                        <p class="opacity-90">Your academic adviser for <?php echo htmlspecialchars($existing_profile['school_year']); ?></p>
+                    </div>
+                    
+                    <div class="p-6">
+                        <?php if ($assigned_adviser): ?>
+                        <div class="flex flex-col md:flex-row items-center md:items-start gap-6 p-6 bg-gray-50 rounded-lg">
+                            <div class="flex-shrink-0">
+                                <div class="w-24 h-24 rounded-full bg-secondary/20 flex items-center justify-center">
+                                    <i class="fas fa-user-tie text-secondary text-3xl"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="flex-grow text-center md:text-left">
+                                <h3 class="text-xl font-semibold text-gray-900"><?php echo htmlspecialchars($assigned_adviser['fullname']); ?></h3>
+                                <p class="text-gray-600"><?php echo htmlspecialchars($assigned_adviser['department']); ?> Department</p>
+                                
+                                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-sm text-gray-500">Expertise</p>
+                                        <p class="font-medium"><?php echo htmlspecialchars($assigned_adviser['expertise']); ?></p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p class="text-sm text-gray-500">Contact</p>
+                                        <p class="font-medium"><?php echo strtolower(str_replace(' ', '.', $assigned_adviser['fullname'])); ?>@school.edu</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex-shrink-0">
+                                <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition flex items-center">
+                                    <i class="fas fa-envelope mr-2"></i>
+                                    Contact
+                                </button>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <div class="text-center p-8 bg-warning/10 rounded-lg">
+                            <i class="fas fa-user-clock text-warning text-4xl mb-4"></i>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">No Adviser Assigned Yet</h3>
+                            <p class="text-gray-600">Your section has not been assigned an adviser yet. Please check back later.</p>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endif; ?>

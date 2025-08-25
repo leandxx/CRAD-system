@@ -25,9 +25,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Redirect based on role
            if ($user['role'] === 'Admin') {
                 header("Location: ../admin-pages/admin-dashboard.php");
-            }  else {
+            } elseif ($user['role'] === 'Staff') {
+                header("Location: ../staff-pages/staff-dashboard.php");
+            } else {
                 echo "<script>alert('Unknown user role'); window.history.back();</script>";
             }
+
             exit();
         } else {
             echo "<script>alert('Incorrect password'); window.history.back();</script>";

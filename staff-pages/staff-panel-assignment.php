@@ -452,7 +452,7 @@ while ($row = $program_stats_result->fetch_assoc()) {
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
     <div class="min-h-screen flex">
         <!-- Sidebar/header -->
-        <?php include('../includes/admin-sidebar.php'); ?>
+        <?php include('../includes/staff-sidebar.php'); ?>
         
         <!-- Main content area -->
         <main class="flex-1 overflow-y-auto p-6">
@@ -810,10 +810,10 @@ Thesis Coordinator</textarea>
                             <p><strong>Subject:</strong> <span id="preview-subject">Invitation to Serve as Panel Member</span></p>
                             <hr class="my-2">
                             <div id="preview-message">
-                                Dear Panel Member,
-                                You are invited to serve as a panel member for our upcoming thesis defenses.
-                                Please respond to this invitation by clicking the appropriate link below.
-                                Best regards,
+                                Dear Panel Member,<br><br>
+                                You are invited to serve as a panel member for our upcoming thesis defenses.<br><br>
+                                Please respond to this invitation by clicking the appropriate link below.<br><br>
+                                Best regards,<br>
                                 Thesis Coordinator
                             </div>
                             <hr class="my-2">

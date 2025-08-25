@@ -20,9 +20,7 @@ $user = $result->fetch_assoc();
 $role = $user['role'];
 // Create greeting based on role
 $greeting = "Hello, " . match($role) {
-    'admin' => 'Admin',
-    'student' => 'Student',
-    default => 'Admin'
+    'Staff' => 'Staff',
 };
 ?>
 
@@ -137,61 +135,47 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Dashboard</p>
             <ul>
                 <li>
-                    <a href="admin-pages/admin-dashboard.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700" data-page-title="Admin Dashboard">
+                    <a href="staff-pages/staff-dashboard.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700" data-page-title="Admin Dashboard">
                         <i class="fas fa-tachometer-alt nav-icon"></i>
-                        <span class="nav-text">Admin Dashboard</span>
+                        <span class="nav-text">Staff Dashboard</span>
                     </a>
                 </li>
             </ul>
         </div>
 
-        <!-- Account Management -->
-        <div class="px-4 py-3">
-            <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Account Management</p>
-            <ul>
-                <li>
-                    <a href="admin-pages/manage-admins.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700" data-page-title="Admin Management">
-                        <i class="fas fa-user-shield nav-icon"></i>
-                        <span class="nav-text">Manage Admins</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-
+        
 
         <!-- Research Management -->
         <div class="px-4 py-3">
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Research Management</p>
             <ul>
                 <li>
-                    <a href="admin-pages/admin-timeline.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Submission Timeline">
+                    <a href="staff-pages/staff-timeline.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Submission Timeline">
                         <i class="fas fa-file-alt nav-icon"></i>
                         <span class="nav-text">Research Timeline & Submission</span>
                     </a>
                 </li>
                 <li>
-                    <a href="admin-pages/admin-defense.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Defense Scheduling">
+                    <a href="staff-pages/staff-defense.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Defense Scheduling">
                         <i class="fas fa-calendar-alt nav-icon"></i>
                         <span class="nav-text">Defense Scheduling</span>
                     </a>
                 </li>
-
-                 <!-- Panel Assignment Module -->
+                <!-- Panel Assignment Module -->
                 <li>
-                    <a href="admin-pages/panel-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Panel Assignment">
+                    <a href="staff-pages/staff-panel-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Panel Assignment">
                         <i class="fas fa-users nav-icon"></i>
                         <span class="nav-text">Panel Management & Assignment</span>
                     </a>
                 </li>
 
                 <li>
-                    <a href="admin-pages/adviser-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Adviser Assignment">
+                    <a href="staff-pages/staff-adviser-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Adviser Assignment">
                         <i class="fas fa-user-tie nav-icon"></i>
                         <span class="nav-text">Adviser Assignment</span>
                     </a>
                 </li>
 
-            
             </ul>
         </div>
         
@@ -201,7 +185,7 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">System Settings</p>
             <ul>
                 <li>
-                    <a href="admin_pages/system-settings.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="staff_pages/system-settings.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-cog nav-icon"></i>
                         <span class="nav-text">Settings</span>
                     </a>

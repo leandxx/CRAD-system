@@ -23,7 +23,7 @@ $existing_profile = $profile_result->fetch_assoc();
 
 // If profile exists, fetch assigned adviser
 if ($existing_profile) {
-    $course = $existing_profile['course'];
+    $progam = $existing_profile['program'];
     $cluster = $existing_profile['cluster'];
     $school_year = $existing_profile['school_year'];
     
@@ -32,12 +32,12 @@ if ($existing_profile) {
         SELECT f.* 
         FROM faculty f
         INNER JOIN clusters s ON f.id = s.faculty_id
-        WHERE s.course = ? AND s.cluster = ? AND s.school_year = ? AND s.status = 'assigned'
+        WHERE s.program = ? AND s.cluster = ? AND s.school_year = ? AND s.status = 'assigned'
         LIMIT 1
     ";
     
     $adviser_stmt = $conn->prepare($adviser_query);
-    $adviser_stmt->bind_param("sss", $course, $cluster, $school_year);
+    $adviser_stmt->bind_param("sss", $program, $cluster, $school_year);
     $adviser_stmt->execute();
     $adviser_result = $adviser_stmt->get_result();
     
@@ -51,19 +51,19 @@ if ($existing_profile) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $school_id = $_POST['school_id'];
     $full_name = $_POST['full_name'];
-    $course = $_POST['course'];
+    $program = $_POST['program'];
     $school_year = $_POST['school_year'];
     
     // Get cluster assignment from admin based on course and school year
     $cluster_query = "
         SELECT cluster 
         FROM clusters 
-        WHERE course = ? AND school_year = ? AND status = 'active'
+        WHERE program = ? AND school_year = ? AND status = 'active'
         LIMIT 1
     ";
     
     $cluster_stmt = $conn->prepare($cluster_query);
-    $cluster_stmt->bind_param("ss", $course, $school_year);
+    $cluster_stmt->bind_param("ss", $program, $school_year);
     $cluster_stmt->execute();
     $cluster_result = $cluster_stmt->get_result();
     
@@ -78,12 +78,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     if ($existing_profile) {
         // Update existing profile
-        $stmt = $conn->prepare("UPDATE student_profiles SET school_id=?, full_name=?, course=?, cluster=?, school_year=? WHERE user_id=?");
-        $stmt->bind_param("sssssi", $school_id, $full_name, $course, $cluster, $school_year, $user_id);
+        $stmt = $conn->prepare("UPDATE student_profiles SET school_id=?, full_name=?, program=?, cluster=?, school_year=? WHERE user_id=?");
+        $stmt->bind_param("sssssi", $school_id, $full_name, $program, $cluster, $school_year, $user_id);
     } else {
         // Insert new profile
-        $stmt = $conn->prepare("INSERT INTO student_profiles (user_id, school_id, full_name, course, cluster, school_year) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isssss", $user_id, $school_id, $full_name, $course, $cluster, $school_year);
+        $stmt = $conn->prepare("INSERT INTO student_profiles (user_id, school_id, full_name, program, cluster, school_year) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssss", $user_id, $school_id, $full_name, $program, $cluster, $school_year);
     }
     
     if ($stmt->execute()) {
@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         // Refresh adviser data if profile was updated
         if ($existing_profile) {
-            $course = $existing_profile['course'];
+            $program = $existing_profile['program'];
             $cluster = $existing_profile['cluster'];
             $school_year = $existing_profile['school_year'];
             
@@ -106,12 +106,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 SELECT f.* 
                 FROM faculty f
                 INNER JOIN clusters s ON f.id = s.faculty_id
-                WHERE s.course = ? AND s.cluster = ? AND s.school_year = ? AND s.status = 'assigned'
+                WHERE s.program = ? AND s.cluster = ? AND s.school_year = ? AND s.status = 'assigned'
                 LIMIT 1
             ";
             
             $adviser_stmt = $conn->prepare($adviser_query);
-            $adviser_stmt->bind_param("sss", $course, $cluster, $school_year);
+            $adviser_stmt->bind_param("sss", $program, $cluster, $school_year);
             $adviser_stmt->execute();
             $adviser_result = $adviser_stmt->get_result();
             
@@ -233,19 +233,19 @@ $profile_check->close();
                             </div>
                             
                             <div>
-                                <label for="course" class="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                                <label for="program" class="block text-sm font-medium text-gray-700 mb-1">Program</label>
                                 <select 
-                                    id="course" 
-                                    name="course" 
+                                    id="program" 
+                                    name="program" 
                                     class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition input-field"
                                     required
                                 >
-                                   <option value="">Select Course</option>
-                                    <option value="BSCS" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSCS') ? 'selected' : ''; ?>>BSCS - Computer Science</option>
-                                    <option value="BSBA" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSBA') ? 'selected' : ''; ?>>BSBA - Business Administration</option>
-                                    <option value="BSED" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSED') ? 'selected' : ''; ?>>BSED - Education</option>
-                                    <option value="BSIT" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSIT') ? 'selected' : ''; ?>>BSIT - Information Technology</option>
-                                    <option value="BSCRIM" <?php echo (isset($existing_profile['course']) && $existing_profile['course'] == 'BSCRIM') ? 'selected' : ''; ?>>BSCRIM - Criminology</option>
+                                   <option value="">Select Program</option>
+                                    <option value="BSCS" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSCS') ? 'selected' : ''; ?>>BSCS - Computer Science</option>
+                                    <option value="BSBA" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSBA') ? 'selected' : ''; ?>>BSBA - Business Administration</option>
+                                    <option value="BSED" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSED') ? 'selected' : ''; ?>>BSED - Education</option>
+                                    <option value="BSIT" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSIT') ? 'selected' : ''; ?>>BSIT - Information Technology</option>
+                                    <option value="BSCRIM" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSCRIM') ? 'selected' : ''; ?>>BSCRIM - Criminology</option>
                                 </select>
                             </div>
                             
@@ -335,8 +335,8 @@ $profile_check->close();
                                     <i class="fas fa-book text-primary text-xl"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm text-gray-500">Course</p>
-                                    <p class="font-medium"><?php echo htmlspecialchars($existing_profile['course']); ?></p>
+                                    <p class="text-sm text-gray-500">Program</p>
+                                    <p class="font-medium"><?php echo htmlspecialchars($existing_profile['program']); ?></p>
                                 </div>
                             </div>
                             

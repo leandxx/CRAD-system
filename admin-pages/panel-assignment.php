@@ -798,10 +798,10 @@ Thesis Coordinator</textarea>
                             <p><strong>Subject:</strong> <span id="preview-subject">Invitation to Serve as Panel Member</span></p>
                             <hr class="my-2">
                             <div id="preview-message">
-                                Dear Panel Member,<br><br>
-                                You are invited to serve as a panel member for our upcoming thesis defenses.<br><br>
-                                Please respond to this invitation by clicking the appropriate link below.<br><br>
-                                Best regards,<br>
+                                Dear Panel Member,
+                                You are invited to serve as a panel member for our upcoming thesis defenses.
+                                Please respond to this invitation by clicking the appropriate link below.
+                                Best regards,
                                 Thesis Coordinator
                             </div>
                             <hr class="my-2">

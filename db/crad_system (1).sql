@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1: 3308
--- Generation Time: Aug 25, 2025 at 04:12 PM
+-- Generation Time: Aug 25, 2025 at 07:59 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -37,16 +37,6 @@ CREATE TABLE `adviser_assignment` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `adviser_assignment`
---
-
-INSERT INTO `adviser_assignment` (`id`, `cluster_id`, `faculty_id`, `assigned_date`, `notes`, `cluster_number`, `created_at`) VALUES
-(3, 32, 2, '2025-08-25', '', '41006', '2025-08-25 12:29:10'),
-(4, 32, 7, '2025-08-25', '', '420232', '2025-08-25 12:29:50'),
-(5, 32, 7, '2025-08-25', '', '41006', '2025-08-25 13:36:56'),
-(6, 33, 7, '2025-08-25', '', '41006', '2025-08-25 13:39:28');
-
 -- --------------------------------------------------------
 
 --
@@ -55,7 +45,7 @@ INSERT INTO `adviser_assignment` (`id`, `cluster_id`, `faculty_id`, `assigned_da
 
 CREATE TABLE `clusters` (
   `id` int(11) NOT NULL,
-  `course` varchar(100) NOT NULL,
+  `program` varchar(100) NOT NULL,
   `cluster` varchar(50) NOT NULL,
   `school_year` varchar(20) NOT NULL,
   `faculty_id` int(11) DEFAULT NULL,
@@ -70,9 +60,8 @@ CREATE TABLE `clusters` (
 -- Dumping data for table `clusters`
 --
 
-INSERT INTO `clusters` (`id`, `course`, `cluster`, `school_year`, `faculty_id`, `assigned_date`, `student_count`, `capacity`, `status`, `created_date`) VALUES
-(32, 'BSIT', '41007', '2024-2025', 5, '2025-08-25', 2, 50, 'assigned', '2025-08-25 13:39:50'),
-(33, 'BSIT', '41006', '2025-2026', 7, '2025-08-25', 1, 50, 'assigned', '2025-08-25 13:39:28');
+INSERT INTO `clusters` (`id`, `program`, `cluster`, `school_year`, `faculty_id`, `assigned_date`, `student_count`, `capacity`, `status`, `created_date`) VALUES
+(38, 'BSIT', '0', '2025-2026', NULL, NULL, 1, 50, '', '2025-08-25 16:37:06');
 
 -- --------------------------------------------------------
 
@@ -158,6 +147,7 @@ INSERT INTO `faculty` (`id`, `fullname`, `department`, `expertise`) VALUES
 CREATE TABLE `groups` (
   `id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL,
+  `program` varchar(50) NOT NULL,
   `cluster_id` int(11) DEFAULT NULL,
   `join_code` varchar(10) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
@@ -167,9 +157,8 @@ CREATE TABLE `groups` (
 -- Dumping data for table `groups`
 --
 
-INSERT INTO `groups` (`id`, `name`, `cluster_id`, `join_code`, `created_at`) VALUES
-(11, 'GROUP 100', NULL, '93687E', '2025-08-25 11:53:34'),
-(12, 'CRAD', NULL, '5D675D', '2025-08-25 13:16:37');
+INSERT INTO `groups` (`id`, `name`, `program`, `cluster_id`, `join_code`, `created_at`) VALUES
+(14, 'CRAD', 'BSIT', NULL, 'AE85E1', '2025-08-25 16:41:10');
 
 -- --------------------------------------------------------
 
@@ -188,9 +177,7 @@ CREATE TABLE `group_members` (
 --
 
 INSERT INTO `group_members` (`id`, `group_id`, `student_id`) VALUES
-(19, 11, 7),
-(20, 11, 9),
-(21, 12, 1);
+(24, 14, 1);
 
 -- --------------------------------------------------------
 
@@ -202,10 +189,18 @@ CREATE TABLE `panel_invitations` (
   `id` int(11) NOT NULL,
   `panel_id` int(11) NOT NULL,
   `token` varchar(64) NOT NULL,
-  `status` enum('pending','accepted','rejected') DEFAULT 'pending',
+  `status` enum('pending','accepted','rejected') NOT NULL DEFAULT 'pending',
   `invited_at` datetime NOT NULL DEFAULT current_timestamp(),
   `responded_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `panel_invitations`
+--
+
+INSERT INTO `panel_invitations` (`id`, `panel_id`, `token`, `status`, `invited_at`, `responded_at`) VALUES
+(0, 8, 'f02432185b3a80a66691cd67336e800e32c170c099ec03d8c7e90f8549cd4fa6', 'rejected', '2025-08-25 22:31:46', '2025-08-25 22:33:52'),
+(0, 8, '2befe2d3c3c74a7b237e31e5cc78245b4d4a97b7bc3d536f6c41e82c3274a076', 'accepted', '2025-08-25 22:37:54', '2025-08-25 22:38:55');
 
 -- --------------------------------------------------------
 
@@ -224,6 +219,13 @@ CREATE TABLE `panel_members` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `panel_members`
+--
+
+INSERT INTO `panel_members` (`id`, `first_name`, `last_name`, `email`, `specialization`, `program`, `status`, `created_at`, `updated_at`) VALUES
+(8, 'John Marvic', 'Giray', 'girayjohnmarvic09@gmail.com', 'Information Technology', 'bsit', 'active', '2025-08-25 14:31:40', '2025-08-25 14:31:40');
 
 -- --------------------------------------------------------
 
@@ -317,7 +319,7 @@ CREATE TABLE `student_profiles` (
   `user_id` int(11) NOT NULL,
   `school_id` varchar(50) NOT NULL,
   `full_name` varchar(100) NOT NULL,
-  `course` varchar(100) NOT NULL,
+  `program` varchar(50) NOT NULL,
   `cluster` int(11) NOT NULL,
   `faculty_id` int(11) DEFAULT NULL,
   `school_year` varchar(20) NOT NULL,
@@ -329,10 +331,8 @@ CREATE TABLE `student_profiles` (
 -- Dumping data for table `student_profiles`
 --
 
-INSERT INTO `student_profiles` (`id`, `user_id`, `school_id`, `full_name`, `course`, `cluster`, `faculty_id`, `school_year`, `created_at`, `updated_at`) VALUES
-(12, 7, '22014876', 'Leandro Lojero', 'BSIT', 41007, NULL, '2024-2025', '2025-08-25 11:53:24', '2025-08-25 13:39:50'),
-(13, 9, '22014849', 'Hanni Pham', 'BSIT', 41007, NULL, '2024-2025', '2025-08-25 11:55:34', '2025-08-25 13:39:50'),
-(14, 1, '21016692', 'John Marvic Giray', 'BSIT', 41006, NULL, '2025-2026', '2025-08-25 13:16:56', '2025-08-25 13:39:28');
+INSERT INTO `student_profiles` (`id`, `user_id`, `school_id`, `full_name`, `program`, `cluster`, `faculty_id`, `school_year`, `created_at`, `updated_at`) VALUES
+(14, 1, '21016692', 'John Marvic Giray', 'BSIT', 0, NULL, '2025-2026', '2025-08-25 13:16:56', '2025-08-25 16:17:04');
 
 -- --------------------------------------------------------
 
@@ -483,9 +483,9 @@ ALTER TABLE `group_members`
 -- Indexes for table `panel_invitations`
 --
 ALTER TABLE `panel_invitations`
-  ADD PRIMARY KEY (`id`),
+  ADD PRIMARY KEY (`invited_at`) USING BTREE,
   ADD UNIQUE KEY `token` (`token`),
-  ADD UNIQUE KEY `unique_invitation` (`panel_id`) USING BTREE,
+  ADD UNIQUE KEY `unique_invitation` (`invited_at`) USING BTREE,
   ADD KEY `panel_id` (`panel_id`);
 
 --
@@ -556,13 +556,13 @@ ALTER TABLE `user_tbl`
 -- AUTO_INCREMENT for table `adviser_assignment`
 --
 ALTER TABLE `adviser_assignment`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `clusters`
 --
 ALTER TABLE `clusters`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `defense_panel`
@@ -592,19 +592,19 @@ ALTER TABLE `faculty`
 -- AUTO_INCREMENT for table `groups`
 --
 ALTER TABLE `groups`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `group_members`
 --
 ALTER TABLE `group_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `panel_members`
 --
 ALTER TABLE `panel_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `payments`

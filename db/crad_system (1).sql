@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3308
--- Generation Time: Aug 24, 2025 at 11:41 AM
+-- Generation Time: Aug 25, 2025 at 02:43 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -24,24 +24,52 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
--- Table structure for table `assign_adviser`
+-- Table structure for table `adviser_assignment`
 --
 
-CREATE TABLE `assign_adviser` (
+CREATE TABLE `adviser_assignment` (
   `id` int(11) NOT NULL,
-  `section_id` int(11) NOT NULL,
+  `cluster_id` int(11) NOT NULL,
   `faculty_id` int(11) NOT NULL,
   `assigned_date` date NOT NULL,
-  `notes` text DEFAULT NULL
+  `notes` text DEFAULT NULL,
+  `cluster_number` varchar(50) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `assign_adviser`
+-- Dumping data for table `adviser_assignment`
 --
 
-INSERT INTO `assign_adviser` (`id`, `section_id`, `faculty_id`, `assigned_date`, `notes`) VALUES
-(6, 16, 8, '2025-08-24', 'ayos'),
-(7, 12, 7, '2025-08-24', '');
+INSERT INTO `adviser_assignment` (`id`, `cluster_id`, `faculty_id`, `assigned_date`, `notes`, `cluster_number`, `created_at`) VALUES
+(3, 32, 2, '2025-08-25', '', '41006', '2025-08-25 12:29:10'),
+(4, 32, 7, '2025-08-25', '', '420232', '2025-08-25 12:29:50');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `clusters`
+--
+
+CREATE TABLE `clusters` (
+  `id` int(11) NOT NULL,
+  `course` varchar(100) NOT NULL,
+  `cluster` varchar(50) NOT NULL,
+  `school_year` varchar(20) NOT NULL,
+  `faculty_id` int(11) DEFAULT NULL,
+  `assigned_date` date DEFAULT NULL,
+  `student_count` int(11) DEFAULT 0,
+  `capacity` int(11) DEFAULT 50,
+  `status` enum('assigned','pending') DEFAULT 'pending',
+  `created_date` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `clusters`
+--
+
+INSERT INTO `clusters` (`id`, `course`, `cluster`, `school_year`, `faculty_id`, `assigned_date`, `student_count`, `capacity`, `status`, `created_date`) VALUES
+(32, 'BSIT', '0', '2024-2025', NULL, NULL, 2, 50, 'pending', '2025-08-25 12:30:13');
 
 -- --------------------------------------------------------
 
@@ -56,17 +84,6 @@ CREATE TABLE `defense_panel` (
   `role` enum('chair','member') DEFAULT 'member',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Dumping data for table `defense_panel`
---
-
-INSERT INTO `defense_panel` (`id`, `defense_id`, `faculty_id`, `role`, `created_at`) VALUES
-(1, 5, 5, 'member', '2025-08-22 05:46:02'),
-(2, 6, 5, 'member', '2025-08-22 07:37:47'),
-(8, 5, 1, '', '2025-08-23 19:39:28'),
-(9, 5, 2, 'member', '2025-08-23 19:39:28'),
-(10, 5, 5, 'member', '2025-08-23 19:39:28');
 
 -- --------------------------------------------------------
 
@@ -84,14 +101,6 @@ CREATE TABLE `defense_schedules` (
   `status` enum('scheduled','completed','cancelled') DEFAULT 'scheduled',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Dumping data for table `defense_schedules`
---
-
-INSERT INTO `defense_schedules` (`id`, `group_id`, `defense_date`, `start_time`, `end_time`, `room_id`, `status`, `created_at`) VALUES
-(5, 4, '2025-08-23', '08:00:00', '08:30:00', 5, 'scheduled', '2025-08-22 05:46:02'),
-(6, 5, '2025-08-28', '04:38:00', '05:39:00', 5, 'scheduled', '2025-08-22 07:37:47');
 
 -- --------------------------------------------------------
 
@@ -146,6 +155,7 @@ INSERT INTO `faculty` (`id`, `fullname`, `department`, `expertise`) VALUES
 CREATE TABLE `groups` (
   `id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL,
+  `cluster_id` int(11) DEFAULT NULL,
   `join_code` varchar(10) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
@@ -154,10 +164,8 @@ CREATE TABLE `groups` (
 -- Dumping data for table `groups`
 --
 
-INSERT INTO `groups` (`id`, `name`, `join_code`, `created_at`) VALUES
-(1, 'CRAD', '0D8110', '2025-08-23 19:02:17'),
-(4, 'Crad ', 'D5718Y', '2025-08-20 15:04:37'),
-(5, 'GROUP 100', 'B74EFD', '2025-08-22 07:30:06');
+INSERT INTO `groups` (`id`, `name`, `cluster_id`, `join_code`, `created_at`) VALUES
+(11, 'GROUP 100', NULL, '93687E', '2025-08-25 11:53:34');
 
 -- --------------------------------------------------------
 
@@ -176,11 +184,8 @@ CREATE TABLE `group_members` (
 --
 
 INSERT INTO `group_members` (`id`, `group_id`, `student_id`) VALUES
-(1, 1, 1),
-(4, 4, 1),
-(5, 4, 2),
-(7, 5, 7),
-(8, 5, 8);
+(19, 11, 7),
+(20, 11, 9);
 
 -- --------------------------------------------------------
 
@@ -196,14 +201,6 @@ CREATE TABLE `panel_invitations` (
   `invited_at` datetime NOT NULL DEFAULT current_timestamp(),
   `responded_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Dumping data for table `panel_invitations`
---
-
-INSERT INTO `panel_invitations` (`id`, `panel_id`, `token`, `status`, `invited_at`, `responded_at`) VALUES
-(9, 1, 'e6dd6df19827be0f07748178ffe3580521a9e62989504ba03e5ef0268d2e713f', 'accepted', '2025-08-24 02:31:30', '2025-08-24 02:33:25'),
-(13, 2, '2a7dd9405a257d5e9880bebbc885f69a3e63958e63aa62408044ca3cfd86cb7d', 'accepted', '2025-08-24 02:56:22', '2025-08-24 02:58:19');
 
 -- --------------------------------------------------------
 
@@ -222,18 +219,6 @@ CREATE TABLE `panel_members` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `panel_members`
---
-
-INSERT INTO `panel_members` (`id`, `first_name`, `last_name`, `email`, `specialization`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'John Marvic', 'Giray', 'giray.136542080463@depedqc.ph', 'Information Technology', 'active', '2025-08-23 18:07:11', '2025-08-23 18:07:11'),
-(2, 'Leandro', 'Lojero', 'girayjohnmarvic09@gmail.com', 'Computer Science', 'active', '2025-08-23 18:56:15', '2025-08-23 18:56:15'),
-(4, 'DR JOHN MARVIC', 'GIRAY', 'leanlojero23@gmail.com', 'Chainperson', 'active', '2025-08-19 08:11:43', '2025-08-19 08:11:43'),
-(5, 'Dr. Maria', 'Santos', 'jho090402@gmail.com', 'Artificial Intelligence (AI)', 'active', '2025-08-19 10:18:09', '2025-08-19 10:18:09'),
-(6, 'Prof. John Dela', 'Cruz', 'jdelacruz@bestlink.edu.ph', 'Data Privacy & Cybersecurity', 'active', '2025-08-19 10:19:59', '2025-08-19 10:19:59'),
-(7, 'ROBIN', 'HOOD', 'robinhood@gmail.com', 'Field Expert', 'active', '2025-08-22 07:51:56', '2025-08-22 07:51:56');
-
 -- --------------------------------------------------------
 
 --
@@ -247,18 +232,6 @@ CREATE TABLE `payments` (
   `status` enum('pending','completed','failed') NOT NULL DEFAULT 'pending',
   `payment_date` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Dumping data for table `payments`
---
-
-INSERT INTO `payments` (`id`, `student_id`, `amount`, `status`, `payment_date`) VALUES
-(1, 1, 100.00, 'completed', '2025-08-20 15:17:20'),
-(2, 2, 100.00, 'completed', '2025-08-20 15:31:13'),
-(3, 8, 100.00, 'completed', '2025-08-22 07:32:04'),
-(4, 8, 100.00, 'completed', '2025-08-22 07:33:05'),
-(5, 8, 100.00, 'completed', '2025-08-22 07:33:05'),
-(6, 7, 100.00, 'completed', '2025-08-22 07:58:03');
 
 -- --------------------------------------------------------
 
@@ -277,14 +250,6 @@ CREATE TABLE `proposals` (
   `feedback` text DEFAULT NULL,
   `reviewed_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Dumping data for table `proposals`
---
-
-INSERT INTO `proposals` (`id`, `group_id`, `title`, `description`, `file_path`, `submitted_at`, `status`, `feedback`, `reviewed_at`) VALUES
-(1, 4, 'SCHOOL MANAGEMENT SYSTEM 1: CENTER FOR RESEARCH AND DEVELOPMENT INTELLIGENT PROGRESSIVE RESEARCH SUBMISSION AND TRACKING SYSTEM USING OPENAI', 'The Center for Research and Development Intelligent Progressive Research Submission and Tracking System is a web-based platform designed to streamline the research submission, monitoring, and evaluation process for students and faculty members. Leveraging OpenAIâ€™s intelligent capabilities, the system provides an automated, efficient, and user-friendly solution to manage research proposals, ongoing projects, and final outputs.', 'assets/uploadsproposal_4_1755754752.pdf', '2025-08-21 05:39:12', 'Approved', 'goods', '2025-08-22 04:42:20'),
-(2, 5, 'Smart Vehicle Reservation and Tracking System for Logistics 2 with Automated Approval Workflow', 'This capstone project aims to develop a web-based School Management System focusing on the Center for Research and Development (CRAD) to streamline and digitalize research-related processes. The system will include modules for Research Proposal Submission & Tracking, Adviser & Panel Assignment, Research Grant Assistance, Documentation & Publication Management, Research Analytics, and Defense Scheduling.', 'assets/uploadsproposal_5_1755848131.pdf', '2025-08-22 07:35:31', 'Approved', '', '2025-08-22 07:37:06');
 
 -- --------------------------------------------------------
 
@@ -331,35 +296,6 @@ INSERT INTO `rooms` (`id`, `room_name`, `building`, `capacity`) VALUES
 -- --------------------------------------------------------
 
 --
--- Table structure for table `sections`
---
-
-CREATE TABLE `sections` (
-  `id` int(11) NOT NULL,
-  `course` varchar(100) NOT NULL,
-  `cluster` varchar(50) NOT NULL,
-  `school_year` varchar(20) NOT NULL,
-  `faculty_id` int(11) DEFAULT NULL,
-  `assigned_date` date DEFAULT NULL,
-  `student_count` int(11) DEFAULT 0,
-  `capacity` int(11) DEFAULT 50,
-  `status` enum('assigned','pending') DEFAULT 'pending'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `sections`
---
-
-INSERT INTO `sections` (`id`, `course`, `cluster`, `school_year`, `faculty_id`, `assigned_date`, `student_count`, `capacity`, `status`) VALUES
-(12, 'BSIT', '41006', '2024-2025', 7, '2025-08-24', 1, 50, 'assigned'),
-(13, 'Computer Science', '41005', '2025-2026', NULL, NULL, 1, 50, 'pending'),
-(14, 'Education', '41003', '2025-2026', NULL, NULL, 1, 50, 'pending'),
-(15, 'Computer Science', '41002', '2024-2025', NULL, NULL, 1, 50, 'pending'),
-(16, 'BSED', '41002', '2024-2025', 8, '2025-08-24', 1, 50, 'assigned');
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `student_profiles`
 --
 
@@ -370,6 +306,7 @@ CREATE TABLE `student_profiles` (
   `full_name` varchar(100) NOT NULL,
   `course` varchar(100) NOT NULL,
   `cluster` int(11) NOT NULL,
+  `faculty_id` int(11) DEFAULT NULL,
   `school_year` varchar(20) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -379,12 +316,9 @@ CREATE TABLE `student_profiles` (
 -- Dumping data for table `student_profiles`
 --
 
-INSERT INTO `student_profiles` (`id`, `user_id`, `school_id`, `full_name`, `course`, `cluster`, `school_year`, `created_at`, `updated_at`) VALUES
-(1, 7, '22014879', 'Kang Haerin', 'BSIT', 41006, '2024-2025', '2025-08-20 15:59:33', '2025-08-24 09:08:19'),
-(2, 1, '21016692', 'John Marvic Giray', 'Computer Science', 41005, '2025-2026', '2025-08-20 17:02:33', '2025-08-24 08:38:13'),
-(3, 2, '12345678', 'Coby Bryant Giray', 'Education', 41003, '2025-2026', '2025-08-20 17:15:02', '2025-08-24 08:38:20'),
-(4, 8, '22014876', 'Hanni Pham', 'Computer Science', 41002, '2024-2025', '2025-08-22 07:31:51', '2025-08-24 08:38:24'),
-(5, 9, '22014849', 'Haerina Newjeans', 'BSED', 41002, '2024-2025', '2025-08-24 09:20:15', '2025-08-24 09:20:15');
+INSERT INTO `student_profiles` (`id`, `user_id`, `school_id`, `full_name`, `course`, `cluster`, `faculty_id`, `school_year`, `created_at`, `updated_at`) VALUES
+(12, 7, '22014876', 'Leandro Lojero', 'BSIT', 0, NULL, '2024-2025', '2025-08-25 11:53:24', '2025-08-25 12:30:13'),
+(13, 9, '22014849', 'Hanni Pham', 'BSIT', 0, NULL, '2024-2025', '2025-08-25 11:55:34', '2025-08-25 12:30:13');
 
 -- --------------------------------------------------------
 
@@ -400,14 +334,6 @@ CREATE TABLE `submission_timelines` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `submission_timelines`
---
-
-INSERT INTO `submission_timelines` (`id`, `title`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, 'Capstone Timeline', 'Submission', 0, '2025-08-20 15:43:53', '2025-08-20 15:46:07'),
-(2, 'PROGRESSIVE RESEARCH SUBMISSION', '', 1, '2025-08-22 07:56:25', '2025-08-22 07:56:25');
 
 -- --------------------------------------------------------
 
@@ -463,18 +389,26 @@ INSERT INTO `user_tbl` (`user_id`, `email`, `password`, `role`, `created_at`) VA
 (6, 'Hyein@gmail.com', '$2y$10$qjO0RfgNB/lBD2X5kHdJh.Nro9zl3Z8rxWIKv5yXnaieKmCn8x1Im', 'Admin', '2025-08-22 07:21:05'),
 (7, 'leandro.lojero23@gmail.com', '$2y$10$U7UwMa8yFtv8jCCtgB8dW.Q949HIYS496xxESF9rpbwWzUVJEqaPy', 'Student', '2025-08-22 07:23:21'),
 (8, 'Hanni@gmail.com', '$2y$10$gFZtjV5ywm5IBUiai9vFxeM3AgckDKkzIFbyLaGKWij19ILL88kn.', 'Student', '2025-08-22 07:30:46'),
-(9, 'Haerin@gmail.com', '$2y$10$IFk3eicV9LTUxvINl6fzJezed50.6A6w.OKzVzFarlWy8H/D/CDeW', 'Student', '2025-08-24 09:19:19');
+(9, 'Haerin@gmail.com', '$2y$10$IFk3eicV9LTUxvINl6fzJezed50.6A6w.OKzVzFarlWy8H/D/CDeW', 'Student', '2025-08-24 09:19:19'),
+(10, 'estardo@gmail.com', '$2y$10$pPBylJ7rtgHRHslCugRNzufDid11X/qtkidole72Zf2GCc5aXQvn.', 'Student', '2025-08-25 08:57:23');
 
 --
 -- Indexes for dumped tables
 --
 
 --
--- Indexes for table `assign_adviser`
+-- Indexes for table `adviser_assignment`
 --
-ALTER TABLE `assign_adviser`
+ALTER TABLE `adviser_assignment`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `section_id` (`section_id`),
+  ADD KEY `cluster_id` (`cluster_id`),
+  ADD KEY `faculty_id` (`faculty_id`);
+
+--
+-- Indexes for table `clusters`
+--
+ALTER TABLE `clusters`
+  ADD PRIMARY KEY (`id`),
   ADD KEY `faculty_id` (`faculty_id`);
 
 --
@@ -510,7 +444,8 @@ ALTER TABLE `faculty`
 --
 ALTER TABLE `groups`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `join_code` (`join_code`);
+  ADD UNIQUE KEY `join_code` (`join_code`),
+  ADD KEY `fk_groups_cluster` (`cluster_id`);
 
 --
 -- Indexes for table `group_members`
@@ -563,13 +498,6 @@ ALTER TABLE `rooms`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `sections`
---
-ALTER TABLE `sections`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `faculty_id` (`faculty_id`);
-
---
 -- Indexes for table `student_profiles`
 --
 ALTER TABLE `student_profiles`
@@ -601,16 +529,22 @@ ALTER TABLE `user_tbl`
 --
 
 --
--- AUTO_INCREMENT for table `assign_adviser`
+-- AUTO_INCREMENT for table `adviser_assignment`
 --
-ALTER TABLE `assign_adviser`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+ALTER TABLE `adviser_assignment`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `clusters`
+--
+ALTER TABLE `clusters`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
 -- AUTO_INCREMENT for table `defense_panel`
 --
 ALTER TABLE `defense_panel`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `defense_schedules`
@@ -634,13 +568,13 @@ ALTER TABLE `faculty`
 -- AUTO_INCREMENT for table `groups`
 --
 ALTER TABLE `groups`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `group_members`
 --
 ALTER TABLE `group_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `panel_members`
@@ -673,16 +607,10 @@ ALTER TABLE `rooms`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
--- AUTO_INCREMENT for table `sections`
---
-ALTER TABLE `sections`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
-
---
 -- AUTO_INCREMENT for table `student_profiles`
 --
 ALTER TABLE `student_profiles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `submission_timelines`
@@ -700,18 +628,24 @@ ALTER TABLE `timeline_milestones`
 -- AUTO_INCREMENT for table `user_tbl`
 --
 ALTER TABLE `user_tbl`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- Constraints for dumped tables
 --
 
 --
--- Constraints for table `assign_adviser`
+-- Constraints for table `adviser_assignment`
 --
-ALTER TABLE `assign_adviser`
-  ADD CONSTRAINT `assign_adviser_ibfk_1` FOREIGN KEY (`section_id`) REFERENCES `sections` (`id`),
-  ADD CONSTRAINT `assign_adviser_ibfk_2` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`);
+ALTER TABLE `adviser_assignment`
+  ADD CONSTRAINT `adviser_assignment_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `clusters` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `adviser_assignment_ibfk_2` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `clusters`
+--
+ALTER TABLE `clusters`
+  ADD CONSTRAINT `clusters_ibfk_1` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`);
 
 --
 -- Constraints for table `defense_schedules`
@@ -724,6 +658,12 @@ ALTER TABLE `defense_schedules`
 --
 ALTER TABLE `document_submissions`
   ADD CONSTRAINT `document_submissions_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`);
+
+--
+-- Constraints for table `groups`
+--
+ALTER TABLE `groups`
+  ADD CONSTRAINT `fk_groups_cluster` FOREIGN KEY (`cluster_id`) REFERENCES `clusters` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Constraints for table `group_members`
@@ -743,12 +683,6 @@ ALTER TABLE `payments`
 --
 ALTER TABLE `proposals`
   ADD CONSTRAINT `proposals_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `sections`
---
-ALTER TABLE `sections`
-  ADD CONSTRAINT `sections_ibfk_1` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

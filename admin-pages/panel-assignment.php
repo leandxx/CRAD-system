@@ -142,7 +142,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     elseif ($action == 'send_invitation') {
         $panel_ids = $_POST['panel_ids'] ?? [];
         $subject = $conn->real_escape_string($_POST['subject']);
-        $message = $conn->real_escape_string($_POST['message']);
+        $message_raw = $_POST['message'];
+        $message = $conn->real_escape_string($message_raw);
         
         if (empty($panel_ids)) {
             $error = "Please select at least one panel member";
@@ -153,11 +154,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             foreach ($panel_ids as $panel_id) {
                 $panel_id = intval($panel_id);
-                
+
+                // Check if a pending invitation already exists
+                $check_invite = "SELECT id FROM panel_invitations WHERE panel_id = $panel_id AND status = 'pending'";
+                $check_result = $conn->query($check_invite);
+
+                if ($check_result->num_rows > 0) {
+                    $error_count++;
+                    $error_details[] = "Panel member ID $panel_id already has a pending invitation.";
+                    continue;
+                }
+
                 // Generate unique token
                 $token = bin2hex(random_bytes(32));
-                
-                
+
                 $invite_query = "INSERT INTO panel_invitations (panel_id, token, status, invited_at) 
                             VALUES ($panel_id, '$token', 'pending', NOW())";
                 
@@ -189,20 +199,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $mail->Subject = $subject;
                         
                         // Create HTML email content
-                        $emailContent = "
-                            <html>
-                            <body>
-                                <p>Dear {$panel['first_name']},</p>
-                                <p>{$message}</p>
-                                <p>Please respond to this invitation by clicking one of the links below:</p>
-                                <p>
-                                    <a href='http://localhost/CRAD-system/admin-pages/confirm-invitation.php?token=$token&status=accepted' style='background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; margin-right: 10px;'>Accept Invitation</a>
-                                    <a href='http://localhost/CRAD-system/admin-pages/confirm-invitation.php?token=$token&status=rejected' style='background-color: #f44336; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;'>Decline Invitation</a>
-                                </p>
-                                <p>Best regards,<br>Thesis Coordinator</p>
-                            </body>
-                            </html>
-                        ";
+                        // Decode any literal "\r\n" to actual newlines, then convert to <br>
+$clean_message = str_replace(["\\r\\n", "\\n", "\\r"], "\n", $message_raw);
+$emailContent = "
+    <html>
+    <body>
+        <p>Dear {$panel['first_name']},</p>
+        <p>" . nl2br($clean_message) . "</p>
+        <p>Please respond to this invitation by clicking one of the links below:</p>
+        <p>
+            <a href='http://localhost/CRAD-system/admin-pages/confirm-invitation.php?token=$token&status=accepted' style='background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; margin-right: 10px;'>Accept Invitation</a>
+            <a href='http://localhost/CRAD-system/admin-pages/confirm-invitation.php?token=$token&status=rejected' style='background-color: #f44336; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px;'>Decline Invitation</a>
+        </p>
+        <p>Best regards,<br>Thesis Coordinator</p>
+    </body>
+    </html>
+";
                         
                         $mail->Body = $emailContent;
                         

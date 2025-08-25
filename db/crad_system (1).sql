@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1:3308
--- Generation Time: Aug 25, 2025 at 02:43 PM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- Host: 127.0.0.1: 3308
+-- Generation Time: Aug 25, 2025 at 04:12 PM
+-- Server version: 10.4.28-MariaDB
+-- PHP Version: 8.2.4
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -43,7 +43,9 @@ CREATE TABLE `adviser_assignment` (
 
 INSERT INTO `adviser_assignment` (`id`, `cluster_id`, `faculty_id`, `assigned_date`, `notes`, `cluster_number`, `created_at`) VALUES
 (3, 32, 2, '2025-08-25', '', '41006', '2025-08-25 12:29:10'),
-(4, 32, 7, '2025-08-25', '', '420232', '2025-08-25 12:29:50');
+(4, 32, 7, '2025-08-25', '', '420232', '2025-08-25 12:29:50'),
+(5, 32, 7, '2025-08-25', '', '41006', '2025-08-25 13:36:56'),
+(6, 33, 7, '2025-08-25', '', '41006', '2025-08-25 13:39:28');
 
 -- --------------------------------------------------------
 
@@ -69,7 +71,8 @@ CREATE TABLE `clusters` (
 --
 
 INSERT INTO `clusters` (`id`, `course`, `cluster`, `school_year`, `faculty_id`, `assigned_date`, `student_count`, `capacity`, `status`, `created_date`) VALUES
-(32, 'BSIT', '0', '2024-2025', NULL, NULL, 2, 50, 'pending', '2025-08-25 12:30:13');
+(32, 'BSIT', '41007', '2024-2025', 5, '2025-08-25', 2, 50, 'assigned', '2025-08-25 13:39:50'),
+(33, 'BSIT', '41006', '2025-2026', 7, '2025-08-25', 1, 50, 'assigned', '2025-08-25 13:39:28');
 
 -- --------------------------------------------------------
 
@@ -165,7 +168,8 @@ CREATE TABLE `groups` (
 --
 
 INSERT INTO `groups` (`id`, `name`, `cluster_id`, `join_code`, `created_at`) VALUES
-(11, 'GROUP 100', NULL, '93687E', '2025-08-25 11:53:34');
+(11, 'GROUP 100', NULL, '93687E', '2025-08-25 11:53:34'),
+(12, 'CRAD', NULL, '5D675D', '2025-08-25 13:16:37');
 
 -- --------------------------------------------------------
 
@@ -185,7 +189,8 @@ CREATE TABLE `group_members` (
 
 INSERT INTO `group_members` (`id`, `group_id`, `student_id`) VALUES
 (19, 11, 7),
-(20, 11, 9);
+(20, 11, 9),
+(21, 12, 1);
 
 -- --------------------------------------------------------
 
@@ -214,6 +219,7 @@ CREATE TABLE `panel_members` (
   `last_name` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
   `specialization` varchar(100) NOT NULL,
+  `program` varchar(50) DEFAULT NULL,
   `status` enum('active','inactive') DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -232,6 +238,13 @@ CREATE TABLE `payments` (
   `status` enum('pending','completed','failed') NOT NULL DEFAULT 'pending',
   `payment_date` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `payments`
+--
+
+INSERT INTO `payments` (`id`, `student_id`, `amount`, `status`, `payment_date`) VALUES
+(7, 1, 100.00, 'completed', '2025-08-25 13:17:07');
 
 -- --------------------------------------------------------
 
@@ -317,8 +330,9 @@ CREATE TABLE `student_profiles` (
 --
 
 INSERT INTO `student_profiles` (`id`, `user_id`, `school_id`, `full_name`, `course`, `cluster`, `faculty_id`, `school_year`, `created_at`, `updated_at`) VALUES
-(12, 7, '22014876', 'Leandro Lojero', 'BSIT', 0, NULL, '2024-2025', '2025-08-25 11:53:24', '2025-08-25 12:30:13'),
-(13, 9, '22014849', 'Hanni Pham', 'BSIT', 0, NULL, '2024-2025', '2025-08-25 11:55:34', '2025-08-25 12:30:13');
+(12, 7, '22014876', 'Leandro Lojero', 'BSIT', 41007, NULL, '2024-2025', '2025-08-25 11:53:24', '2025-08-25 13:39:50'),
+(13, 9, '22014849', 'Hanni Pham', 'BSIT', 41007, NULL, '2024-2025', '2025-08-25 11:55:34', '2025-08-25 13:39:50'),
+(14, 1, '21016692', 'John Marvic Giray', 'BSIT', 41006, NULL, '2025-2026', '2025-08-25 13:16:56', '2025-08-25 13:39:28');
 
 -- --------------------------------------------------------
 
@@ -334,6 +348,13 @@ CREATE TABLE `submission_timelines` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `submission_timelines`
+--
+
+INSERT INTO `submission_timelines` (`id`, `title`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
+(3, 'Capstone', 'Timeline', 1, '2025-08-25 13:15:48', '2025-08-25 13:15:48');
 
 -- --------------------------------------------------------
 
@@ -362,7 +383,10 @@ INSERT INTO `timeline_milestones` (`id`, `timeline_id`, `title`, `description`, 
 (3, 2, 'Phase 1 – Proposal Stage', 'Week 1–2 → Topic Selection & Title Defense\r\n\r\nWeek 3–4 → Submission of Research Proposal (Chapters 1–3 draft)\r\n\r\nWeek 5 → Proposal Defense & Panel Feedback\r\n\r\nWeek 6 → Proposal Revision & Final Approval', '2025-08-23 12:00:00', 'pending', '2025-08-22 07:56:25', '2025-08-22 07:57:02'),
 (4, 2, 'Phase 2 – Research Development', 'Week 7–8 → Data Gathering / System Development (if IT capstone)\r\n\r\nWeek 9–10 → Progress Report Submission (50% completion)\r\n\r\nWeek 11–12 → Second Progress Report Submission (80% completion)', '2025-08-25 12:00:00', 'pending', '2025-08-22 07:56:25', '2025-08-22 07:56:25'),
 (5, 2, 'Phase 3 – Pre-Final Stage', 'Week 13 → Draft Submission of Full Manuscript (Chapters 1–5)\r\n\r\nWeek 14 → Pre-Oral Defense\r\n\r\nWeek 15 → Revision & Final Manuscript Submission', '2025-08-26 12:00:00', 'pending', '2025-08-22 07:56:25', '2025-08-22 07:56:25'),
-(6, 2, 'Phase 4 – Final Stage', 'Week 16 → Final Defense / System Demonstration\r\n\r\nWeek 17 → Incorporation of Panel Revisions\r\n\r\nWeek 18 → Final Book Binding / System Deployment / Submission to Library', '2025-08-29 12:00:00', 'pending', '2025-08-22 07:56:25', '2025-08-22 07:56:25');
+(6, 2, 'Phase 4 – Final Stage', 'Week 16 → Final Defense / System Demonstration\r\n\r\nWeek 17 → Incorporation of Panel Revisions\r\n\r\nWeek 18 → Final Book Binding / System Deployment / Submission to Library', '2025-08-29 12:00:00', 'pending', '2025-08-22 07:56:25', '2025-08-22 07:56:25'),
+(7, 3, 'Chapter 1 Week 1', 'Pasa kayo mga kupal', '2025-08-25 12:00:00', 'pending', '2025-08-25 13:15:48', '2025-08-25 13:15:48'),
+(8, 3, 'Chapter 2 Week 2', 'Ito rin papahirapan ko kayo', '2025-08-26 12:00:00', 'pending', '2025-08-25 13:15:48', '2025-08-25 13:15:48'),
+(9, 3, 'Chapter 3 Week 3', 'Yan 1 day lang deadlines n\'yo haha', '2025-08-27 12:00:00', 'pending', '2025-08-25 13:15:48', '2025-08-25 13:15:48');
 
 -- --------------------------------------------------------
 
@@ -532,13 +556,13 @@ ALTER TABLE `user_tbl`
 -- AUTO_INCREMENT for table `adviser_assignment`
 --
 ALTER TABLE `adviser_assignment`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `clusters`
 --
 ALTER TABLE `clusters`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT for table `defense_panel`
@@ -568,13 +592,13 @@ ALTER TABLE `faculty`
 -- AUTO_INCREMENT for table `groups`
 --
 ALTER TABLE `groups`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `group_members`
 --
 ALTER TABLE `group_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `panel_members`
@@ -586,7 +610,7 @@ ALTER TABLE `panel_members`
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `proposals`
@@ -610,19 +634,19 @@ ALTER TABLE `rooms`
 -- AUTO_INCREMENT for table `student_profiles`
 --
 ALTER TABLE `student_profiles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `submission_timelines`
 --
 ALTER TABLE `submission_timelines`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `timeline_milestones`
 --
 ALTER TABLE `timeline_milestones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `user_tbl`
@@ -683,6 +707,23 @@ ALTER TABLE `payments`
 --
 ALTER TABLE `proposals`
   ADD CONSTRAINT `proposals_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE;
+
+DELIMITER $$
+--
+-- Events
+--
+CREATE DEFINER=`root`@`localhost` EVENT `defense_schedules` ON SCHEDULE EVERY 1 MINUTE STARTS '2025-08-23 11:13:12' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE defense_schedules
+  SET status = 'completed'
+  WHERE end_time < CURTIME() 
+    AND defense_date <= CURDATE()
+    AND status = 'scheduled'$$
+
+CREATE DEFINER=`root`@`localhost` EVENT `update_defense_status` ON SCHEDULE EVERY 1 MINUTE STARTS '2025-08-24 03:57:24' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE defense_schedules
+  SET status = 'completed'
+  WHERE status = 'scheduled'
+    AND TIMESTAMP(defense_date, end_time) < NOW()$$
+
+DELIMITER ;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

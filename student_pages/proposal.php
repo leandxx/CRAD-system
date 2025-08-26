@@ -15,7 +15,7 @@ $user_query = "SELECT u.*, sp.program FROM user_tbl u
                WHERE u.user_id = '$user_id'";
 $user_result = mysqli_query($conn, $user_query);
 $user_data = mysqli_fetch_assoc($user_result);
-$user_program = $user_data['program'];
+$user_program = $user_data['program'] ?? 'N/A';
 
 // Get user's group information
 $group_query = "SELECT g.*, gm.student_id 

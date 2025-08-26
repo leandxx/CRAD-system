@@ -2,6 +2,11 @@
 include('../includes/connection.php');
 session_start();
 
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../login.php");
+    exit();
+}
+
 $user_id = $_SESSION['user_id'];
 
 // Get user's program information

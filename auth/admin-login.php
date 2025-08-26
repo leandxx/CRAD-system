@@ -114,10 +114,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
           </button>
         </div>
       </form>
-<p class="mt-6 text-center text-gray-600 text-sm">
-        Don’t have an account?
-        <a href="register.php" class="text-blue-700 hover:underline">Sign up</a>
-      </p>
+
     </div>
   </div>
 </body>

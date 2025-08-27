@@ -103,6 +103,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
+    // Create faculty
+    if (isset($_POST['create_faculty'])) {
+        $fullname = mysqli_real_escape_string($conn, $_POST['fullname']);
+        $department = mysqli_real_escape_string($conn, $_POST['department']);
+        $expertise = mysqli_real_escape_string($conn, $_POST['expertise']);
+        $email = mysqli_real_escape_string($conn, $_POST['email']);
+
+        $sql = "INSERT INTO faculty (fullname, department, expertise) 
+                VALUES ('$fullname', '$department', '$expertise')";
+        mysqli_query($conn, $sql);
+    }
+    
     // Redirect to avoid form resubmission
     header("Location: " . $_SERVER['PHP_SELF']);
     exit();
@@ -113,11 +125,16 @@ $cluster_details = null;
 $cluster_students = [];
 if (isset($_GET['view_cluster'])) {
     $cluster_id = (int) $_GET['view_cluster'];
-    $cluster_details = mysqli_fetch_assoc(mysqli_query($conn, 
-        "SELECT c.*, f.fullname AS adviser_name 
+    $cluster_details = mysqli_fetch_assoc(mysqli_query(
+        $conn, 
+        "SELECT c.*, 
+                f.fullname AS adviser_name, 
+                f.department, 
+                f.expertise
          FROM clusters c 
          LEFT JOIN faculty f ON c.faculty_id = f.id 
-         WHERE c.id = $cluster_id"));
+         WHERE c.id = $cluster_id"
+    ));
     
     if ($cluster_details) {
         $cluster_students = mysqli_query($conn,
@@ -162,674 +179,759 @@ $assigned_faculty   = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(DISTINC
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cluster Adviser Assignment</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Cluster Adviser Assignment | Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4A6CF7',
+                        secondary: '#6C757D',
+                        success: '#28a745',
+                        info: '#17a2b8',
+                        warning: '#ffc107',
+                        danger: '#dc3545',
+                        light: '#f8f9fa',
+                        dark: '#343a40',
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --primary: #4361ee;
-            --secondary: #3f37c9;
-            --success: #4cc9f0;
-            --info: #4895ef;
-            --warning: #f72585;
-            --light: #f8f9fa;
-            --dark: #212529;
-        }
-        
-        body {
-            background-color: #f5f7fb;
-            color: #343a40;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .navbar-brand {
-            font-weight: 700;
-            color: var(--primary);
-        }
-        
-        .stats-card {
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            transition: transform 0.3s ease;
-            border: none;
-            overflow: hidden;
-        }
-        
-        .stats-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .stats-icon {
-            font-size: 1.8rem;
-            opacity: 0.8;
-        }
-        
-        .tab-content {
-            padding: 25px;
-            border: 1px solid #e1e5eb;
-            border-top: none;
-            min-height: 500px;
-            border-radius: 0 0 12px 12px;
-            background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-        
-        .nav-tabs .nav-link {
-            border: none;
-            padding: 12px 20px;
-            font-weight: 600;
-            color: #6c757d;
-            border-radius: 0;
-            position: relative;
-        }
-        
         .nav-tabs .nav-link.active {
-            color: var(--primary);
-            background: transparent;
-            border-bottom: 3px solid var(--primary);
+            position: relative;
+            color: #4A6CF7;
         }
         
-        .nav-tabs .nav-link:hover {
-            border-color: transparent;
-            color: var(--primary);
+        .nav-tabs .nav-link.active:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #4A6CF7;
+            border-radius: 3px 3px 0 0;
         }
         
-        .cluster-card {
-            margin-bottom: 20px;
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+        .cluster-card, .student-item, .faculty-item {
             transition: all 0.3s ease;
         }
         
-        .cluster-card:hover {
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        .cluster-card:hover, .student-item:hover, .faculty-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         
-        .student-item, .faculty-item {
-            padding: 15px;
-            border-bottom: 1px solid #edf2f9;
-            transition: background-color 0.2s;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        .modal {
+            transition: opacity 0.15s linear;
         }
         
-        .student-item:hover, .faculty-item:hover {
-            background-color: #f8faff;
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1040;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            opacity: 0.5;
         }
         
-        .progress {
-            height: 8px;
-            border-radius: 4px;
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1050;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            outline: 0;
+            display: none;
+        }
+        
+        .modal.show {
+            display: block;
+        }
+        
+        .modal-dialog {
+            position: relative;
+            width: auto;
+            margin: 0.5rem;
+            pointer-events: none;
+            max-width: 500px;
+            margin: 1.75rem auto;
+        }
+        
+        .modal-lg {
+            max-width: 800px;
+        }
+        
+        .modal-content {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            pointer-events: auto;
+            background-color: #fff;
+            background-clip: padding-box;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+            outline: 0;
         }
         
         .modal-header {
-            background-color: var(--primary);
-            color: white;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 1rem 1rem;
+            border-bottom: 1px solid #dee2e6;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
         }
         
-        .btn-primary {
-            background-color: var(--primary);
-            border-color: var(--primary);
+        .modal-body {
+            position: relative;
+            flex: 1 1 auto;
+            padding: 1rem;
         }
         
-        .btn-primary:hover {
-            background-color: var(--secondary);
-            border-color: var(--secondary);
-        }
-        
-        .page-header {
-            padding-bottom: 15px;
-            margin-bottom: 25px;
-            border-bottom: 1px solid #e1e5eb;
-        }
-        
-        .badge-success {
-            background-color: #4cc9f0;
-        }
-        
-        .badge-warning {
-            background-color: #f72585;
-        }
-        
-        .cluster-actions {
+        .modal-footer {
             display: flex;
             flex-wrap: wrap;
-            gap: 5px;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0.75rem;
+            border-top: 1px solid #dee2e6;
+            border-bottom-right-radius: 0.5rem;
+            border-bottom-left-radius: 0.5rem;
         }
         
-        .action-btn {
-            padding: 5px 10px;
-            font-size: 0.875rem;
+        .btn-close {
+            padding: 0.5rem 0.5rem;
+            margin: -0.5rem -0.5rem -0.5rem auto;
+            background-color: transparent;
+            border: 0;
+            font-size: 1.5rem;
+            opacity: 0.5;
+            cursor: pointer;
+        }
+        
+        .fade {
+            transition: opacity 0.15s linear;
+        }
+        
+        .tab-content > .tab-pane {
+            display: none;
+        }
+        
+        .tab-content > .active {
+            display: block;
         }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
-
-    <div class="flex min-h-screen">
+    <div class="min-h-screen flex">
         <!-- Sidebar/header -->
-        <?php include('../includes/student-sidebar.php'); ?>
+        <?php include('../includes/admin-sidebar.php'); ?>
         
-        <div class="flex-1 overflow-y-auto p-6">
-        <!-- Statistics Cards -->
-        <div class="row mb-4">
-            <div class="col-md-2">
-                <div class="card stats-card bg-primary text-white mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title">Total Clusters</h6>
-                                <h3 class="mb-0"><?= $total_clusters ?></h3>
+        <!-- Main content area -->
+        <main class="flex-1 overflow-y-auto p-6">
+            <div class="container mx-auto">
+                <!-- Statistics Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+                    <div class="bg-primary text-white rounded-lg shadow-sm overflow-hidden border-l-4 border-blue-600">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h6 class="text-blue-100 text-sm font-medium uppercase">Total Clusters</h6>
+                                    <h3 class="text-2xl font-bold"><?= $total_clusters ?></h3>
+                                </div>
+                                <div class="text-2xl opacity-80">
+                                    <i class="fas fa-layer-group"></i>
+                                </div>
                             </div>
-                            <div class="stats-icon">
-                                <i class="fas fa-layer-group"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-success text-white rounded-lg shadow-sm overflow-hidden border-l-4 border-green-600">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h6 class="text-green-100 text-sm font-medium uppercase">Assigned Clusters</h6>
+                                    <h3 class="text-2xl font-bold"><?= $assigned_clusters ?></h3>
+                                </div>
+                                <div class="text-2xl opacity-80">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-info text-white rounded-lg shadow-sm overflow-hidden border-l-4 border-cyan-600">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h6 class="text-cyan-100 text-sm font-medium uppercase">Total Students</h6>
+                                    <h3 class="text-2xl font-bold"><?= $total_students ?></h3>
+                                </div>
+                                <div class="text-2xl opacity-80">
+                                    <i class="fas fa-user-graduate"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-warning text-white rounded-lg shadow-sm overflow-hidden border-l-4 border-yellow-600">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h6 class="text-yellow-100 text-sm font-medium uppercase">Assigned Students</h6>
+                                    <h3 class="text-2xl font-bold"><?= $assigned_students ?></h3>
+                                </div>
+                                <div class="text-2xl opacity-80">
+                                    <i class="fas fa-user-check"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-secondary text-white rounded-lg shadow-sm overflow-hidden border-l-4 border-gray-600">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h6 class="text-gray-300 text-sm font-medium uppercase">Total Faculty</h6>
+                                    <h3 class="text-2xl font-bold"><?= $total_faculty ?></h3>
+                                </div>
+                                <div class="text-2xl opacity-80">
+                                    <i class="fas fa-chalkboard-teacher"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-danger text-white rounded-lg shadow-sm overflow-hidden border-l-4 border-red-600">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h6 class="text-red-100 text-sm font-medium uppercase">Assigned Faculty</h6>
+                                    <h3 class="text-2xl font-bold"><?= $assigned_faculty ?></h3>
+                                </div>
+                                <div class="text-2xl opacity-80">
+                                    <i class="fas fa-user-tie"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card stats-card bg-success text-white mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title">Assigned Clusters</h6>
-                                <h3 class="mb-0"><?= $assigned_clusters ?></h3>
-                            </div>
-                            <div class="stats-icon">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card stats-card bg-info text-white mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title">Total Students</h6>
-                                <h3 class="mb-0"><?= $total_students ?></h3>
-                            </div>
-                            <div class="stats-icon">
-                                <i class="fas fa-user-graduate"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card stats-card bg-warning text-white mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title">Assigned Students</h6>
-                                <h3 class="mb-0"><?= $assigned_students ?></h3>
-                            </div>
-                            <div class="stats-icon">
-                                <i class="fas fa-user-check"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card stats-card bg-secondary text-white mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title">Total Faculty</h6>
-                                <h3 class="mb-0"><?= $total_faculty ?></h3>
-                            </div>
-                            <div class="stats-icon">
-                                <i class="fas fa-chalkboard-teacher"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="card stats-card bg-danger text-white mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title">Assigned Faculty</h6>
-                                <h3 class="mb-0"><?= $assigned_faculty ?></h3>
-                            </div>
-                            <div class="stats-icon">
-                                <i class="fas fa-user-tie"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-0">
-                <ul class="nav nav-tabs" id="myTab" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab">
-                            <i class="fas fa-layer-group me-2"></i>Manage Clusters
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="unassigned-tab" data-bs-toggle="tab" data-bs-target="#unassigned" type="button" role="tab">
-                            <i class="fas fa-users me-2"></i>Unassigned Students
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="faculty-tab" data-bs-toggle="tab" data-bs-target="#faculty" type="button" role="tab">
-                            <i class="fas fa-chalkboard-teacher me-2"></i>Faculty List
-                        </button>
-                    </li>
-                </ul>
                 
-                <div class="tab-content" id="myTabContent">
-                    <!-- Manage Clusters Tab -->
-                    <div class="tab-pane fade show active" id="manage" role="tabpanel">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h3 class="mb-0"><i class="fas fa-layer-group text-primary me-2"></i>Manage Clusters</h3>
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createClusterModal">
-                                <i class="fas fa-plus-circle me-1"></i>Create New Cluster
+                <!-- Tabs Section -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
+                    <ul class="nav-tabs flex border-b border-gray-200 px-6" id="myTab" role="tablist">
+                        <li class="mr-2" role="presentation">
+                            <button class="nav-link py-4 px-6 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-primary relative flex items-center active" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab">
+                                <i class="fas fa-layer-group mr-2"></i>Manage Clusters
                             </button>
-                        </div>
-                        
-                        <div class="row mt-4">
-                            <?php while ($cluster = mysqli_fetch_assoc($clusters)): 
-                                $percentage = $cluster['capacity'] > 0 ? ($cluster['student_count'] / $cluster['capacity']) * 100 : 0;
-                                $progress_color = $percentage < 60 ? 'bg-success' : ($percentage < 90 ? 'bg-warning' : 'bg-danger');
-                            ?>
-                            <div class="col-md-6 col-lg-4">
-                                <div class="card cluster-card">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h5 class="card-title mb-0"><?= htmlspecialchars($cluster['program']) ?> - Cluster <?= htmlspecialchars($cluster['cluster']) ?></h5>
-                                            <span class="badge bg-<?= $cluster['status'] == 'assigned' ? 'success' : 'warning' ?>">
+                        </li>
+                        <li class="mr-2" role="presentation">
+                            <button class="nav-link py-4 px-6 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-primary relative flex items-center" id="unassigned-tab" data-bs-toggle="tab" data-bs-target="#unassigned" type="button" role="tab">
+                                <i class="fas fa-users mr-2"></i>Unassigned Students
+                            </button>
+                        </li>
+                        <li class="mr-2" role="presentation">
+                            <button class="nav-link py-4 px-6 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-primary relative flex items-center" id="faculty-tab" data-bs-toggle="tab" data-bs-target="#faculty" type="button" role="tab">
+                                <i class="fas fa-chalkboard-teacher mr-2"></i>Faculty List
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content p-6" id="myTabContent">
+                        <!-- Manage Clusters Tab -->
+                        <div class="tab-pane active" id="manage" role="tabpanel">
+                            <div class="flex justify-between items-center mb-6">
+                                <h4 class="text-lg font-bold text-gray-900 flex items-center">
+                                    <i class="fas fa-layer-group text-primary mr-2"></i>Manage Clusters
+                                </h4>
+                                <div class="flex gap-2">
+                        <button class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition duration-200" data-bs-toggle="modal" data-bs-target="#createClusterModal">
+                            <i class="fas fa-plus-circle mr-2"></i>Create New Cluster
+                        </button>
+                                    <button class="border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 px-3 rounded-lg text-sm font-medium flex items-center">
+                                        <i class="fas fa-filter mr-1"></i>Filter
+                                    </button>
+                                    <button class="border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 px-3 rounded-lg text-sm font-medium flex items-center">
+                                        <i class="fas fa-sort mr-1"></i>Sort
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                                <?php while ($cluster = mysqli_fetch_assoc($clusters)): 
+                                    $percentage = $cluster['capacity'] > 0 ? ($cluster['student_count'] / $cluster['capacity']) * 100 : 0;
+                                    $progress_color = $percentage < 60 ? 'bg-success' : ($percentage < 90 ? 'bg-warning' : 'bg-danger');
+                                ?>
+                                <div class="cluster-card bg-white rounded-lg shadow-sm border border-gray-100 h-full">
+                                    <div class="p-5">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <h5 class="font-bold text-gray-900"><?= htmlspecialchars($cluster['program']) ?> - Cluster <?= htmlspecialchars($cluster['cluster']) ?></h5>
+                                            <span class="px-3 py-1 rounded-full text-xs font-medium <?= $cluster['status'] == 'assigned' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' ?>">
                                                 <?= ucfirst($cluster['status']) ?>
                                             </span>
                                         </div>
-                                        <h6 class="card-subtitle mb-3 text-muted"><?= htmlspecialchars($cluster['school_year']) ?></h6>
+                                        <h6 class="text-gray-500 text-sm mb-4"><?= htmlspecialchars($cluster['school_year']) ?></h6>
                                         
-                                        <div class="mb-3">
-                                            <div class="d-flex justify-content-between mb-1">
-                                                <small>Students: <?= $cluster['student_count'] ?> / <?= $cluster['capacity'] ?></small>
-                                                <small><?= round($percentage) ?>%</small>
+                                        <div class="mb-4">
+                                            <div class="flex justify-between mb-1 text-sm">
+                                                <span class="text-gray-600">Students: <?= $cluster['student_count'] ?> / <?= $cluster['capacity'] ?></span>
+                                                <span class="text-gray-600"><?= round($percentage) ?>%</span>
                                             </div>
-                                            <div class="progress">
-                                                <div class="progress-bar <?= $progress_color ?>" role="progressbar" style="width: <?= $percentage ?>%"></div>
+                                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                                <div class="h-2 rounded-full <?= $progress_color ?>" style="width: <?= $percentage ?>%"></div>
                                             </div>
                                         </div>
                                         
-                                        <p class="card-text">
-                                            <i class="fas fa-user-tie me-2 text-muted"></i>
-                                            <?= $cluster['adviser_name'] ? htmlspecialchars($cluster['adviser_name']) : '<span class="text-danger">Not assigned</span>' ?>
+                                        <p class="text-gray-700 mb-4 flex items-center">
+                                            <i class="fas fa-user-tie mr-2 text-gray-500"></i>
+                                            <?= $cluster['adviser_name'] ? htmlspecialchars($cluster['adviser_name']) : '<span class="text-red-500">Not assigned</span>' ?>
                                         </p>
                                         
-                                        <div class="cluster-actions">
-                                            <button class="btn btn-sm btn-outline-info action-btn" 
-                                                    onclick="window.location.href='?view_cluster=<?= $cluster['id'] ?>#manage'">
-                                                <i class="fas fa-eye me-1"></i>View
+                                        <div class="cluster-actions flex flex-wrap gap-2 mt-4">
+                                            <button class="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center transition duration-200" 
+                                                    onclick="window.location.href='admin-pages/adviser-assignment.php?view_cluster=<?= $cluster['id'] ?>#manage'">
+                                                <i class="fas fa-eye mr-1"></i>View
                                             </button>
                                             
-                                            <button class="btn btn-sm btn-outline-secondary action-btn" 
+                                            <button class="bg-gray-50 hover:bg-gray-100 text-gray-700 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center transition duration-200" 
                                                     data-bs-toggle="modal" data-bs-target="#editClusterModal"
                                                     data-cluster-id="<?= $cluster['id'] ?>"
                                                     data-program="<?= htmlspecialchars($cluster['program']) ?>"
                                                     data-cluster="<?= htmlspecialchars($cluster['cluster']) ?>"
                                                     data-school-year="<?= htmlspecialchars($cluster['school_year']) ?>"
                                                     data-capacity="<?= $cluster['capacity'] ?>">
-                                                <i class="fas fa-edit me-1"></i>Edit
+                                                <i class="fas fa-edit mr-1"></i>Edit
                                             </button>
                                             
-                                            <button class="btn btn-sm btn-outline-danger action-btn" 
+                                            <button class="bg-red-50 hover:bg-red-100 text-red-700 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center transition duration-200" 
                                                     data-bs-toggle="modal" data-bs-target="#deleteClusterModal"
                                                     data-cluster-id="<?= $cluster['id'] ?>">
-                                                <i class="fas fa-trash me-1"></i>Delete
+                                                <i class="fas fa-trash mr-1"></i>Delete
                                             </button>
                                             
                                             <?php if ($cluster['faculty_id']): ?>
-                                            <form method="POST" class="d-inline">
+                                            <form method="POST" class="inline">
                                                 <input type="hidden" name="cluster_id" value="<?= $cluster['id'] ?>">
-                                                <button type="submit" name="remove_adviser" class="btn btn-sm btn-outline-warning action-btn" 
+                                                <button type="submit" name="remove_adviser" class="bg-yellow-50 hover:bg-yellow-100 text-yellow-700 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center transition duration-200" 
                                                         onclick="return confirm('Remove adviser from this cluster?')">
-                                                    <i class="fas fa-user-times me-1"></i>Remove
+                                                    <i class="fas fa-user-times mr-1"></i>Remove
                                                 </button>
                                             </form>
                                             <?php else: ?>
-                                            <button class="btn btn-sm btn-outline-primary action-btn" data-bs-toggle="modal" data-bs-target="#assignAdviserModal" 
+                                            <button class="bg-primary hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-xs font-medium flex items-center transition duration-200" data-bs-toggle="modal" data-bs-target="#assignAdviserModal" 
                                                     data-cluster-id="<?= $cluster['id'] ?>">
-                                                <i class="fas fa-plus me-1"></i>Adviser
+                                                <i class="fas fa-plus mr-1"></i>Adviser
                                             </button>
                                             <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
+                                <?php endwhile; ?>
                             </div>
-                            <?php endwhile; ?>
                         </div>
-                    </div>
-                    
-                    <!-- Unassigned Students Tab -->
-                    <div class="tab-pane fade" id="unassigned" role="tabpanel">
-                        <h3 class="mb-4"><i class="fas fa-users text-primary me-2"></i>Unassigned Students</h3>
                         
-                        <?php if (mysqli_num_rows($unassigned_students) > 0): ?>
-                        <div class="list-group">
-                            <?php while ($student = mysqli_fetch_assoc($unassigned_students)): ?>
-                            <div class="list-group-item student-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong><?= htmlspecialchars($student['full_name']) ?></strong>
-                                    <div class="text-muted">
-                                        <i class="fas fa-id-card me-1"></i><?= htmlspecialchars($student['school_id']) ?> 
-                                        | <i class="fas fa-graduation-cap me-1"></i><?= htmlspecialchars($student['program']) ?>
-                                    </div>
-                                </div>
-                                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#assignStudentModal" 
-                                    data-student-id="<?= $student['id'] ?>" 
-                                    data-student-name="<?= htmlspecialchars($student['full_name']) ?>" 
-                                    data-student-program="<?= htmlspecialchars($student['program']) ?>">
-                                    <i class="fas fa-plus me-1"></i>Assign to Cluster
-                                </button>
-                            </div>
-                            <?php endwhile; ?>
-                        </div>
-                        <?php else: ?>
-                        <div class="alert alert-info d-flex align-items-center">
-                            <i class="fas fa-info-circle me-2 fa-lg"></i>
-                            <div>All students have been assigned to clusters.</div>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <!-- Faculty List Tab -->
-                    <div class="tab-pane fade" id="faculty" role="tabpanel">
-                        <h3 class="mb-4"><i class="fas fa-chalkboard-teacher text-primary me-2"></i>Faculty List</h3>
-                        
-                        <div class="list-group">
-                            <?php while ($fac = mysqli_fetch_assoc($faculty)): 
-                                // Check if faculty is already assigned to a cluster
-                                $assigned_check = mysqli_query($conn, "SELECT COUNT(*) FROM clusters WHERE faculty_id = " . $fac['id']);
-                                $assigned_count = mysqli_fetch_row($assigned_check)[0];
-                                $is_assigned = $assigned_count > 0;
-                            ?>
-                            <div class="list-group-item faculty-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong><?= htmlspecialchars($fac['fullname']) ?></strong>
-                                    <div class="text-muted">
-                                        <i class="fas fa-building me-1"></i><?= htmlspecialchars($fac['department']) ?> 
-                                        | <i class="fas fa-star me-1"></i><?= htmlspecialchars($fac['expertise']) ?>
-                                    </div>
-                                </div>
-                                <div>
-                                    <?php if (!$is_assigned): ?>
-                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#assignAdviserToClusterModal" 
-                                        data-faculty-id="<?= $fac['id'] ?>" 
-                                        data-faculty-name="<?= htmlspecialchars($fac['fullname']) ?>">
-                                        <i class="fas fa-plus me-1"></i>Assign to Cluster
+                        <!-- Unassigned Students Tab -->
+                        <div class="tab-pane" id="unassigned" role="tabpanel">
+                            <div class="flex justify-between items-center mb-6">
+                                <h4 class="text-lg font-bold text-gray-900 flex items-center">
+                                    <i class="fas fa-users text-primary mr-2"></i>Unassigned Students
+                                </h4>
+                                <div class="flex gap-2">
+                                    <button class="border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 px-3 rounded-lg text-sm font-medium flex items-center">
+                                        <i class="fas fa-download mr-1"></i>Export
                                     </button>
-                                    <?php else: ?>
-                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Already Assigned</span>
-                                    <?php endif; ?>
                                 </div>
                             </div>
-                            <?php endwhile; ?>
+                            
+                            <?php if (mysqli_num_rows($unassigned_students) > 0): ?>
+                            <div class="space-y-3">
+                                <?php while ($student = mysqli_fetch_assoc($unassigned_students)): ?>
+                                <div class="student-item bg-white border border-gray-200 rounded-lg p-4 flex justify-between items-center">
+                                    <div>
+                                        <strong class="text-gray-900"><?= htmlspecialchars($student['full_name']) ?></strong>
+                                        <div class="text-gray-500 text-sm mt-1">
+                                            <i class="fas fa-id-card mr-1"></i><?= htmlspecialchars($student['school_id']) ?> 
+                                            | <i class="fas fa-graduation-cap mr-1"></i><?= htmlspecialchars($student['program']) ?>
+                                        </div>
+                                    </div>
+                                    <button class="bg-primary hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-sm font-medium flex items-center transition duration-200" data-bs-toggle="modal" data-bs-target="#assignStudentModal" 
+                                        data-student-id="<?= $student['id'] ?>" 
+                                        data-student-name="<?= htmlspecialchars($student['full_name']) ?>" 
+                                        data-student-program="<?= htmlspecialchars($student['program']) ?>">
+                                        <i class="fas fa-plus mr-1"></i>Assign to Cluster
+                                    </button>
+                                </div>
+                                <?php endwhile; ?>
+                            </div>
+                            <?php else: ?>
+                            <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center">
+                                <i class="fas fa-info-circle mr-2 text-lg"></i>
+                                <div>All students have been assigned to clusters.</div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <!-- Faculty List Tab -->
+                        <div class="tab-pane" id="faculty" role="tabpanel">
+                            <div class="flex justify-between items-center mb-6">
+                                <h4 class="text-lg font-bold text-gray-900 flex items-center">
+                                    <i class="fas fa-chalkboard-teacher text-primary mr-2"></i>Faculty List
+                                </h4>
+                                <div>
+                                    <button class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition duration-200" data-bs-toggle="modal" data-bs-target="#createFacultyModal">
+                                        <i class="fas fa-plus-circle mr-2"></i>Add New Faculty
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <?php 
+                                // Reset faculty pointer
+                                mysqli_data_seek($faculty, 0);
+                                while ($fac = mysqli_fetch_assoc($faculty)): 
+                                    // Check if faculty is already assigned to a cluster
+                                    $assigned_check = mysqli_query($conn, "SELECT COUNT(*) FROM clusters WHERE faculty_id = " . $fac['id']);
+                                    $assigned_count = mysqli_fetch_row($assigned_check)[0];
+                                    $is_assigned = $assigned_count > 0;
+                                ?>
+                                <div class="faculty-item bg-white border border-gray-200 rounded-lg p-4 flex justify-between items-center">
+                                    <div>
+                                        <strong class="text-gray-900"><?= htmlspecialchars($fac['fullname']) ?></strong>
+                                        <div class="text-gray-500 text-sm mt-1">
+                                            <i class="fas fa-building mr-1"></i><?= htmlspecialchars($fac['department']) ?> 
+                                            | <i class="fas fa-star mr-1"></i><?= htmlspecialchars($fac['expertise']) ?>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <?php if (!$is_assigned): ?>
+                                        <button class="bg-primary hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-sm font-medium flex items-center transition duration-200" data-bs-toggle="modal" data-bs-target="#assignAdviserToClusterModal" 
+                                            data-faculty-id="<?= $fac['id'] ?>" 
+                                            data-faculty-name="<?= htmlspecialchars($fac['fullname']) ?>">
+                                            <i class="fas fa-plus mr-1"></i>Assign to Cluster
+                                        </button>
+                                        <?php else: ?>
+                                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
+                                            <i class="fas fa-check mr-1"></i>Already Assigned
+                                        </span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <?php endwhile; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
     
+    <!-- Modals -->
     <!-- Create Cluster Modal -->
     <div class="modal fade" id="createClusterModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="POST">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Create New Cluster</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header bg-primary text-white p-4 rounded-t-lg">
+                        <h5 class="modal-title font-bold flex items-center">
+                            <i class="fas fa-plus-circle mr-2"></i>Create New Cluster
+                        </h5>
+                        <button type="button" class="btn-close text-white" data-bs-dismiss="modal">×</button>
                     </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Program</label>
-                            <input type="text" class="form-control" name="program" required>
+                    <div class="modal-body p-6">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Program</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="program" required>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Cluster Name/Number</label>
-                            <input type="text" class="form-control" name="cluster" required>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Cluster Name/Number</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="cluster" required>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">School Year</label>
-                            <input type="text" class="form-control" name="school_year" placeholder="e.g., 2023-2024" required>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">School Year</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="school_year" placeholder="e.g., 2023-2024" required>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Capacity</label>
-                            <input type="number" class="form-control" name="capacity" value="50" min="1" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="create_cluster" class="btn btn-primary">Create Cluster</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Assign Adviser Modal -->
-    <div class="modal fade" id="assignAdviserModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form method="POST">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-user-tie me-2"></i>Assign Adviser to Cluster</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" name="cluster_id" id="cluster_id">
-                        <div class="mb-3">
-                            <label class="form-label">Select Adviser</label>
-                            <select class="form-select" name="faculty_id" required>
-                                <option value="">Choose an adviser...</option>
-                                <?php 
-                                // Reset faculty pointer and loop again
-                                mysqli_data_seek($faculty, 0);
-                                while ($fac = mysqli_fetch_assoc($faculty)): 
-                                ?>
-                                <option value="<?= $fac['id'] ?>"><?= htmlspecialchars($fac['fullname']) ?> (<?= htmlspecialchars($fac['department']) ?>)</option>
-                                <?php endwhile; ?>
-                            </select>
+    <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Capacity</label>
+                            <input type="number" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="capacity" min="1" required>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="assign_adviser" class="btn btn-primary">Assign Adviser</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Assign Student to Cluster Modal -->
-    <div class="modal fade" id="assignStudentModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form method="POST">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-user-graduate me-2"></i>Assign Student to Cluster</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" name="student_id" id="assign_student_id">
-                        <div class="mb-3">
-                            <label class="form-label">Student</label>
-                            <input type="text" class="form-control" id="assign_student_name" readonly>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Program</label>
-                            <input type="text" class="form-control" id="assign_student_program" readonly>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Select Cluster</label>
-                            <select class="form-select" name="cluster_id" required>
-                                <option value="">Choose a cluster...</option>
-                                <?php 
-                                // Reset clusters pointer and loop again
-                                mysqli_data_seek($clusters, 0);
-                                while ($cluster = mysqli_fetch_assoc($clusters)): 
-                                ?>
-                                <?php if ($cluster['student_count'] < $cluster['capacity']): ?>
-                                <option value="<?= $cluster['id'] ?>"><?= htmlspecialchars($cluster['program']) ?> - Cluster <?= htmlspecialchars($cluster['cluster']) ?> (<?= $cluster['student_count'] ?>/<?= $cluster['capacity'] ?>)</option>
-                                <?php endif; ?>
-                                <?php endwhile; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="assign_student" class="btn btn-primary">Assign to Cluster</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Assign Adviser to Cluster Modal (from Faculty tab) -->
-    <div class="modal fade" id="assignAdviserToClusterModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form method="POST">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-user-tie me-2"></i>Assign Adviser to Cluster</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" name="faculty_id" id="faculty_id">
-                        <div class="mb-3">
-                            <label class="form-label">Adviser</label>
-                            <input type="text" class="form-control" id="faculty_name" readonly>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Select Cluster</label>
-                            <select class="form-select" name="cluster_id" required>
-                                <option value="">Choose a cluster...</option>
-                                <?php 
-                                // Reset clusters pointer and loop again
-                                mysqli_data_seek($clusters, 0);
-                                while ($cluster = mysqli_fetch_assoc($clusters)): 
-                                ?>
-                                <?php if (!$cluster['faculty_id']): ?>
-                                <option value="<?= $cluster['id'] ?>"><?= htmlspecialchars($cluster['program']) ?> - Cluster <?= htmlspecialchars($cluster['cluster']) ?></option>
-                                <?php endif; ?>
-                                <?php endwhile; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="assign_adviser" class="btn btn-primary">Assign to Cluster</button>
+                    <div class="modal-footer p-4 border-t border-gray-200">
+                        <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="create_cluster" class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">Create Cluster</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- View Cluster Modal -->
+    <!-- Assign Adviser Modal -->
+    <div class="modal fade" id="assignAdviserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST">
+                    <div class="modal-header bg-primary text-white p-4 rounded-t-lg">
+                        <h5 class="modal-title font-bold flex items-center">
+                            <i class="fas fa-user-plus mr-2"></i>Assign Adviser to Cluster
+                        </h5>
+                        <button type="button" class="btn-close text-white" data-bs-dismiss="modal">×</button>
+                    </div>
+                    <div class="modal-body p-6">
+                        <input type="hidden" name="cluster_id" id="cluster_id">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Select Adviser</label>
+                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="faculty_id" required>
+                                <option value="">-- Select Faculty Member --</option>
+                                <?php 
+                                $available_faculty = mysqli_query($conn, "SELECT * FROM faculty WHERE id NOT IN (SELECT faculty_id FROM clusters WHERE faculty_id IS NOT NULL)");
+                                while ($faculty_member = mysqli_fetch_assoc($available_faculty)): 
+                                ?>
+                                <option value="<?= $faculty_member['id'] ?>"><?= htmlspecialchars($faculty_member['fullname']) ?> - <?= htmlspecialchars($faculty_member['department']) ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer p-4 border-t border-gray-200">
+                        <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="assign_adviser" class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">Assign Adviser</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Student Modal -->
+    <div class="modal fade" id="assignStudentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST">
+                    <div class="modal-header bg-primary text-white p-4 rounded-t-lg">
+                        <h5 class="modal-title font-bold flex items-center">
+                            <i class="fas fa-user-plus mr-2"></i>Assign Student to Cluster
+                        </h5>
+                        <button type="button" class="btn-close text-white" data-bs-dismiss="modal">×</button>
+                    </div>
+                    <div class="modal-body p-6">
+                        <input type="hidden" name="student_id" id="assign_student_id">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Student Name</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100" id="assign_student_name" readonly>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Program</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100" id="assign_student_program" readonly>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Select Cluster</label>
+                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="cluster_id" required>
+                                <option value="">-- Select Cluster --</option>
+                                <?php 
+                                // Reset clusters pointer
+                                mysqli_data_seek($clusters, 0);
+                                while ($cluster = mysqli_fetch_assoc($clusters)): 
+                                    // Check if cluster has capacity
+                                    if ($cluster['student_count'] < $cluster['capacity']):
+                                ?>
+                                <option value="<?= $cluster['cluster'] ?>"><?= htmlspecialchars($cluster['program']) ?> - Cluster <?= htmlspecialchars($cluster['cluster']) ?> (<?= $cluster['student_count'] ?>/<?= $cluster['capacity'] ?>)</option>
+                                <?php 
+                                    endif;
+                                endwhile; 
+                                ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer p-4 border-t border-gray-200">
+                        <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="assign_student" class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">Assign Student</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Adviser to Cluster Modal (from Faculty tab) -->
+    <div class="modal fade" id="assignAdviserToClusterModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST">
+                    <div class="modal-header bg-primary text-white p-4 rounded-t-lg">
+                        <h5 class="modal-title font-bold flex items-center">
+                            <i class="fas fa-user-plus mr-2"></i>Assign Faculty to Cluster
+                        </h5>
+                        <button type="button" class="btn-close text-white" data-bs-dismiss="modal">×</button>
+                    </div>
+                    <div class="modal-body p-6">
+                        <input type="hidden" name="faculty_id" id="faculty_id">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Faculty Name</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100" id="faculty_name" readonly>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Select Cluster</label>
+                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="cluster_id" required>
+                                <option value="">-- Select Cluster --</option>
+                                <?php 
+                                // Reset clusters pointer
+                                mysqli_data_seek($clusters, 0);
+                                while ($cluster = mysqli_fetch_assoc($clusters)): 
+                                    // Only show clusters without advisers
+                                    if (!$cluster['faculty_id']):
+                                ?>
+                                <option value="<?= $cluster['id'] ?>"><?= htmlspecialchars($cluster['program']) ?> - Cluster <?= htmlspecialchars($cluster['cluster']) ?></option>
+                                <?php 
+                                    endif;
+                                endwhile; 
+                                ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer p-4 border-t border-gray-200">
+                        <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="assign_adviser" class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">Assign to Cluster</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Faculty Modal -->
+    <div class="modal fade" id="createFacultyModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST">
+                    <div class="modal-header bg-primary text-white p-4 rounded-t-lg">
+                        <h5 class="modal-title font-bold flex items-center">
+                            <i class="fas fa-plus-circle mr-2"></i>Add New Faculty
+                        </h5>
+                        <button type="button" class="btn-close text-white" data-bs-dismiss="modal">×</button>
+                    </div>
+                    <div class="modal-body p-6">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Full Name</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="fullname" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Department</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="department" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Expertise/Position</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="expertise" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Email (Optional)</label>
+                            <input type="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="email">
+                        </div>
+                    </div>
+                    <div class="modal-footer p-4 border-t border-gray-200">
+                        <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="create_faculty" class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">Add Faculty</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Cluster Modal (shown when view_cluster parameter is set) -->
     <?php if (isset($_GET['view_cluster'])): ?>
-    <div class="modal fade show" id="viewClusterModal" tabindex="-1" style="display: block; padding-right: 17px;">
+    <div class="modal show" id="viewClusterModal" tabindex="-1" style="display: block;">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>Cluster Details</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="window.location.href='<?= $_SERVER['PHP_SELF'] ?>'"></button>
+                <div class="modal-header bg-primary text-white p-4 rounded-t-lg">
+                    <h5 class="modal-title font-bold flex items-center">
+                        <i class="fas fa-eye mr-2"></i>View Cluster Details
+                    </h5>
+                    <button type="button" class="btn-close text-white" onclick="window.location.href='<?php echo $_SERVER['PHP_SELF'] ?>'">×</button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-6">
                     <?php if ($cluster_details): ?>
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <h4><?= htmlspecialchars($cluster_details['program']) ?> - Cluster <?= htmlspecialchars($cluster_details['cluster']) ?></h4>
-                            <p class="text-muted">School Year: <?= htmlspecialchars($cluster_details['school_year']) ?></p>
-                        </div>
-                        <div class="col-md-6 text-end">
-                            <span class="badge bg-<?= $cluster_details['status'] == 'assigned' ? 'success' : 'warning' ?>">
-                                <?= ucfirst($cluster_details['status']) ?>
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h6 class="card-title">Capacity</h6>
-                                    <h3><?= $cluster_details['student_count'] ?> / <?= $cluster_details['capacity'] ?></h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <h5 class="font-bold text-gray-900 mb-3">Cluster Information</h5>
+                            <div class="space-y-2">
+                                <p><strong>Program:</strong> <?= htmlspecialchars($cluster_details['program']) ?></p>
+                                <p><strong>Cluster:</strong> <?= htmlspecialchars($cluster_details['cluster']) ?></p>
+                                <p><strong>School Year:</strong> <?= htmlspecialchars($cluster_details['school_year']) ?></p>
+                                <p><strong>Capacity:</strong> <?= $cluster_details['student_count'] ?> / <?= $cluster_details['capacity'] ?></p>
+                                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
                                     <?php $percentage = $cluster_details['capacity'] > 0 ? ($cluster_details['student_count'] / $cluster_details['capacity']) * 100 : 0; ?>
-                                    <div class="progress mt-2">
-                                        <div class="progress-bar <?= $percentage < 60 ? 'bg-success' : ($percentage < 90 ? 'bg-warning' : 'bg-danger') ?>" 
-                                             role="progressbar" 
-                                             style="width: <?= $percentage ?>%">
-                                        </div>
-                                    </div>
+                                    <div class="h-2 rounded-full <?= $percentage < 60 ? 'bg-success' : ($percentage < 90 ? 'bg-warning' : 'bg-danger') ?>" style="width: <?= $percentage ?>%"></div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h6 class="card-title">Adviser</h6>
-                                    <?php if ($cluster_details['adviser_name']): ?>
-                                    <h5><?= htmlspecialchars($cluster_details['adviser_name']) ?></h5>
-                                    <p class="text-muted mb-0">Assigned on: <?= date('M j, Y', strtotime($cluster_details['assigned_date'])) ?></p>
-                                    <?php else: ?>
-                                    <p class="text-danger">No adviser assigned</p>
-                                    <?php endif; ?>
-                                </div>
+                        <div>
+                            <h5 class="font-bold text-gray-900 mb-3">Adviser Information</h5>
+                            <?php if ($cluster_details['faculty_id']): ?>
+                            <div class="space-y-2">
+                                <p><strong>Name:</strong> <?= htmlspecialchars($cluster_details['adviser_name']) ?></p>
+                                <p><strong>Department:</strong> <?= htmlspecialchars($cluster_details['department']) ?></p>
+                                <p><strong>Expertise:</strong> <?= htmlspecialchars($cluster_details['expertise']) ?></p>
                             </div>
+                            <?php else: ?>
+                            <p class="text-red-500">No adviser assigned to this cluster.</p>
+                            <?php endif; ?>
                         </div>
                     </div>
                     
-                    <h5 class="mb-3">Students in this Cluster</h5>
-                    <?php if (mysqli_num_rows($cluster_students) > 0): ?>
-                    <div class="list-group">
-                        <?php while ($student = mysqli_fetch_assoc($cluster_students)): ?>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong><?= htmlspecialchars($student['full_name']) ?></strong>
-                                <div class="text-muted"><?= htmlspecialchars($student['school_id']) ?></div>
-                            </div>
-                            <form method="POST" class="d-inline">
-                                <input type="hidden" name="student_id" value="<?= $student['id'] ?>">
-                                <input type="hidden" name="cluster_id" value="<?= $cluster_details['id'] ?>">
-                                <button type="submit" name="remove_student" class="btn btn-sm btn-outline-danger" 
-                                        onclick="return confirm('Remove this student from the cluster?')">
-                                    <i class="fas fa-times me-1"></i>Remove
-                                </button>
-                            </form>
+                    <div>
+                        <h5 class="font-bold text-gray-900 mb-3">Students in this Cluster</h5>
+                        <?php if (mysqli_num_rows($cluster_students) > 0): ?>
+                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            <table class="w-full text-sm text-left text-gray-700">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                    <tr>
+                                        <th class="px-4 py-3">Student ID</th>
+                                        <th class="px-4 py-3">Name</th>
+                                        <th class="px-4 py-3">Program</th>
+                                        <th class="px-4 py-3">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php while ($student = mysqli_fetch_assoc($cluster_students)): ?>
+                                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                        <td class="px-4 py-3"><?= htmlspecialchars($student['school_id']) ?></td>
+                                        <td class="px-4 py-3"><?= htmlspecialchars($student['full_name']) ?></td>
+                                        <td class="px-4 py-3"><?= htmlspecialchars($student['program']) ?></td>
+                                        <td class="px-4 py-3">
+                                            <form method="POST" class="inline">
+                                                <input type="hidden" name="student_id" value="<?= $student['id'] ?>">
+                                                <input type="hidden" name="cluster_id" value="<?= $cluster_details['id'] ?>">
+                                                <button type="submit" name="remove_student" class="text-red-600 hover:text-red-800 text-sm" onclick="return confirm('Remove this student from the cluster?')">
+                                                    <i class="fas fa-times-circle mr-1"></i>Remove
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
                         </div>
-                        <?php endwhile; ?>
+                        <?php else: ?>
+                        <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">
+                            No students assigned to this cluster yet.
+                        </div>
+                        <?php endif; ?>
                     </div>
                     <?php else: ?>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>No students assigned to this cluster yet.
-                    </div>
-                    <?php endif; ?>
-                    
-                    <?php else: ?>
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>Cluster not found!
-                    </div>
+                    <div class="text-red-500">Cluster not found.</div>
                     <?php endif; ?>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="window.location.href='<?= $_SERVER['PHP_SELF'] ?>'">Close</button>
+                <div class="modal-footer p-4 border-t border-gray-200">
+                    <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200" onclick="window.location.href='<?php echo $_SERVER['PHP_SELF'] ?>'">Close</button>
                 </div>
             </div>
         </div>
     </div>
-    <div class="modal-backdrop fade show"></div>
     <?php endif; ?>
 
     <!-- Edit Cluster Modal -->
@@ -837,32 +939,34 @@ $assigned_faculty   = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(DISTINC
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="POST">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Cluster</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header bg-primary text-white p-4 rounded-t-lg">
+                        <h5 class="modal-title font-bold flex items-center">
+                            <i class="fas fa-edit mr-2"></i>Edit Cluster
+                        </h5>
+                        <button type="button" class="btn-close text-white" data-bs-dismiss="modal">×</button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body p-6">
                         <input type="hidden" name="cluster_id" id="edit_cluster_id">
-                        <div class="mb-3">
-                            <label class="form-label">Program</label>
-                            <input type="text" class="form-control" name="program" id="edit_program" required>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Program</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="program" id="edit_program" required>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Cluster Name/Number</label>
-                            <input type="text" class="form-control" name="cluster" id="edit_cluster" required>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Cluster Name/Number</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="cluster" id="edit_cluster" required>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">School Year</label>
-                            <input type="text" class="form-control" name="school_year" id="edit_school_year" required>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">School Year</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="school_year" id="edit_school_year" required>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Capacity</label>
-                            <input type="number" class="form-control" name="capacity" id="edit_capacity" min="1" required>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Capacity</label>
+                            <input type="number" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="capacity" id="edit_capacity" min="1" required>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="update_cluster" class="btn btn-primary">Update Cluster</button>
+                    <div class="modal-footer p-4 border-t border-gray-200">
+                        <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="edit_cluster" class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">Save Changes</button>
                     </div>
                 </form>
             </div>
@@ -874,100 +978,120 @@ $assigned_faculty   = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(DISTINC
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="POST">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-trash me-2"></i>Delete Cluster</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header bg-red-600 text-white p-4 rounded-t-lg">
+                        <h5 class="modal-title font-bold flex items-center">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>Confirm Deletion
+                        </h5>
+                        <button type="button" class="btn-close text-white" data-bs-dismiss="modal">×</button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body p-6">
                         <input type="hidden" name="cluster_id" id="delete_cluster_id">
-                        <p>Are you sure you want to delete this cluster?</p>
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>Warning:</strong> This will remove all students from this cluster and cannot be undone.
-                        </div>
+                        <p class="text-gray-700 mb-4">Are you sure you want to delete this cluster? This action cannot be undone.</p>
+                        <p class="text-red-600 font-medium">All students in this cluster will be unassigned.</p>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="delete_cluster" class="btn btn-danger">Delete Cluster</button>
+                    <div class="modal-footer p-4 border-t border-gray-200">
+                        <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="delete_cluster" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">Delete Cluster</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Scripts for modal interactions -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Handle modal data passing
+        // Modal initialization and data passing
         document.addEventListener('DOMContentLoaded', function() {
             // Assign Adviser Modal
             var assignAdviserModal = document.getElementById('assignAdviserModal');
-            assignAdviserModal.addEventListener('show.bs.modal', function(event) {
-                var button = event.relatedTarget;
-                var clusterId = button.getAttribute('data-cluster-id');
-                var modal = this;
-                modal.querySelector('#cluster_id').value = clusterId;
-            });
-
-            // Assign Student Modal
-            var assignStudentModal = document.getElementById('assignStudentModal');
-            assignStudentModal.addEventListener('show.bs.modal', function(event) {
-                var button = event.relatedTarget;
-                var studentId = button.getAttribute('data-student-id');
-                var studentName = button.getAttribute('data-student-name');
-                var studentProgram = button.getAttribute('data-student-program');
-                
-                var modal = this;
-                modal.querySelector('#assign_student_id').value = studentId;
-                modal.querySelector('#assign_student_name').value = studentName;
-                modal.querySelector('#assign_student_program').value = studentProgram;
-            });
-
-            // Assign Adviser to Cluster Modal (from Faculty tab)
-            var assignAdviserToClusterModal = document.getElementById('assignAdviserToClusterModal');
-            assignAdviserToClusterModal.addEventListener('show.bs.modal', function(event) {
-                var button = event.relatedTarget;
-                var facultyId = button.getAttribute('data-faculty-id');
-                var facultyName = button.getAttribute('data-faculty-name');
-                
-                var modal = this;
-                modal.querySelector('#faculty_id').value = facultyId;
-                modal.querySelector('#faculty_name').value = facultyName;
-            });
+            if (assignAdviserModal) {
+                assignAdviserModal.addEventListener('show.bs.modal', function(event) {
+                    var button = event.relatedTarget;
+                    var clusterId = button.getAttribute('data-cluster-id');
+                    var modal = this;
+                    modal.querySelector('#cluster_id').value = clusterId;
+                });
+            }
 
             // Edit Cluster Modal
             var editClusterModal = document.getElementById('editClusterModal');
-            editClusterModal.addEventListener('show.bs.modal', function(event) {
-                var button = event.relatedTarget;
-                var clusterId = button.getAttribute('data-cluster-id');
-                var program = button.getAttribute('data-program');
-                var cluster = button.getAttribute('data-cluster');
-                var schoolYear = button.getAttribute('data-school-year');
-                var capacity = button.getAttribute('data-capacity');
-                
-                var modal = this;
-                modal.querySelector('#edit_cluster_id').value = clusterId;
-                modal.querySelector('#edit_program').value = program;
-                modal.querySelector('#edit_cluster').value = cluster;
-                modal.querySelector('#edit_school_year').value = schoolYear;
-                modal.querySelector('#edit_capacity').value = capacity;
-            });
+            if (editClusterModal) {
+                editClusterModal.addEventListener('show.bs.modal', function(event) {
+                    var button = event.relatedTarget;
+                    var clusterId = button.getAttribute('data-cluster-id');
+                    var program = button.getAttribute('data-program');
+                    var cluster = button.getAttribute('data-cluster');
+                    var schoolYear = button.getAttribute('data-school-year');
+                    var capacity = button.getAttribute('data-capacity');
+                    
+                    var modal = this;
+                    modal.querySelector('#edit_cluster_id').value = clusterId;
+                    modal.querySelector('#edit_program').value = program;
+                    modal.querySelector('#edit_cluster').value = cluster;
+                    modal.querySelector('#edit_school_year').value = schoolYear;
+                    modal.querySelector('#edit_capacity').value = capacity;
+                });
+            }
 
             // Delete Cluster Modal
             var deleteClusterModal = document.getElementById('deleteClusterModal');
-            deleteClusterModal.addEventListener('show.bs.modal', function(event) {
-                var button = event.relatedTarget;
-                var clusterId = button.getAttribute('data-cluster-id');
-                
-                var modal = this;
-                modal.querySelector('#delete_cluster_id').value = clusterId;
-            });
+            if (deleteClusterModal) {
+                deleteClusterModal.addEventListener('show.bs.modal', function(event) {
+                    var button = event.relatedTarget;
+                    var clusterId = button.getAttribute('data-cluster-id');
+                    var modal = this;
+                    modal.querySelector('#delete_cluster_id').value = clusterId;
+                });
+            }
 
-            // Close view modal if open
-            <?php if (isset($_GET['view_cluster'])): ?>
-            var viewModal = new bootstrap.Modal(document.getElementById('viewClusterModal'));
-            viewModal.show();
-            <?php endif; ?>
+            // Assign Student Modal
+            var assignStudentModal = document.getElementById('assignStudentModal');
+            if (assignStudentModal) {
+                assignStudentModal.addEventListener('show.bs.modal', function(event) {
+                    var button = event.relatedTarget;
+                    var studentId = button.getAttribute('data-student-id');
+                    var studentName = button.getAttribute('data-student-name');
+                    var studentProgram = button.getAttribute('data-student-program');
+                    
+                    var modal = this;
+                    modal.querySelector('#assign_student_id').value = studentId;
+                    modal.querySelector('#assign_student_name').value = studentName;
+                    modal.querySelector('#assign_student_program').value = studentProgram;
+                });
+            }
+
+            // Assign Adviser to Cluster Modal (from Faculty tab)
+            var assignAdviserToClusterModal = document.getElementById('assignAdviserToClusterModal');
+            if (assignAdviserToClusterModal) {
+                assignAdviserToClusterModal.addEventListener('show.bs.modal', function(event) {
+                    var button = event.relatedTarget;
+                    var facultyId = button.getAttribute('data-faculty-id');
+                    var facultyName = button.getAttribute('data-faculty-name');
+                    
+                    var modal = this;
+                    modal.querySelector('#faculty_id').value = facultyId;
+                    modal.querySelector('#faculty_name').value = facultyName;
+                });
+            }
+
+            // Tab functionality
+            const tabs = document.querySelectorAll('.nav-link');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const tabPanes = document.querySelectorAll('.tab-pane');
+                    tabPanes.forEach(pane => pane.classList.remove('active'));
+                    
+                    const targetPane = document.querySelector(this.getAttribute('data-bs-target'));
+                    if (targetPane) {
+                        targetPane.classList.add('active');
+                    }
+                });
+            });
         });
     </script>
 </body>
-</html>                                
+</html>

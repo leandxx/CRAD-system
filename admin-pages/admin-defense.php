@@ -687,7 +687,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <!-- Panel Tabs -->
                     <div class="panel-tabs mb-3">
                         <div class="panel-tab active" data-tab="accepted" onclick="switchPanelTab('accepted')">Accepted Panel</div>
-                        <div class="panel-tab" data-tab="faculty" onclick="switchPanelTab('faculty')">All Faculty</div>
                     </div>
                     
                     <!-- Accepted Panel Content -->
@@ -705,23 +704,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         <p class="text-gray-500 text-sm p-2 border rounded-lg">No accepted panel members found.</p>
                         <?php endif; ?>
                     </div>
-                    
-                    <!-- All Faculty Content -->
-                    <div class="panel-content" data-tab="faculty">
-                        <?php if (!empty($faculty_members)): ?>
-                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg">
-                            <?php foreach ($faculty_members as $faculty): ?>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="checkbox" name="panel_members[]" value="<?php echo $faculty['user_id']; ?>" class="mr-2 rounded text-primary focus:ring-primary">
-                                <span><?php echo $faculty['first_name'] . ' ' . $faculty['last_name'] . ' (' . $faculty['email'] . ')'; ?></span>
-                            </label>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php else: ?>
-                        <p class="text-gray-500 text-sm p-2 border rounded-lg">No faculty members found.</p>
-                        <?php endif; ?>
-                    </div>
-                </div>
                 
                 <div class="flex justify-end gap-3 pt-4 border-t">
                     <button type="button" onclick="toggleModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>

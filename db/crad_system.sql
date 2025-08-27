@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1: 3308
--- Generation Time: Aug 25, 2025 at 07:59 PM
+-- Generation Time: Aug 27, 2025 at 05:57 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -52,7 +52,7 @@ CREATE TABLE `clusters` (
   `assigned_date` date DEFAULT NULL,
   `student_count` int(11) DEFAULT 0,
   `capacity` int(11) DEFAULT 50,
-  `status` enum('assigned','pending') DEFAULT 'pending',
+  `status` enum('assigned','pending','unassigned') DEFAULT 'unassigned',
   `created_date` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -61,7 +61,7 @@ CREATE TABLE `clusters` (
 --
 
 INSERT INTO `clusters` (`id`, `program`, `cluster`, `school_year`, `faculty_id`, `assigned_date`, `student_count`, `capacity`, `status`, `created_date`) VALUES
-(38, 'BSIT', '0', '2025-2026', NULL, NULL, 1, 50, '', '2025-08-25 16:37:06');
+(63, 'BSIT', '41002', '2025-2026', 1, '2025-08-27', 0, 50, 'assigned', '2025-08-27 15:56:46');
 
 -- --------------------------------------------------------
 
@@ -177,7 +177,7 @@ CREATE TABLE `group_members` (
 --
 
 INSERT INTO `group_members` (`id`, `group_id`, `student_id`) VALUES
-(24, 14, 1);
+(25, 14, 1);
 
 -- --------------------------------------------------------
 
@@ -200,7 +200,8 @@ CREATE TABLE `panel_invitations` (
 
 INSERT INTO `panel_invitations` (`id`, `panel_id`, `token`, `status`, `invited_at`, `responded_at`) VALUES
 (0, 8, 'f02432185b3a80a66691cd67336e800e32c170c099ec03d8c7e90f8549cd4fa6', 'rejected', '2025-08-25 22:31:46', '2025-08-25 22:33:52'),
-(0, 8, '2befe2d3c3c74a7b237e31e5cc78245b4d4a97b7bc3d536f6c41e82c3274a076', 'accepted', '2025-08-25 22:37:54', '2025-08-25 22:38:55');
+(0, 8, '2befe2d3c3c74a7b237e31e5cc78245b4d4a97b7bc3d536f6c41e82c3274a076', 'accepted', '2025-08-25 22:37:54', '2025-08-25 22:38:55'),
+(0, 9, '728ecda4f4f6fa58174a6e9f0e42be8aadf06823072c56df5ea92a5df1c31458', 'accepted', '2025-08-27 18:47:31', '2025-08-27 18:48:43');
 
 -- --------------------------------------------------------
 
@@ -225,7 +226,8 @@ CREATE TABLE `panel_members` (
 --
 
 INSERT INTO `panel_members` (`id`, `first_name`, `last_name`, `email`, `specialization`, `program`, `status`, `created_at`, `updated_at`) VALUES
-(8, 'John Marvic', 'Giray', 'girayjohnmarvic09@gmail.com', 'Information Technology', 'bsit', 'active', '2025-08-25 14:31:40', '2025-08-25 14:31:40');
+(8, 'John Marvic', 'Giray', 'girayjohnmarvic09@gmail.com', 'Information Technology', 'bsit', 'active', '2025-08-25 14:31:40', '2025-08-25 14:31:40'),
+(9, 'Justene Jean', 'Siarez', 'justenesiarez@gmail.com', 'Medical Office Admin', 'general', 'active', '2025-08-27 10:47:12', '2025-08-27 10:47:12');
 
 -- --------------------------------------------------------
 
@@ -320,7 +322,7 @@ CREATE TABLE `student_profiles` (
   `school_id` varchar(50) NOT NULL,
   `full_name` varchar(100) NOT NULL,
   `program` varchar(50) NOT NULL,
-  `cluster` int(11) NOT NULL,
+  `cluster` varchar(20) DEFAULT '0',
   `faculty_id` int(11) DEFAULT NULL,
   `school_year` varchar(20) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -332,7 +334,7 @@ CREATE TABLE `student_profiles` (
 --
 
 INSERT INTO `student_profiles` (`id`, `user_id`, `school_id`, `full_name`, `program`, `cluster`, `faculty_id`, `school_year`, `created_at`, `updated_at`) VALUES
-(14, 1, '21016692', 'John Marvic Giray', 'BSIT', 0, NULL, '2025-2026', '2025-08-25 13:16:56', '2025-08-25 16:17:04');
+(14, 1, '21016692', 'John Marvic Giray', 'BSIT', NULL, NULL, '2025-2026', '2025-08-25 13:16:56', '2025-08-27 15:56:23');
 
 -- --------------------------------------------------------
 
@@ -433,7 +435,8 @@ ALTER TABLE `adviser_assignment`
 --
 ALTER TABLE `clusters`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `faculty_id` (`faculty_id`);
+  ADD KEY `faculty_id` (`faculty_id`),
+  ADD KEY `idx_clusters_program_year` (`program`,`school_year`);
 
 --
 -- Indexes for table `defense_panel`
@@ -526,7 +529,10 @@ ALTER TABLE `rooms`
 --
 ALTER TABLE `student_profiles`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `unique_user` (`user_id`);
+  ADD UNIQUE KEY `unique_user` (`user_id`),
+  ADD KEY `fk_student_profiles_faculty` (`faculty_id`),
+  ADD KEY `idx_student_profiles_cluster` (`cluster`),
+  ADD KEY `idx_student_profiles_program_year` (`program`,`school_year`);
 
 --
 -- Indexes for table `submission_timelines`
@@ -556,13 +562,13 @@ ALTER TABLE `user_tbl`
 -- AUTO_INCREMENT for table `adviser_assignment`
 --
 ALTER TABLE `adviser_assignment`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `clusters`
 --
 ALTER TABLE `clusters`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
 
 --
 -- AUTO_INCREMENT for table `defense_panel`
@@ -598,13 +604,13 @@ ALTER TABLE `groups`
 -- AUTO_INCREMENT for table `group_members`
 --
 ALTER TABLE `group_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT for table `panel_members`
 --
 ALTER TABLE `panel_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `payments`
@@ -669,7 +675,8 @@ ALTER TABLE `adviser_assignment`
 -- Constraints for table `clusters`
 --
 ALTER TABLE `clusters`
-  ADD CONSTRAINT `clusters_ibfk_1` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`);
+  ADD CONSTRAINT `clusters_ibfk_1` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`),
+  ADD CONSTRAINT `fk_clusters_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `defense_schedules`
@@ -707,6 +714,12 @@ ALTER TABLE `payments`
 --
 ALTER TABLE `proposals`
   ADD CONSTRAINT `proposals_ibfk_1` FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `student_profiles`
+--
+ALTER TABLE `student_profiles`
+  ADD CONSTRAINT `fk_student_profiles_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`) ON DELETE SET NULL;
 
 DELIMITER $$
 --

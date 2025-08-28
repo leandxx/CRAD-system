@@ -476,8 +476,7 @@ while ($row = $program_stats_result->fetch_assoc()) {
             <?php endif; ?>
 
             <div class="mb-10">
-     <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-bold text-gray-800">📊 Panel Assignment Status</h2>
+    <div class="flex justify-end mb-6">
         <button id="toggleButton" 
             class="flex items-center gap-2 px-4 py-1.5 border border-indigo-500 text-indigo-600 rounded-full text-sm font-medium hover:bg-indigo-50 transition">
             See All 

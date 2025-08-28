@@ -1051,7 +1051,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 mb-2">Select Cluster</label>
-                        <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="cluster_id" required>
+                        <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="cluster_id" id="cluster_select" required>
                             <option value="">-- Select Cluster --</option>
                             <?php
                             // Re-fetch clusters to ensure we have fresh data
@@ -1064,11 +1064,11 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             );
                             
                             while ($cluster = mysqli_fetch_assoc($clusters_for_dropdown)):
-                                // Check if cluster has capacity and matches the group's program
+                                // Check if cluster has capacity
                                 $available_slots = $cluster['capacity'] - $cluster['student_count'];
                                 if ($available_slots >= 5):
                             ?>
-                            <option value="<?= $cluster['id'] ?>">
+                            <option value="<?= $cluster['id'] ?>" data-program="<?= htmlspecialchars($cluster['program']) ?>">
                                 <?= htmlspecialchars($cluster['program']) ?> - Cluster <?= htmlspecialchars($cluster['cluster']) ?> 
                                 (Available: <?= $available_slots ?> slots)
                             </option>
@@ -1361,6 +1361,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         document.getElementById('assign_group_id').value = groupId;
                         document.getElementById('assign_group_name').textContent = groupName || '';
                         document.getElementById('assign_group_program').textContent = groupProgram || '';
+                        
+                        // Filter clusters by group program
+                        const clusterSelect = document.getElementById('cluster_select');
+                        const options = clusterSelect.querySelectorAll('option');
+                        options.forEach(option => {
+                            if (option.value === '') {
+                                option.style.display = 'block';
+                            } else {
+                                const optionProgram = option.getAttribute('data-program');
+                                option.style.display = optionProgram === groupProgram ? 'block' : 'none';
+                            }
+                        });
                     }
                 }
                 

@@ -35,9 +35,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['delete_cluster'])) {
         $cluster_id = (int) $_POST['cluster_id'];
         
-        // First, unassign all students from this cluster
-        $sql = "UPDATE student_profiles SET cluster = 'Not Assigned', faculty_id = NULL WHERE cluster = '$cluster_id'";
-        mysqli_query($conn, $sql);
+        // Get cluster name first
+        $cluster_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT cluster FROM clusters WHERE id = $cluster_id"));
+        $cluster_name = $cluster_info['cluster'] ?? null;
+        
+        if ($cluster_name) {
+            // First, unassign all students from this cluster
+            $sql = "UPDATE student_profiles SET cluster = 'Not Assigned', faculty_id = NULL WHERE cluster = '$cluster_name'";
+            mysqli_query($conn, $sql);
+        }
         
         // Unassign all groups from this cluster
         $sql = "UPDATE groups SET cluster_id = NULL WHERE cluster_id = $cluster_id";
@@ -53,20 +59,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cluster_id = (int) $_POST['cluster_id'];
         $faculty_id = (int) $_POST['faculty_id'];
 
+        // Get cluster name
+        $cluster_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT cluster FROM clusters WHERE id = $cluster_id"));
+        $cluster_name = $cluster_info['cluster'] ?? null;
+
+        // Update cluster with adviser
         $sql = "UPDATE clusters 
                 SET faculty_id = $faculty_id, assigned_date = NOW(), status = 'assigned' 
                 WHERE id = $cluster_id";
         mysqli_query($conn, $sql);
+        
+        // Update all students in this cluster with the new faculty adviser
+        if ($cluster_name) {
+            $sql = "UPDATE student_profiles SET faculty_id = $faculty_id WHERE cluster = '$cluster_name'";
+            mysqli_query($conn, $sql);
+        }
     }
     
     // Remove adviser assignment
     if (isset($_POST['remove_adviser'])) {
         $cluster_id = (int) $_POST['cluster_id'];
 
+        // Get cluster name
+        $cluster_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT cluster FROM clusters WHERE id = $cluster_id"));
+        $cluster_name = $cluster_info['cluster'] ?? null;
+
+        // Update cluster to remove adviser
         $sql = "UPDATE clusters 
                 SET faculty_id = NULL, assigned_date = NULL, status = 'unassigned' 
                 WHERE id = $cluster_id";
         mysqli_query($conn, $sql);
+        
+        // Remove faculty assignment from all students in this cluster
+        if ($cluster_name) {
+            $sql = "UPDATE student_profiles SET faculty_id = NULL WHERE cluster = '$cluster_name'";
+            mysqli_query($conn, $sql);
+        }
     }
 
     // Assign group to cluster
@@ -74,48 +102,32 @@ if (isset($_POST['assign_group'])) {
     $group_id = (int) $_POST['group_id'];
     $cluster_id = (int) $_POST['cluster_id'];
 
-    // Get cluster's faculty_id
-    $cluster_faculty = mysqli_fetch_assoc(mysqli_query($conn, 
-        "SELECT faculty_id FROM clusters WHERE id = $cluster_id"));
-    $faculty_id = $cluster_faculty['faculty_id'] ?? null;
+    // Get cluster's faculty_id and cluster name
+    $cluster_info = mysqli_fetch_assoc(mysqli_query($conn, 
+        "SELECT faculty_id, cluster FROM clusters WHERE id = $cluster_id"));
+    $faculty_id = $cluster_info['faculty_id'] ?? null;
+    $cluster_name = $cluster_info['cluster'] ?? null;
     
     // Update group cluster assignment
     $sql = "UPDATE groups SET cluster_id = $cluster_id WHERE id = $group_id";
     mysqli_query($conn, $sql);
     
-    // Get all group members from group_members table
-    $members_result = mysqli_query($conn, "SELECT student_id FROM group_members WHERE group_id = $group_id");
+    // Update all group members using the correct JOIN
+    if ($faculty_id) {
+        $bulk_update = "UPDATE student_profiles sp 
+                       INNER JOIN group_members gm ON sp.user_id = gm.student_id 
+                       SET sp.cluster = '$cluster_name', sp.faculty_id = $faculty_id 
+                       WHERE gm.group_id = $group_id";
+    } else {
+        $bulk_update = "UPDATE student_profiles sp 
+                       INNER JOIN group_members gm ON sp.user_id = gm.student_id 
+                       SET sp.cluster = '$cluster_name', sp.faculty_id = NULL 
+                       WHERE gm.group_id = $group_id";
+    }
     
     $member_count = 0;
-    if ($members_result && mysqli_num_rows($members_result) > 0) {
-        // Update all members found in group_members table
-        while ($member = mysqli_fetch_assoc($members_result)) {
-            $student_id = $member['student_id'];
-            if ($faculty_id) {
-                $update_sql = "UPDATE student_profiles SET cluster = '$cluster_id', faculty_id = $faculty_id WHERE id = $student_id";
-            } else {
-                $update_sql = "UPDATE student_profiles SET cluster = '$cluster_id', faculty_id = NULL WHERE id = $student_id";
-            }
-            if (mysqli_query($conn, $update_sql)) {
-                $member_count++;
-            }
-        }
-    } else {
-        // Fallback: Use direct UPDATE with group_members table
-        if ($faculty_id) {
-            $bulk_update = "UPDATE student_profiles sp 
-                           INNER JOIN group_members gm ON sp.id = gm.student_id 
-                           SET sp.cluster = '$cluster_id', sp.faculty_id = $faculty_id 
-                           WHERE gm.group_id = $group_id";
-        } else {
-            $bulk_update = "UPDATE student_profiles sp 
-                           INNER JOIN group_members gm ON sp.id = gm.student_id 
-                           SET sp.cluster = '$cluster_id', sp.faculty_id = NULL 
-                           WHERE gm.group_id = $group_id";
-        }
-        if (mysqli_query($conn, $bulk_update)) {
-            $member_count = mysqli_affected_rows($conn);
-        }
+    if (mysqli_query($conn, $bulk_update)) {
+        $member_count = mysqli_affected_rows($conn);
     }
 
     // Update student count in cluster
@@ -140,15 +152,12 @@ if (isset($_POST['remove_group'])) {
         $sql = "UPDATE groups SET cluster_id = NULL WHERE id = $group_id";
         mysqli_query($conn, $sql);
         
-        // Get all student IDs in this group
-        $student_ids_result = mysqli_query($conn, "SELECT student_id FROM group_members WHERE group_id = $group_id");
-        
-        // Update each student individually
-        while ($student_row = mysqli_fetch_assoc($student_ids_result)) {
-            $student_id = $student_row['student_id'];
-            $sql = "UPDATE student_profiles SET cluster = 'Not Assigned', faculty_id = NULL WHERE id = $student_id";
-            mysqli_query($conn, $sql);
-        }
+        // Update all group members using the correct JOIN
+        $bulk_update = "UPDATE student_profiles sp 
+                       INNER JOIN group_members gm ON sp.user_id = gm.student_id 
+                       SET sp.cluster = 'Not Assigned', sp.faculty_id = NULL 
+                       WHERE gm.group_id = $group_id";
+        mysqli_query($conn, $bulk_update);
 
         // Update student count in cluster
         $sql = "UPDATE clusters SET student_count = student_count - $member_count WHERE id = $cluster_id";
@@ -248,10 +257,11 @@ if (isset($_GET['view_cluster'])) {
          WHERE c.id = $cluster_id"));
     
     if ($cluster_details) {
+        $cluster_name = $cluster_details['cluster'];
         $result = mysqli_query($conn,
             "SELECT sp.id, sp.school_id, sp.full_name, sp.program
              FROM student_profiles sp
-             WHERE sp.cluster = '$cluster_id'
+             WHERE sp.cluster = '$cluster_name'
              ORDER BY sp.full_name");
         $cluster_students = mysqli_fetch_all($result, MYSQLI_ASSOC);
     }
@@ -362,6 +372,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
         
         .modal-lg {
             max-width: 800px;
+            margin: 1rem auto;
         }
         
         .modal-content {
@@ -391,6 +402,8 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
             position: relative;
             flex: 1 1 auto;
             padding: 1rem;
+            max-height: 70vh;
+            overflow-y: auto;
         }
         
         .modal-footer {

@@ -22,22 +22,14 @@ $profile_result = $profile_check->get_result();
 $existing_profile = $profile_result->fetch_assoc();
 
 // If profile exists, fetch assigned adviser
-if ($existing_profile) {
-    $progam = $existing_profile['program'];
-    $cluster = $existing_profile['cluster'];
-    $school_year = $existing_profile['school_year'];
+if ($existing_profile && $existing_profile['faculty_id']) {
+    $faculty_id = $existing_profile['faculty_id'];
     
-    // Query to get assigned adviser based on course, cluster, and school_year
-    $adviser_query = "
-        SELECT f.* 
-        FROM faculty f
-        INNER JOIN clusters s ON f.id = s.faculty_id
-        WHERE s.program = ? AND s.cluster = ? AND s.school_year = ? AND s.status = 'assigned'
-        LIMIT 1
-    ";
+    // Query to get assigned adviser directly from faculty_id
+    $adviser_query = "SELECT * FROM faculty WHERE id = ?";
     
     $adviser_stmt = $conn->prepare($adviser_query);
-    $adviser_stmt->bind_param("sss", $program, $cluster, $school_year);
+    $adviser_stmt->bind_param("i", $faculty_id);
     $adviser_stmt->execute();
     $adviser_result = $adviser_stmt->get_result();
     
@@ -97,21 +89,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $existing_profile = $profile_result->fetch_assoc();
         
         // Refresh adviser data if profile was updated
-        if ($existing_profile) {
-            $program = $existing_profile['program'];
-            $cluster = $existing_profile['cluster'];
-            $school_year = $existing_profile['school_year'];
+        if ($existing_profile && $existing_profile['faculty_id']) {
+            $faculty_id = $existing_profile['faculty_id'];
             
-            $adviser_query = "
-                SELECT f.* 
-                FROM faculty f
-                INNER JOIN clusters s ON f.id = s.faculty_id
-                WHERE s.program = ? AND s.cluster = ? AND s.school_year = ? AND s.status = 'assigned'
-                LIMIT 1
-            ";
+            $adviser_query = "SELECT * FROM faculty WHERE id = ?";
             
             $adviser_stmt = $conn->prepare($adviser_query);
-            $adviser_stmt->bind_param("sss", $program, $cluster, $school_year);
+            $adviser_stmt->bind_param("i", $faculty_id);
             $adviser_stmt->execute();
             $adviser_result = $adviser_stmt->get_result();
             

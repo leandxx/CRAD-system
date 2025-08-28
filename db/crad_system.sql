@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1: 3308
--- Generation Time: Aug 27, 2025 at 05:57 PM
+-- Generation Time: Aug 28, 2025 at 08:56 AM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -20,22 +20,6 @@ SET time_zone = "+00:00";
 --
 -- Database: `crad_system`
 --
-
--- --------------------------------------------------------
-
---
--- Table structure for table `adviser_assignment`
---
-
-CREATE TABLE `adviser_assignment` (
-  `id` int(11) NOT NULL,
-  `cluster_id` int(11) NOT NULL,
-  `faculty_id` int(11) NOT NULL,
-  `assigned_date` date NOT NULL,
-  `notes` text DEFAULT NULL,
-  `cluster_number` varchar(50) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -61,7 +45,7 @@ CREATE TABLE `clusters` (
 --
 
 INSERT INTO `clusters` (`id`, `program`, `cluster`, `school_year`, `faculty_id`, `assigned_date`, `student_count`, `capacity`, `status`, `created_date`) VALUES
-(63, 'BSIT', '41002', '2025-2026', 1, '2025-08-27', 0, 50, 'assigned', '2025-08-27 15:56:46');
+(67, 'BSIT', '41001', '2025-2026', 11, '2025-08-28', 5, 50, 'assigned', '2025-08-28 06:14:23');
 
 -- --------------------------------------------------------
 
@@ -136,7 +120,8 @@ INSERT INTO `faculty` (`id`, `fullname`, `department`, `expertise`) VALUES
 (7, 'Prof. Emily Williams', 'Information Technology', 'Cybersecurity and Network Administration'),
 (8, 'Dr. David Lee', 'Hospitality Management', 'Food and Beverage Management'),
 (9, 'Prof. Amanda Rodriguez', 'Criminology', 'Criminal Psychology and Behavior'),
-(10, 'Dr. Jennifer Kim', 'Tourism', 'Tourism Planning and Development');
+(10, 'Dr. Jennifer Kim', 'Tourism', 'Tourism Planning and Development'),
+(11, 'Dr. Justene Jean Siarez', 'Psychology', 'Medical Office Administration');
 
 -- --------------------------------------------------------
 
@@ -158,7 +143,7 @@ CREATE TABLE `groups` (
 --
 
 INSERT INTO `groups` (`id`, `name`, `program`, `cluster_id`, `join_code`, `created_at`) VALUES
-(14, 'CRAD', 'BSIT', NULL, 'AE85E1', '2025-08-25 16:41:10');
+(14, 'CRAD', 'BSIT', 67, 'AE85E1', '2025-08-25 16:41:10');
 
 -- --------------------------------------------------------
 
@@ -177,7 +162,11 @@ CREATE TABLE `group_members` (
 --
 
 INSERT INTO `group_members` (`id`, `group_id`, `student_id`) VALUES
-(25, 14, 1);
+(25, 14, 1),
+(26, 14, 11),
+(27, 14, 12),
+(28, 14, 13),
+(30, 14, 14);
 
 -- --------------------------------------------------------
 
@@ -248,7 +237,10 @@ CREATE TABLE `payments` (
 --
 
 INSERT INTO `payments` (`id`, `student_id`, `amount`, `status`, `payment_date`) VALUES
-(7, 1, 100.00, 'completed', '2025-08-25 13:17:07');
+(7, 1, 100.00, 'completed', '2025-08-25 13:17:07'),
+(8, 11, 100.00, 'completed', '2025-08-28 05:26:28'),
+(9, 11, 100.00, 'completed', '2025-08-28 05:26:28'),
+(10, 14, 100.00, 'completed', '2025-08-28 05:31:12');
 
 -- --------------------------------------------------------
 
@@ -334,7 +326,11 @@ CREATE TABLE `student_profiles` (
 --
 
 INSERT INTO `student_profiles` (`id`, `user_id`, `school_id`, `full_name`, `program`, `cluster`, `faculty_id`, `school_year`, `created_at`, `updated_at`) VALUES
-(14, 1, '21016692', 'John Marvic Giray', 'BSIT', NULL, NULL, '2025-2026', '2025-08-25 13:16:56', '2025-08-27 15:56:23');
+(14, 1, '21016692', 'John Marvic Giray', 'BSIT', '67', 11, '2025-2026', '2025-08-25 13:16:56', '2025-08-28 06:14:23'),
+(15, 11, '22101234', 'Leandro Lojero', 'BSIT', 'Not Assigned', NULL, '2025-2026', '2025-08-28 05:26:12', '2025-08-28 05:26:12'),
+(16, 12, '22105678', 'Angelito Pampanga', 'BSIT', 'Not Assigned', NULL, '2025-2026', '2025-08-28 05:28:03', '2025-08-28 05:28:03'),
+(17, 13, '22107890', 'Geo Caranza', 'BSIT', 'Not Assigned', NULL, '2025-2026', '2025-08-28 05:29:36', '2025-08-28 05:29:36'),
+(18, 14, '22010987', 'Erico Golay', 'BSIT', NULL, NULL, '2025-2026', '2025-08-28 05:31:02', '2025-08-28 05:32:07');
 
 -- --------------------------------------------------------
 
@@ -356,7 +352,7 @@ CREATE TABLE `submission_timelines` (
 --
 
 INSERT INTO `submission_timelines` (`id`, `title`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
-(3, 'Capstone', 'Timeline', 1, '2025-08-25 13:15:48', '2025-08-25 13:15:48');
+(3, 'Capstone', 'Timeline', 0, '2025-08-25 13:15:48', '2025-08-27 19:37:22');
 
 -- --------------------------------------------------------
 
@@ -416,19 +412,15 @@ INSERT INTO `user_tbl` (`user_id`, `email`, `password`, `role`, `created_at`) VA
 (7, 'leandro.lojero23@gmail.com', '$2y$10$U7UwMa8yFtv8jCCtgB8dW.Q949HIYS496xxESF9rpbwWzUVJEqaPy', 'Student', '2025-08-22 07:23:21'),
 (8, 'Hanni@gmail.com', '$2y$10$gFZtjV5ywm5IBUiai9vFxeM3AgckDKkzIFbyLaGKWij19ILL88kn.', 'Student', '2025-08-22 07:30:46'),
 (9, 'Haerin@gmail.com', '$2y$10$IFk3eicV9LTUxvINl6fzJezed50.6A6w.OKzVzFarlWy8H/D/CDeW', 'Student', '2025-08-24 09:19:19'),
-(10, 'estardo@gmail.com', '$2y$10$pPBylJ7rtgHRHslCugRNzufDid11X/qtkidole72Zf2GCc5aXQvn.', 'Student', '2025-08-25 08:57:23');
+(10, 'estardo@gmail.com', '$2y$10$pPBylJ7rtgHRHslCugRNzufDid11X/qtkidole72Zf2GCc5aXQvn.', 'Student', '2025-08-25 08:57:23'),
+(11, 'leandro@gmail.com', '$2y$10$NoVF.NQOwk9to1HWOKc9yuIbcMUzLbrohqN33LEc7bsiXxT3p.ALW', 'Student', '2025-08-28 05:25:18'),
+(12, 'angelito@gmail.com', '$2y$10$30N/ebHbkhWCL9m9NJ0l0u2Hc6wljG10EazPta/ymGzLzO8MapSUK', 'Student', '2025-08-28 05:27:20'),
+(13, 'geo@gmail.com', '$2y$10$5msQtohhqAozmI7NSkqz6.EH49aK9q.pl9Ryo2j1bXMXWJ0uCStsC', 'Student', '2025-08-28 05:28:55'),
+(14, 'erico@gmail.com', '$2y$10$YlPdn0CdG5dofql9ToTJheb01UnUXgXuhF8iRiVYPtx4dZ2T0XGmO', 'Student', '2025-08-28 05:30:19');
 
 --
 -- Indexes for dumped tables
 --
-
---
--- Indexes for table `adviser_assignment`
---
-ALTER TABLE `adviser_assignment`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `cluster_id` (`cluster_id`),
-  ADD KEY `faculty_id` (`faculty_id`);
 
 --
 -- Indexes for table `clusters`
@@ -559,16 +551,10 @@ ALTER TABLE `user_tbl`
 --
 
 --
--- AUTO_INCREMENT for table `adviser_assignment`
---
-ALTER TABLE `adviser_assignment`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
-
---
 -- AUTO_INCREMENT for table `clusters`
 --
 ALTER TABLE `clusters`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=68;
 
 --
 -- AUTO_INCREMENT for table `defense_panel`
@@ -592,7 +578,7 @@ ALTER TABLE `document_submissions`
 -- AUTO_INCREMENT for table `faculty`
 --
 ALTER TABLE `faculty`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `groups`
@@ -604,7 +590,7 @@ ALTER TABLE `groups`
 -- AUTO_INCREMENT for table `group_members`
 --
 ALTER TABLE `group_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `panel_members`
@@ -616,7 +602,7 @@ ALTER TABLE `panel_members`
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `proposals`
@@ -640,7 +626,7 @@ ALTER TABLE `rooms`
 -- AUTO_INCREMENT for table `student_profiles`
 --
 ALTER TABLE `student_profiles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `submission_timelines`
@@ -658,18 +644,11 @@ ALTER TABLE `timeline_milestones`
 -- AUTO_INCREMENT for table `user_tbl`
 --
 ALTER TABLE `user_tbl`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- Constraints for dumped tables
 --
-
---
--- Constraints for table `adviser_assignment`
---
-ALTER TABLE `adviser_assignment`
-  ADD CONSTRAINT `adviser_assignment_ibfk_1` FOREIGN KEY (`cluster_id`) REFERENCES `clusters` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `adviser_assignment_ibfk_2` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `clusters`

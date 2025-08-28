@@ -1070,7 +1070,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                     
                     <div>
                         <h5 class="font-bold text-gray-900 mb-3">Students in this Cluster</h5>
-                        <?php if (!empty($cluster_students)): ?>
+    <?php if (!empty($cluster_students)): ?>
                         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
                             <table class="w-full text-sm text-left text-gray-700">
                                 <thead class="text-xs text-gray-700 uppercase bg-gray-100">

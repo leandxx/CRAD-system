@@ -1,6 +1,18 @@
 <?php
 session_start();
 include('../includes/connection.php'); // Your DB connection
+
+// Fetch dashboard statistics
+$total_students = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM student_profiles"))[0];
+$total_groups = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM groups"))[0];
+$total_proposals = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM proposals"))[0];
+$pending_proposals = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM proposals WHERE status = 'pending'"))[0];
+$total_faculty = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM faculty"))[0];
+$total_clusters = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM clusters"))[0];
+
+// Recent activities
+$recent_students = mysqli_query($conn, "SELECT full_name, program, id FROM student_profiles ORDER BY id DESC LIMIT 3");
+$recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals ORDER BY id DESC LIMIT 3");
 ?>
 
 <!DOCTYPE html>
@@ -46,11 +58,7 @@ include('../includes/connection.php'); // Your DB connection
 
             <!-- Main content area -->
                 <main class="flex-1 overflow-y-auto p-6">
-    <!-- Dashboard Header -->
-    <div class="mb-8">
-        <h2 class="text-2xl font-bold text-gray-800">Admin Dashboard</h2>
-        <p class="text-gray-600">Welcome back, Administrator</p>
-    </div>
+
 
     <!-- Stats Overview -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -58,7 +66,7 @@ include('../includes/connection.php'); // Your DB connection
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-500 text-sm">Total Students</p>
-                    <h3 class="text-2xl font-bold">1,254</h3>
+                    <h3 class="text-2xl font-bold"><?= $total_students ?></h3>
                 </div>
                 <div class="p-3 rounded-full bg-blue-100 text-blue-600">
                     <i class="fas fa-users text-lg"></i>
@@ -70,8 +78,8 @@ include('../includes/connection.php'); // Your DB connection
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm">Active Proposals</p>
-                    <h3 class="text-2xl font-bold">86</h3>
+                    <p class="text-gray-500 text-sm">Total Proposals</p>
+                    <h3 class="text-2xl font-bold"><?= $total_proposals ?></h3>
                 </div>
                 <div class="p-3 rounded-full bg-purple-100 text-purple-600">
                     <i class="fas fa-file-alt text-lg"></i>
@@ -84,7 +92,7 @@ include('../includes/connection.php'); // Your DB connection
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-500 text-sm">Pending Reviews</p>
-                    <h3 class="text-2xl font-bold">23</h3>
+                    <h3 class="text-2xl font-bold"><?= $pending_proposals ?></h3>
                 </div>
                 <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
                     <i class="fas fa-clock text-lg"></i>
@@ -96,14 +104,14 @@ include('../includes/connection.php'); // Your DB connection
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm">Scheduled Defenses</p>
-                    <h3 class="text-2xl font-bold">14</h3>
+                    <p class="text-gray-500 text-sm">Total Groups</p>
+                    <h3 class="text-2xl font-bold"><?= $total_groups ?></h3>
                 </div>
                 <div class="p-3 rounded-full bg-green-100 text-green-600">
                     <i class="fas fa-calendar-check text-lg"></i>
                 </div>
             </div>
-            <p class="text-blue-500 text-sm mt-2">3 this week</p>
+            <p class="text-blue-500 text-sm mt-2"><?= $total_clusters ?> clusters</p>
         </div>
     </div>
 
@@ -111,29 +119,29 @@ include('../includes/connection.php'); // Your DB connection
     <div class="mb-8">
         <h3 class="text-lg font-semibold mb-4">Quick Actions</h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <a href="#" class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-blue-300 transition-colors text-center">
+            <a href="admin-pages/admin-timeline.php" class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-blue-300 transition-colors text-center">
                 <div class="text-blue-500 mb-2">
-                    <i class="fas fa-user-plus text-2xl"></i>
+                    <i class="fas fa-file-alt text-2xl"></i>
                 </div>
-                <p class="font-medium">Add Student</p>
+                <p class="font-medium">Research Timeline</p>
             </a>
-            <a href="#" class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-purple-300 transition-colors text-center">
+            <a href="admin-pages/admin-defense.php" class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-purple-300 transition-colors text-center">
                 <div class="text-purple-500 mb-2">
-                    <i class="fas fa-file-upload text-2xl"></i>
+                    <i class="fas fa-calendar-alt text-2xl"></i>
                 </div>
-                <p class="font-medium">Review Proposals</p>
+                <p class="font-medium">Defense Scheduling</p>
             </a>
-            <a href="#" class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-green-300 transition-colors text-center">
+            <a href="admin-pages/panel-assignment.php" class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-green-300 transition-colors text-center">
                 <div class="text-green-500 mb-2">
-                    <i class="fas fa-calendar-plus text-2xl"></i>
+                    <i class="fas fa-users text-2xl"></i>
                 </div>
-                <p class="font-medium">Schedule Defense</p>
+                <p class="font-medium">Panel Assignment</p>
             </a>
-            <a href="#" class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-red-300 transition-colors text-center">
+            <a href="admin-pages/adviser-assignment.php" class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-red-300 transition-colors text-center">
                 <div class="text-red-500 mb-2">
-                    <i class="fas fa-cog text-2xl"></i>
+                    <i class="fas fa-user-tie text-2xl"></i>
                 </div>
-                <p class="font-medium">System Settings</p>
+                <p class="font-medium">Adviser Assignment</p>
             </a>
         </div>
     </div>
@@ -147,70 +155,46 @@ include('../includes/connection.php'); // Your DB connection
                 <a href="#" class="text-sm text-blue-500 hover:underline">View All</a>
             </div>
             <div class="space-y-4">
-                <div class="flex items-start">
-                    <div class="bg-blue-100 p-2 rounded-full mr-3">
-                        <i class="fas fa-user-plus text-blue-600 text-sm"></i>
+                <?php if (mysqli_num_rows($recent_students) > 0): ?>
+                    <?php while ($student = mysqli_fetch_assoc($recent_students)): ?>
+                    <div class="flex items-start">
+                        <div class="bg-blue-100 p-2 rounded-full mr-3">
+                            <i class="fas fa-user-plus text-blue-600 text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium">New student registered</p>
+                            <p class="text-gray-500 text-sm"><?= htmlspecialchars($student['full_name']) ?> - <?= htmlspecialchars($student['program']) ?></p>
+                            <p class="text-gray-400 text-xs">Recently added</p>
+                        </div>
                     </div>
-                    <div>
-                        <p class="font-medium">New student registered</p>
-                        <p class="text-gray-500 text-sm">John Doe - Computer Science</p>
-                        <p class="text-gray-400 text-xs">2 hours ago</p>
-                    </div>
-                </div>
-                <div class="flex items-start">
-                    <div class="bg-purple-100 p-2 rounded-full mr-3">
-                        <i class="fas fa-file-upload text-purple-600 text-sm"></i>
-                    </div>
-                    <div>
-                        <p class="font-medium">Proposal submitted</p>
-                        <p class="text-gray-500 text-sm">"AI in Healthcare" by Jane Smith</p>
-                        <p class="text-gray-400 text-xs">5 hours ago</p>
-                    </div>
-                </div>
-                <div class="flex items-start">
-                    <div class="bg-green-100 p-2 rounded-full mr-3">
-                        <i class="fas fa-check-circle text-green-600 text-sm"></i>
-                    </div>
-                    <div>
-                        <p class="font-medium">Proposal approved</p>
-                        <p class="text-gray-500 text-sm">"Blockchain Security" by Mark Johnson</p>
-                        <p class="text-gray-400 text-xs">1 day ago</p>
-                    </div>
-                </div>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <p class="text-gray-500 text-sm">No recent student registrations</p>
+                <?php endif; ?>
             </div>
         </div>
 
-        <!-- Upcoming Defenses -->
+        <!-- Recent Proposals -->
         <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold">Upcoming Defenses</h3>
+                <h3 class="text-lg font-semibold">Recent Proposals</h3>
                 <a href="#" class="text-sm text-blue-500 hover:underline">View All</a>
             </div>
             <div class="space-y-4">
-                <div class="border-l-4 border-blue-500 pl-4 py-2">
-                    <p class="font-medium">Sarah Williams - PhD Defense</p>
-                    <p class="text-gray-500 text-sm">"Machine Learning for Climate Modeling"</p>
-                    <div class="flex items-center text-sm text-gray-500 mt-1">
-                        <i class="far fa-calendar-alt mr-2"></i>
-                        <span>Tomorrow, 10:00 AM - Room A12</span>
+                <?php if (mysqli_num_rows($recent_proposals) > 0): ?>
+                    <?php while ($proposal = mysqli_fetch_assoc($recent_proposals)): ?>
+                    <div class="border-l-4 border-blue-500 pl-4 py-2">
+                        <p class="font-medium"><?= htmlspecialchars($proposal['title']) ?></p>
+                        <p class="text-gray-500 text-sm">Status: <?= ucfirst($proposal['status']) ?></p>
+                        <div class="flex items-center text-sm text-gray-500 mt-1">
+                            <i class="fas fa-file mr-1"></i>
+                            Proposal ID: <?= $proposal['id'] ?>
+                        </div>
                     </div>
-                </div>
-                <div class="border-l-4 border-purple-500 pl-4 py-2">
-                    <p class="font-medium">Robert Chen - Master's Defense</p>
-                    <p class="text-gray-500 text-sm">"IoT Security Protocols"</p>
-                    <div class="flex items-center text-sm text-gray-500 mt-1">
-                        <i class="far fa-calendar-alt mr-2"></i>
-                        <span>June 15, 2:30 PM - Virtual</span>
-                    </div>
-                </div>
-                <div class="border-l-4 border-green-500 pl-4 py-2">
-                    <p class="font-medium">Team Project - BSc Defense</p>
-                    <p class="text-gray-500 text-sm">"E-Learning Platform Development"</p>
-                    <div class="flex items-center text-sm text-gray-500 mt-1">
-                        <i class="far fa-calendar-alt mr-2"></i>
-                        <span>June 18, 9:00 AM - Lab 3</span>
-                    </div>
-                </div>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <p class="text-gray-500 text-sm">No recent proposals</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>

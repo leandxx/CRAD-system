@@ -154,7 +154,7 @@ mysqli_query($conn, $sql);
     header("Location: " . $_SERVER['PHP_SELF']);
     exit();
 }
-
+$cluster_details = null; // define first
 if ($cluster_details) {
     // Fetch groups (you already have this)
     $cluster_groups = mysqli_query($conn,

@@ -29,6 +29,14 @@ if ($has_group) {
     $group = mysqli_fetch_assoc($group_result);
     $group_id = $group['id'];
     
+    // Get cluster and adviser information
+    $cluster_query = "SELECT c.*, f.fullname as adviser_name 
+                      FROM clusters c 
+                      LEFT JOIN faculty f ON c.faculty_id = f.id 
+                      WHERE c.id = (SELECT cluster_id FROM groups WHERE id = '$group_id')";
+    $cluster_result = mysqli_query($conn, $cluster_query);
+    $cluster_info = mysqli_fetch_assoc($cluster_result);
+    
     // Check if group has already submitted a proposal
     $proposal_query = "SELECT * FROM proposals WHERE group_id = '$group_id'";
     $proposal_result = mysqli_query($conn, $proposal_query);
@@ -53,6 +61,19 @@ if ($has_group) {
             exit();
         } else {
             $error_message = "Error updating join code: " . mysqli_error($conn);
+        }
+    }
+    
+    // Handle group name update
+    if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_group_name'])) {
+        $new_group_name = mysqli_real_escape_string($conn, $_POST['new_group_name']);
+        $update_name_query = "UPDATE groups SET name = '$new_group_name' WHERE id = '$group_id'";
+        if (mysqli_query($conn, $update_name_query)) {
+            $_SESSION['success_message'] = "Group name updated successfully!";
+            header("Location: ../student_pages/proposal.php");
+            exit();
+        } else {
+            $error_message = "Error updating group name: " . mysqli_error($conn);
         }
     }
 }
@@ -304,6 +325,20 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                 }
             });
         }
+        
+        function toggleGroupNameEdit() {
+            const display = document.getElementById('group-name-display');
+            const form = document.getElementById('edit-group-name-form');
+            
+            if (form.classList.contains('hidden')) {
+                display.classList.add('hidden');
+                form.classList.remove('hidden');
+                form.querySelector('input[name="new_group_name"]').focus();
+            } else {
+                display.classList.remove('hidden');
+                form.classList.add('hidden');
+            }
+        }
     </script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
@@ -357,12 +392,58 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
 
                 <?php if ($has_group): ?>
                     <!-- Status Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <!-- Group Name -->
                         <div class="p-5 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200">
-                            <h3 class="font-semibold text-blue-800">Program Group</h3>
-                            <p class="text-lg font-medium text-gray-900 mt-1"><?php echo $group['name']; ?></p>
-                            <p class="text-sm text-blue-700 mt-1">Program: <?php echo $group['program']; ?></p>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-semibold text-blue-800">Program Group</h3>
+                                    <p class="text-lg font-medium text-gray-900 mt-1" id="group-name-display"><?php echo $group['name']; ?></p>
+                                    <p class="text-sm text-blue-700 mt-1">Program: <?php echo $group['program']; ?></p>
+                                </div>
+                                <button onclick="toggleGroupNameEdit()" class="text-blue-600 hover:text-blue-800 p-1" title="Edit group name">
+                                    <i class="fas fa-edit text-sm"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Edit form (hidden by default) -->
+                            <form method="POST" id="edit-group-name-form" class="hidden mt-3">
+                                <input type="hidden" name="update_group_name" value="1">
+                                <div class="flex gap-2">
+                                    <input type="text" name="new_group_name" value="<?php echo $group['name']; ?>" 
+                                           class="flex-1 px-2 py-1 border border-blue-300 rounded text-sm">
+                                    <button type="submit" class="bg-blue-600 text-white px-2 py-1 rounded text-sm hover:bg-blue-700">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button type="button" onclick="toggleGroupNameEdit()" class="bg-gray-400 text-white px-2 py-1 rounded text-sm hover:bg-gray-500">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Cluster Assignment -->
+                        <div class="p-5 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl border border-purple-200">
+                            <h3 class="font-semibold text-purple-800">Cluster Assignment</h3>
+                            <?php if ($cluster_info): ?>
+                                <p class="text-lg font-medium text-gray-900 mt-1"><?php echo $cluster_info['program']; ?> - Cluster <?php echo $cluster_info['cluster']; ?></p>
+                                <p class="text-sm text-purple-700 mt-1">Capacity: <?php echo $cluster_info['student_count']; ?>/<?php echo $cluster_info['capacity']; ?></p>
+                            <?php else: ?>
+                                <p class="text-lg font-medium text-gray-500 mt-1">Not Assigned</p>
+                                <p class="text-sm text-purple-700 mt-1">Waiting for assignment</p>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <!-- Adviser Assignment -->
+                        <div class="p-5 bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-xl border border-indigo-200">
+                            <h3 class="font-semibold text-indigo-800">Adviser Assignment</h3>
+                            <?php if ($cluster_info && $cluster_info['adviser_name']): ?>
+                                <p class="text-lg font-medium text-gray-900 mt-1"><?php echo $cluster_info['adviser_name']; ?></p>
+                                <p class="text-sm text-indigo-700 mt-1">Faculty Adviser</p>
+                            <?php else: ?>
+                                <p class="text-lg font-medium text-gray-500 mt-1">Not Assigned</p>
+                                <p class="text-sm text-indigo-700 mt-1">Waiting for assignment</p>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Payment Status -->

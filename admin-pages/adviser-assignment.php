@@ -4,6 +4,24 @@ include('../includes/connection.php'); // Your DB connection
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Bulk create clusters
+    if (isset($_POST['bulk_create'])) {
+        $school_year = mysqli_real_escape_string($conn, $_POST['school_year']);
+        $capacity = (int) $_POST['capacity'];
+        $programs = ['BSCS', 'BSBA', 'BSED', 'BSIT', 'BSCRIM'];
+        
+        foreach ($programs as $program) {
+            for ($i = 41001; $i <= 41010; $i++) {
+                $check = mysqli_query($conn, "SELECT id FROM clusters WHERE program = '$program' AND cluster = '$i'");
+                if (mysqli_num_rows($check) == 0) {
+                    $sql = "INSERT INTO clusters (program, cluster, school_year, capacity) 
+                            VALUES ('$program', '$i', '$school_year', $capacity)";
+                    mysqli_query($conn, $sql);
+                }
+            }
+        }
+    }
+    
     // Create cluster
     if (isset($_POST['create_cluster'])) {
         $program     = mysqli_real_escape_string($conn, $_POST['program']);
@@ -262,7 +280,7 @@ if (isset($_GET['view_cluster'])) {
             "SELECT sp.id, sp.school_id, sp.full_name, sp.program
              FROM student_profiles sp
              WHERE sp.cluster = '$cluster_name'
-             ORDER BY sp.full_name");
+             ORDER BY sp.full_name ASC");
         $cluster_students = mysqli_fetch_all($result, MYSQLI_ASSOC);
     }
 }
@@ -571,14 +589,19 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                     <i class="fas fa-layer-group text-primary mr-2"></i>Manage Clusters
                                 </h4>
                                 <div class="flex gap-2">
+                                    <select id="programFilter" class="border border-gray-300 text-gray-700 py-2 px-3 rounded-lg text-sm font-medium">
+                                        <option value="">All Programs</option>
+                                        <option value="BSCS">BSCS - Computer Science</option>
+                                        <option value="BSBA">BSBA - Business Administration</option>
+                                        <option value="BSED">BSED - Education</option>
+                                        <option value="BSIT">BSIT - Information Technology</option>
+                                        <option value="BSCRIM">BSCRIM - Criminology</option>
+                                    </select>
+                                    <button class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition duration-200" data-bs-toggle="modal" data-bs-target="#bulkCreateModal">
+                                        <i class="fas fa-magic mr-2"></i>Auto Generate
+                                    </button>
                                     <button class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition duration-200" data-bs-toggle="modal" data-bs-target="#createClusterModal">
                                         <i class="fas fa-plus-circle mr-2"></i>Create New Cluster
-                                    </button>
-                                    <button class="border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 px-3 rounded-lg text-sm font-medium flex items-center">
-                                        <i class="fas fa-filter mr-1"></i>Filter
-                                    </button>
-                                    <button class="border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 px-3 rounded-lg text-sm font-medium flex items-center">
-                                        <i class="fas fa-sort mr-1"></i>Sort
                                     </button>
                                 </div>
                             </div>
@@ -588,7 +611,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                     $percentage = $cluster['capacity'] > 0 ? ($cluster['student_count'] / $cluster['capacity']) * 100 : 0;
                                     $progress_color = $percentage < 60 ? 'bg-success' : ($percentage < 90 ? 'bg-warning' : 'bg-danger');
                                 ?>
-                                <div class="cluster-card bg-white rounded-lg shadow-sm border border-gray-100 h-full">
+                                <div class="cluster-card bg-white rounded-lg shadow-sm border border-gray-100 h-full" data-program="<?= htmlspecialchars($cluster['program']) ?>">
                                     <div class="p-5">
                                         <div class="flex justify-between items-center mb-3">
                                             <h5 class="font-bold text-gray-900"><?= htmlspecialchars($cluster['program']) ?> - Cluster <?= htmlspecialchars($cluster['cluster']) ?></h5>
@@ -766,6 +789,48 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
     </div>
     
     <!-- Modals -->
+    <!-- Bulk Create Clusters Modal -->
+    <div class="modal fade" id="bulkCreateModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST">
+                    <div class="modal-header bg-green-600 text-white p-4 rounded-t-lg">
+                        <h5 class="modal-title font-bold flex items-center">
+                            <i class="fas fa-magic mr-2"></i>Auto Generate All Clusters
+                        </h5>
+                        <button type="button" class="btn-close text-white" data-bs-dismiss="modal">×</button>
+                    </div>
+                    <div class="modal-body p-6">
+                        <div class="mb-4">
+                            <p class="text-gray-700 mb-4">This will create clusters 41001-41010 for all programs:</p>
+                            <ul class="list-disc list-inside text-gray-600 mb-4">
+                                <li>BSCS - Computer Science (10 clusters)</li>
+                                <li>BSBA - Business Administration (10 clusters)</li>
+                                <li>BSED - Education (10 clusters)</li>
+                                <li>BSIT - Information Technology (10 clusters)</li>
+                                <li>BSCRIM - Criminology (10 clusters)</li>
+                            </ul>
+                            <p class="text-sm text-gray-500 mb-4">Total: 50 clusters will be created</p>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">School Year</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="school_year" placeholder="e.g., 2023-2024" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Capacity per Cluster</label>
+                            <input type="number" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="capacity" min="5" step="5" value="25" required>
+                            <p class="text-gray-500 text-xs mt-1">Must be a multiple of 5 (each group has 5 students)</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer p-4 border-t border-gray-200">
+                        <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="bulk_create" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200" onclick="return confirm('Create 50 clusters for all programs?')">Generate All Clusters</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Create Cluster Modal -->
     <div class="modal fade" id="createClusterModal" tabindex="-1">
         <div class="modal-dialog">
@@ -1441,6 +1506,24 @@ document.addEventListener('click', function(e) {
         backdrop.addEventListener('click', function() {
             hideModal(viewClusterModal);
             window.location.href = '<?php echo $_SERVER["PHP_SELF"] ?>';
+        });
+    }
+    
+    // Program filter functionality
+    const programFilter = document.getElementById('programFilter');
+    if (programFilter) {
+        programFilter.addEventListener('change', function() {
+            const selectedProgram = this.value;
+            const clusterCards = document.querySelectorAll('.cluster-card');
+            
+            clusterCards.forEach(card => {
+                const cardProgram = card.getAttribute('data-program');
+                if (selectedProgram === '' || cardProgram === selectedProgram) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
         });
     }
     

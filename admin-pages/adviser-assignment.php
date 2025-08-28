@@ -35,7 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['delete_cluster'])) {
         $cluster_id = (int) $_POST['cluster_id'];
         
-        // First, unassign all groups from this cluster
+        // First, unassign all students from this cluster
+        $sql = "UPDATE student_profiles SET cluster = 'Not Assigned', faculty_id = NULL WHERE cluster = '$cluster_id'";
+        mysqli_query($conn, $sql);
+        
+        // Unassign all groups from this cluster
         $sql = "UPDATE groups SET cluster_id = NULL WHERE cluster_id = $cluster_id";
         mysqli_query($conn, $sql);
         
@@ -70,31 +74,55 @@ if (isset($_POST['assign_group'])) {
     $group_id = (int) $_POST['group_id'];
     $cluster_id = (int) $_POST['cluster_id'];
 
-    // Check if group has exactly 5 members
-    $member_count = mysqli_fetch_row(mysqli_query($conn, 
-        "SELECT COUNT(*) FROM group_members WHERE group_id = $group_id"))[0];
+    // Get cluster's faculty_id
+    $cluster_faculty = mysqli_fetch_assoc(mysqli_query($conn, 
+        "SELECT faculty_id FROM clusters WHERE id = $cluster_id"));
+    $faculty_id = $cluster_faculty['faculty_id'] ?? null;
     
-    if ($member_count == 5) {
-        // Update group cluster assignment
-        $sql = "UPDATE groups SET cluster_id = $cluster_id WHERE id = $group_id";
-        mysqli_query($conn, $sql);
-        
-        // Update student cluster + faculty assignment for all group members
-        // FIXED: Changed sp.cluster to sp.cluster_id
-$sql = "UPDATE student_profiles sp
-        JOIN group_members gm ON sp.id = gm.student_id
-        SET sp.cluster = $cluster_id, 
-            sp.faculty_id = (SELECT faculty_id FROM clusters WHERE id = $cluster_id)
-        WHERE gm.group_id = $group_id";
-mysqli_query($conn, $sql);
-
-
-        // Update student count in cluster
-        $sql = "UPDATE clusters SET student_count = student_count + 5 WHERE id = $cluster_id";
-        mysqli_query($conn, $sql);
+    // Update group cluster assignment
+    $sql = "UPDATE groups SET cluster_id = $cluster_id WHERE id = $group_id";
+    mysqli_query($conn, $sql);
+    
+    // Get all group members from group_members table
+    $members_result = mysqli_query($conn, "SELECT student_id FROM group_members WHERE group_id = $group_id");
+    
+    $member_count = 0;
+    if ($members_result && mysqli_num_rows($members_result) > 0) {
+        // Update all members found in group_members table
+        while ($member = mysqli_fetch_assoc($members_result)) {
+            $student_id = $member['student_id'];
+            if ($faculty_id) {
+                $update_sql = "UPDATE student_profiles SET cluster = '$cluster_id', faculty_id = $faculty_id WHERE id = $student_id";
+            } else {
+                $update_sql = "UPDATE student_profiles SET cluster = '$cluster_id', faculty_id = NULL WHERE id = $student_id";
+            }
+            if (mysqli_query($conn, $update_sql)) {
+                $member_count++;
+            }
+        }
     } else {
-        $_SESSION['error'] = "Group must have exactly 5 members to be assigned to a cluster";
+        // Fallback: Use direct UPDATE with group_members table
+        if ($faculty_id) {
+            $bulk_update = "UPDATE student_profiles sp 
+                           INNER JOIN group_members gm ON sp.id = gm.student_id 
+                           SET sp.cluster = '$cluster_id', sp.faculty_id = $faculty_id 
+                           WHERE gm.group_id = $group_id";
+        } else {
+            $bulk_update = "UPDATE student_profiles sp 
+                           INNER JOIN group_members gm ON sp.id = gm.student_id 
+                           SET sp.cluster = '$cluster_id', sp.faculty_id = NULL 
+                           WHERE gm.group_id = $group_id";
+        }
+        if (mysqli_query($conn, $bulk_update)) {
+            $member_count = mysqli_affected_rows($conn);
+        }
     }
+
+    // Update student count in cluster
+    $sql = "UPDATE clusters SET student_count = student_count + $member_count WHERE id = $cluster_id";
+    mysqli_query($conn, $sql);
+    
+    $_SESSION['success'] = "Group assigned successfully. $member_count students assigned to cluster.";
 }
     
 // Remove group from cluster
@@ -102,24 +130,28 @@ if (isset($_POST['remove_group'])) {
     $group_id = (int) $_POST['group_id'];
     $cluster_id = (int) $_POST['cluster_id'];
 
-    // Get group info first
+    // Get group info and member count
     $group = mysqli_fetch_assoc(mysqli_query($conn, "SELECT cluster_id FROM groups WHERE id = $group_id"));
+    $member_count = mysqli_fetch_row(mysqli_query($conn, 
+        "SELECT COUNT(*) FROM group_members WHERE group_id = $group_id"))[0];
     
     if ($group && $group['cluster_id'] == $cluster_id) {
         // Remove group from cluster
         $sql = "UPDATE groups SET cluster_id = NULL WHERE id = $group_id";
         mysqli_query($conn, $sql);
         
-        // Remove cluster assignment from all group members
-        // FIXED: Changed sp.cluster to sp.cluster_id
-       $sql = "UPDATE student_profiles sp
-        JOIN group_members gm ON sp.id = gm.student_id
-        SET sp.cluster = 'Not Assigned', sp.faculty_id = NULL
-        WHERE gm.group_id = $group_id";
-mysqli_query($conn, $sql);
+        // Get all student IDs in this group
+        $student_ids_result = mysqli_query($conn, "SELECT student_id FROM group_members WHERE group_id = $group_id");
+        
+        // Update each student individually
+        while ($student_row = mysqli_fetch_assoc($student_ids_result)) {
+            $student_id = $student_row['student_id'];
+            $sql = "UPDATE student_profiles SET cluster = 'Not Assigned', faculty_id = NULL WHERE id = $student_id";
+            mysqli_query($conn, $sql);
+        }
 
         // Update student count in cluster
-        $sql = "UPDATE clusters SET student_count = student_count - 5 WHERE id = $cluster_id";
+        $sql = "UPDATE clusters SET student_count = student_count - $member_count WHERE id = $cluster_id";
         mysqli_query($conn, $sql);
     }
 }    
@@ -150,30 +182,35 @@ mysqli_query($conn, $sql);
         mysqli_query($conn, $sql);
     }
     
+    // Add members to group
+    if (isset($_POST['add_members'])) {
+        $group_id = (int) $_POST['group_id'];
+        $student_ids = $_POST['student_ids']; // this should be an array of 5 student IDs
+
+        if (is_array($student_ids) && count($student_ids) == 5) {
+            // First, clear existing members
+            $sql = "DELETE FROM group_members WHERE group_id = $group_id";
+            mysqli_query($conn, $sql);
+            
+            // Then add all 5 members
+            foreach ($student_ids as $sid) {
+                $sid = (int)$sid;
+                $sql = "INSERT INTO group_members (group_id, student_id) VALUES ($group_id, $sid)";
+                mysqli_query($conn, $sql);
+            }
+            $_SESSION['success'] = "5 members successfully added to the group.";
+        } else {
+            $_SESSION['error'] = "You must select exactly 5 students.";
+        }
+    }
+    
+
+    
     // Redirect to avoid form resubmission
     header("Location: " . $_SERVER['PHP_SELF']);
     exit();
 }
-$cluster_details = null; // define first
-if ($cluster_details) {
-    // Fetch groups (you already have this)
-    $cluster_groups = mysqli_query($conn,
-        "SELECT g.*, COUNT(gm.student_id) as member_count
-         FROM groups g
-         LEFT JOIN group_members gm ON g.id = gm.group_id
-         WHERE g.cluster_id = $cluster_id
-         GROUP BY g.id
-         ORDER BY g.name");
 
-    // 👇 Fetch students in this cluster
-    $result = mysqli_query($conn,
-        "SELECT sp.id, sp.school_id, sp.full_name, sp.program
-         FROM student_profiles sp
-         WHERE sp.cluster = '$cluster_id'
-         ORDER BY sp.full_name");
-    
-    $cluster_students = mysqli_fetch_all($result, MYSQLI_ASSOC);
-}
 
 // Fetch data
 $clusters = mysqli_query(
@@ -196,9 +233,29 @@ $unassigned_groups = mysqli_query(
      LEFT JOIN group_members gm ON g.id = gm.group_id
      WHERE g.cluster_id IS NULL
      GROUP BY g.id
-     HAVING member_count = 5
      ORDER BY g.program, g.name"
 );
+
+// Handle cluster details view
+$cluster_details = null;
+$cluster_students = [];
+if (isset($_GET['view_cluster'])) {
+    $cluster_id = (int) $_GET['view_cluster'];
+    $cluster_details = mysqli_fetch_assoc(mysqli_query($conn,
+        "SELECT c.*, f.fullname AS adviser_name, f.department, f.expertise
+         FROM clusters c
+         LEFT JOIN faculty f ON c.faculty_id = f.id
+         WHERE c.id = $cluster_id"));
+    
+    if ($cluster_details) {
+        $result = mysqli_query($conn,
+            "SELECT sp.id, sp.school_id, sp.full_name, sp.program
+             FROM student_profiles sp
+             WHERE sp.cluster = '$cluster_id'
+             ORDER BY sp.full_name");
+        $cluster_students = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    }
+}
 
 // Get statistics
 $total_clusters     = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM clusters"))[0];
@@ -592,7 +649,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                         <div class="tab-pane" id="unassigned" role="tabpanel">
                             <div class="flex justify-between items-center mb-6">
                                 <h4 class="text-lg font-bold text-gray-900 flex items-center">
-                                    <i class="fas fa-users text-primary mr-2"></i>Unassigned Groups (Complete Groups of 5)
+                                    <i class="fas fa-users text-primary mr-2"></i>Unassigned Groups
                                 </h4>
                                 <div class="flex gap-2">
                                     <button class="border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 px-3 rounded-lg text-sm font-medium flex items-center">
@@ -625,7 +682,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             <?php else: ?>
                             <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center">
                                 <i class="fas fa-info-circle mr-2 text-lg"></i>
-                                <div>No complete groups of 5 available for assignment.</div>
+                                <div>No unassigned groups available.</div>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -1083,23 +1140,23 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                 </thead>
                                 <tbody>
                                 <tbody>
-    <?php foreach ($cluster_students as $student): ?>
-    <tr class="border-b border-gray-200 hover:bg-gray-50">
-        <td class="px-4 py-3"><?= htmlspecialchars($student['school_id']) ?></td>
-        <td class="px-4 py-3"><?= htmlspecialchars($student['full_name']) ?></td>
-        <td class="px-4 py-3"><?= htmlspecialchars($student['program']) ?></td>
-        <td class="px-4 py-3">
-            <form method="POST" class="inline">
-                <input type="hidden" name="student_id" value="<?= $student['id'] ?>">
-                <input type="hidden" name="cluster_id" value="<?= $cluster_details['id'] ?>">
-                <button type="submit" name="remove_student" class="text-red-600 hover:text-red-800 text-sm" onclick="return confirm('Remove this student from the cluster?')">
-                    <i class="fas fa-times-circle mr-1"></i>Remove
-                </button>
-            </form>
-        </td>
-    </tr>
-    <?php endforeach; ?>
-</tbody>
+                                        <?php foreach ($cluster_students as $student): ?>
+                                        <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                            <td class="px-4 py-3"><?= htmlspecialchars($student['school_id']) ?></td>
+                                            <td class="px-4 py-3"><?= htmlspecialchars($student['full_name']) ?></td>
+                                            <td class="px-4 py-3"><?= htmlspecialchars($student['program']) ?></td>
+                                            <td class="px-4 py-3">
+                                                <form method="POST" class="inline">
+                                                    <input type="hidden" name="student_id" value="<?= $student['id'] ?>">
+                                                    <input type="hidden" name="cluster_id" value="<?= $cluster_details['id'] ?>">
+                                                    <button type="submit" name="remove_student" class="text-red-600 hover:text-red-800 text-sm" onclick="return confirm('Remove this student from the cluster?')">
+                                                        <i class="fas fa-times-circle mr-1"></i>Remove
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
                             </table>
                         </div>
                         <?php else: ?>

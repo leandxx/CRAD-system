@@ -638,7 +638,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                         
                                         <div class="cluster-actions flex flex-wrap gap-2 mt-4">
                                             <button class="bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center transition duration-200" 
-                                                    onclick="window.location.href='admin-pages/adviser-assignment.php?view_cluster=<?= $cluster['id'] ?>#manage'">
+                                                    onclick="viewCluster(<?= $cluster['id'] ?>)">
                                                 <i class="fas fa-eye mr-1"></i>View
                                             </button>
                                             
@@ -1162,50 +1162,39 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
         </div>
     </div>
 
-     <!-- View Cluster Modal (shown when view_cluster parameter is set) -->
-    <?php if (isset($_GET['view_cluster'])): ?>
-    <div class="modal show" id="viewClusterModal" tabindex="-1" style="display: block;">
+    <!-- View Cluster Modal -->
+    <div class="modal" id="viewClusterModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white p-4 rounded-t-lg">
                     <h5 class="modal-title font-bold flex items-center">
                         <i class="fas fa-eye mr-2"></i>View Cluster Details
                     </h5>
-                    <button type="button" class="btn-close text-white" onclick="window.location.href='<?php echo $_SERVER['PHP_SELF'] ?>'">×</button>
+                    <button type="button" class="btn-close text-white" data-bs-dismiss="modal">×</button>
                 </div>
                 <div class="modal-body p-6">
-                    <?php if ($cluster_details): ?>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
                             <h5 class="font-bold text-gray-900 mb-3">Cluster Information</h5>
                             <div class="space-y-2">
-                                <p><strong>Program:</strong> <?= htmlspecialchars($cluster_details['program']) ?></p>
-                                <p><strong>Cluster:</strong> <?= htmlspecialchars($cluster_details['cluster']) ?></p>
-                                <p><strong>School Year:</strong> <?= htmlspecialchars($cluster_details['school_year']) ?></p>
-                                <p><strong>Capacity:</strong> <?= $cluster_details['student_count'] ?> / <?= $cluster_details['capacity'] ?></p>
-                                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                                    <?php $percentage = $cluster_details['capacity'] > 0 ? ($cluster_details['student_count'] / $cluster_details['capacity']) * 100 : 0; ?>
-                                    <div class="h-2 rounded-full <?= $percentage < 60 ? 'bg-success' : ($percentage < 90 ? 'bg-warning' : 'bg-danger') ?>" style="width: <?= $percentage ?>%"></div>
-                                </div>
+                                <p><strong>Program:</strong> <span id="modal-cluster-program"></span></p>
+                                <p><strong>Cluster:</strong> <span id="modal-cluster-name"></span></p>
+                                <p><strong>School Year:</strong> <span id="modal-school-year"></span></p>
+                                <p><strong>Capacity:</strong> <span id="modal-capacity"></span></p>
                             </div>
                         </div>
                         <div>
                             <h5 class="font-bold text-gray-900 mb-3">Adviser Information</h5>
-                            <?php if ($cluster_details['faculty_id']): ?>
                             <div class="space-y-2">
-                                <p><strong>Name:</strong> <?= htmlspecialchars($cluster_details['adviser_name']) ?></p>
-                                <p><strong>Department:</strong> <?= htmlspecialchars($cluster_details['department']) ?></p>
-                                <p><strong>Expertise:</strong> <?= htmlspecialchars($cluster_details['expertise']) ?></p>
+                                <p><strong>Name:</strong> <span id="modal-adviser-name"></span></p>
+                                <p><strong>Department:</strong> <span id="modal-department"></span></p>
+                                <p><strong>Expertise:</strong> <span id="modal-expertise"></span></p>
                             </div>
-                            <?php else: ?>
-                            <p class="text-red-500">No adviser assigned to this cluster.</p>
-                            <?php endif; ?>
                         </div>
                     </div>
                     
                     <div>
                         <h5 class="font-bold text-gray-900 mb-3">Students in this Cluster</h5>
-    <?php if (!empty($cluster_students)): ?>
                         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
                             <table class="w-full text-sm text-left text-gray-700">
                                 <thead class="text-xs text-gray-700 uppercase bg-gray-100">
@@ -1213,47 +1202,20 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                         <th class="px-4 py-3">Student ID</th>
                                         <th class="px-4 py-3">Name</th>
                                         <th class="px-4 py-3">Program</th>
-                                        <th class="px-4 py-3">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                <tbody>
-                                        <?php foreach ($cluster_students as $student): ?>
-                                        <tr class="border-b border-gray-200 hover:bg-gray-50">
-                                            <td class="px-4 py-3"><?= htmlspecialchars($student['school_id']) ?></td>
-                                            <td class="px-4 py-3"><?= htmlspecialchars($student['full_name']) ?></td>
-                                            <td class="px-4 py-3"><?= htmlspecialchars($student['program']) ?></td>
-                                            <td class="px-4 py-3">
-                                                <form method="POST" class="inline">
-                                                    <input type="hidden" name="student_id" value="<?= $student['id'] ?>">
-                                                    <input type="hidden" name="cluster_id" value="<?= $cluster_details['id'] ?>">
-                                                    <button type="submit" name="remove_student" class="text-red-600 hover:text-red-800 text-sm" onclick="return confirm('Remove this student from the cluster?')">
-                                                        <i class="fas fa-times-circle mr-1"></i>Remove
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
+                                <tbody id="modal-students-table">
+                                </tbody>
                             </table>
                         </div>
-                        <?php else: ?>
-                        <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">
-                            No Groups assigned to this cluster yet.
-                        </div>
-                        <?php endif; ?>
                     </div>
-                    <?php else: ?>
-                    <div class="text-red-500">Cluster not found.</div>
-                    <?php endif; ?>
                 </div>
                 <div class="modal-footer p-4 border-t border-gray-200">
-                    <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200" onclick="window.location.href='<?php echo $_SERVER['PHP_SELF'] ?>'">Close</button>
+                    <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
     </div>
-    <?php endif; ?>
 
    <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1537,6 +1499,53 @@ document.addEventListener('click', function(e) {
                 }
             });
         });
+    }
+    
+    // View cluster function
+    window.viewCluster = function(clusterId) {
+        fetch(`admin-pages/get_cluster_details.php?cluster_id=${clusterId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    populateViewModal(data.cluster, data.students);
+                    showModal('viewClusterModal');
+                } else {
+                    alert('Error loading cluster details');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error loading cluster details');
+            });
+    };
+    
+    // Populate view modal with data
+    function populateViewModal(cluster, students) {
+        document.getElementById('modal-cluster-program').textContent = cluster.program;
+        document.getElementById('modal-cluster-name').textContent = cluster.cluster;
+        document.getElementById('modal-school-year').textContent = cluster.school_year;
+        document.getElementById('modal-capacity').textContent = `${cluster.student_count} / ${cluster.capacity}`;
+        document.getElementById('modal-adviser-name').textContent = cluster.adviser_name || 'Not assigned';
+        document.getElementById('modal-department').textContent = cluster.department || 'N/A';
+        document.getElementById('modal-expertise').textContent = cluster.expertise || 'N/A';
+        
+        const studentsTable = document.getElementById('modal-students-table');
+        studentsTable.innerHTML = '';
+        
+        if (students.length > 0) {
+            students.forEach(student => {
+                const row = `
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-4 py-3">${student.school_id}</td>
+                        <td class="px-4 py-3">${student.full_name}</td>
+                        <td class="px-4 py-3">${student.program}</td>
+                    </tr>
+                `;
+                studentsTable.innerHTML += row;
+            });
+        } else {
+            studentsTable.innerHTML = '<tr><td colspan="3" class="px-4 py-3 text-center text-gray-500">No students assigned</td></tr>';
+        }
     }
     
     // Make the openAssignAdviserModal function available globally

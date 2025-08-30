@@ -259,6 +259,22 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        @keyframes slideInUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .animate-slide-up { animation: slideInUp 0.6s ease-out; }
+        .animate-fade-in { animation: fadeIn 0.8s ease-out; }
+        .animate-scale-in { animation: scaleIn 0.5s ease-out; }
+        
         .scroll-container {
             max-height: calc(100vh - 80px);
             overflow-y: auto;
@@ -276,20 +292,83 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             100% { opacity: 1; }
         }
         .schedule-card {
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .schedule-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        .schedule-card:hover::before {
+            left: 100%;
         }
         .schedule-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.15);
         }
         .modal {
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
             transform: scale(0.95);
             opacity: 0;
         }
         .modal.active {
             transform: scale(1);
             opacity: 1;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+        .stats-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 35px -8px rgba(0, 0, 0, 0.1);
+        }
+        .gradient-blue {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+        .gradient-green {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        .gradient-yellow {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        .gradient-purple {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+        .defense-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .defense-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        .defense-card:hover::before {
+            left: 100%;
+        }
+        .defense-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 15px 30px -8px rgba(0, 0, 0, 0.15);
         }
         .details-grid {
             display: grid;
@@ -472,7 +551,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
     </script>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 text-gray-800 font-sans">
 
     <div class="min-h-screen flex">
         <!-- Sidebar/header -->
@@ -494,60 +573,72 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             <?php endif; ?>
 
             <!-- Stats Overview -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-slide-up">
+                <div class="stats-card p-6 flex items-center justify-between">
                     <div>
-                        <p class="text-gray-600">Total Proposals</p>
-                        <h3 class="text-2xl font-bold"><?php echo $total_proposals; ?></h3>
+                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Total Proposals</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo $total_proposals; ?></h3>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                            <div class="gradient-blue h-1.5 rounded-full" style="width: 100%"></div>
+                        </div>
                     </div>
-                    <div class="bg-blue-100 p-3 rounded-full">
-                        <i class="fas fa-file-alt text-primary text-xl"></i>
+                    <div class="gradient-blue p-4 rounded-2xl shadow-lg">
+                        <i class="fas fa-file-alt text-white text-2xl"></i>
                     </div>
                 </div>
-                <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+                <div class="stats-card p-6 flex items-center justify-between">
                     <div>
-                        <p class="text-gray-600">Scheduled</p>
-                        <h3 class="text-2xl font-bold"><?php echo $scheduled_defenses; ?></h3>
+                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Scheduled</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo $scheduled_defenses; ?></h3>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                            <div class="gradient-green h-1.5 rounded-full" style="width: <?php echo $total_proposals > 0 ? ($scheduled_defenses / $total_proposals * 100) : 0; ?>%"></div>
+                        </div>
                     </div>
-                    <div class="bg-green-100 p-3 rounded-full">
-                        <i class="fas fa-calendar-check text-success text-xl"></i>
+                    <div class="gradient-green p-4 rounded-2xl shadow-lg">
+                        <i class="fas fa-calendar-check text-white text-2xl"></i>
                     </div>
                 </div>
-                <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+                <div class="stats-card p-6 flex items-center justify-between">
                     <div>
-                        <p class="text-gray-600">Pending</p>
-                        <h3 class="text-2xl font-bold"><?php echo $pending_defenses; ?></h3>
+                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Pending</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo $pending_defenses; ?></h3>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                            <div class="gradient-yellow h-1.5 rounded-full" style="width: <?php echo $total_proposals > 0 ? ($pending_defenses / $total_proposals * 100) : 0; ?>%"></div>
+                        </div>
                     </div>
-                    <div class="bg-yellow-100 p-3 rounded-full">
-                        <i class="fas fa-clock text-warning text-xl"></i>
+                    <div class="gradient-yellow p-4 rounded-2xl shadow-lg">
+                        <i class="fas fa-clock text-white text-2xl"></i>
                     </div>
                 </div>
-                <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+                <div class="stats-card p-6 flex items-center justify-between">
                     <div>
-                        <p class="text-gray-600">Completed</p>
-                        <h3 class="text-2xl font-bold"><?php echo $completed_defenses; ?></h3>
+                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Completed</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo $completed_defenses; ?></h3>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                            <div class="gradient-purple h-1.5 rounded-full" style="width: <?php echo $total_proposals > 0 ? ($completed_defenses / $total_proposals * 100) : 0; ?>%"></div>
+                        </div>
                     </div>
-                    <div class="bg-purple-100 p-3 rounded-full">
-                        <i class="fas fa-check-circle text-secondary text-xl"></i>
+                    <div class="gradient-purple p-4 rounded-2xl shadow-lg">
+                        <i class="fas fa-check-circle text-white text-2xl"></i>
                     </div>
                 </div>
             </div>
 
             <!-- Filters and Actions -->
-            <div class="bg-white rounded-lg shadow mb-6 p-4">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div class="flex flex-wrap gap-2">
-                        <button onclick="filterStatus('all')" data-filter="all" class="filter-btn px-3 py-1 rounded-full bg-primary text-white text-sm">All</button>
-                        <button onclick="filterStatus('scheduled')" data-filter="scheduled" class="filter-btn px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm">Scheduled</button>
-                        <button onclick="filterStatus('pending')" data-filter="pending" class="filter-btn px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm">Pending</button>
-                        <button onclick="filterStatus('completed')" data-filter="completed" class="filter-btn px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm">Completed</button>
+            <div class="stats-card rounded-2xl mb-8 p-6 animate-fade-in">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="filterStatus('all')" data-filter="all" class="filter-btn px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold transition-all hover:scale-105">All</button>
+                        <button onclick="filterStatus('scheduled')" data-filter="scheduled" class="filter-btn px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold transition-all hover:scale-105 hover:bg-gray-200">Scheduled</button>
+                        <button onclick="filterStatus('pending')" data-filter="pending" class="filter-btn px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold transition-all hover:scale-105 hover:bg-gray-200">Pending</button>
+                        <button onclick="filterStatus('completed')" data-filter="completed" class="filter-btn px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold transition-all hover:scale-105 hover:bg-gray-200">Completed</button>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-3">
                         <div class="relative">
-                            <input type="text" id="searchInput" placeholder="Search proposals..." onkeyup="handleSearch()" class="pl-10 pr-4 py-2 border rounded-lg w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-primary">
-                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" id="searchInput" placeholder="Search proposals..." onkeyup="handleSearch()" class="pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         </div>
-                        <button onclick="toggleModal()" class="bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center">
+                        <button onclick="toggleModal()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
                             <i class="fas fa-plus mr-2"></i> Schedule Defense
                         </button>
                     </div>
@@ -555,8 +646,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             </div>
 
             <!-- Defense Schedule Cards -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-xl font-semibold text-gray-800 mb-6">Defense Schedule</h2>
+            <div class="stats-card rounded-2xl p-8 animate-scale-in">
+                <div class="flex items-center mb-8">
+                    <div class="gradient-blue p-3 rounded-xl mr-4">
+                        <i class="fas fa-calendar-alt text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">Defense Schedule</h2>
+                </div>
 
                 <!-- Cards Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -642,8 +738,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             </div>
 
             <!-- Upcoming Defenses Section -->
-            <h2 class="text-xl font-bold mt-8 mb-4 text-gray-700">Upcoming Defenses</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="flex items-center mt-10 mb-6">
+                <div class="gradient-green p-3 rounded-xl mr-4">
+                    <i class="fas fa-clock text-white text-xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">Upcoming Defenses</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-fade-in">
                 <?php 
                 $upcoming_query = "SELECT ds.*, g.name as group_name, p.title as proposal_title, r.room_name, r.building 
                                 FROM defense_schedules ds 
@@ -740,14 +841,50 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     
                     <!-- Panel Tabs -->
                     <div class="panel-tabs mb-3">
-                        <div class="panel-tab active" data-tab="accepted" onclick="switchPanelTab('accepted')">Accepted Panel</div>
+                        <div class="panel-tab active" data-tab="chairperson" onclick="switchPanelTab('chairperson')">Chairperson</div>
+                        <div class="panel-tab" data-tab="member" onclick="switchPanelTab('member')">Members</div>
                     </div>
                     
-                    <!-- Accepted Panel Content -->
-                    <div class="panel-content active" data-tab="accepted">
-                        <?php if (!empty($accepted_panel_members)): ?>
+                    <!-- Chairperson Panel Content -->
+                    <div class="panel-content active" data-tab="chairperson">
+                        <?php 
+                        $chairpersons = array_filter($accepted_panel_members, function($member) {
+                            return $member['role'] === 'chairperson';
+                        });
+                        if (!empty($chairpersons)): ?>
                         <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-                            <?php foreach ($accepted_panel_members as $panel_member): ?>
+                            <?php foreach ($chairpersons as $panel_member): ?>
+                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-3 rounded text-primary focus:ring-primary">
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
+                                    <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                    <?php if (!empty($panel_member['specialization'])): ?>
+                                    <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Select chairperson for this defense schedule.</p>
+                        <?php else: ?>
+                        <div class="text-center p-6 border rounded-lg bg-gray-50">
+                            <i class="fas fa-user-tie text-gray-300 text-3xl mb-3"></i>
+                            <p class="text-gray-500 text-sm mb-2">No chairpersons found.</p>
+                            <p class="text-xs text-gray-400">Please add chairpersons in the Panel Assignment section first.</p>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <!-- Members Panel Content -->
+                    <div class="panel-content" data-tab="member">
+                        <?php 
+                        $members = array_filter($accepted_panel_members, function($member) {
+                            return $member['role'] === 'member';
+                        });
+                        if (!empty($members)): ?>
+                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
+                            <?php foreach ($members as $panel_member): ?>
                             <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
                                 <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-3 rounded text-primary focus:ring-primary">
                                 <div class="flex-1">
@@ -766,9 +903,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                             <i class="fas fa-users text-gray-300 text-3xl mb-3"></i>
                             <p class="text-gray-500 text-sm mb-2">No panel members found.</p>
                             <p class="text-xs text-gray-400">Please add panel members in the Panel Assignment section first.</p>
-                            <a href="panel-assignment.php" class="inline-block mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
-                                Go to Panel Assignment
-                            </a>
                         </div>
                         <?php endif; ?>
                     </div>
@@ -836,14 +970,50 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     
                     <!-- Panel Tabs -->
                     <div class="panel-tabs mb-3">
-                        <div class="panel-tab active" data-tab="edit_accepted" onclick="switchEditPanelTab('edit_accepted')">Accepted Panel</div>
+                        <div class="panel-tab active" data-tab="edit_chairperson" onclick="switchEditPanelTab('edit_chairperson')">Chairperson</div>
+                        <div class="panel-tab" data-tab="edit_member" onclick="switchEditPanelTab('edit_member')">Members</div>
                     </div>
                     
-                    <!-- Accepted Panel Content -->
-                    <div class="panel-content active" data-tab="edit_accepted">
-                        <?php if (!empty($accepted_panel_members)): ?>
-                        <div class="grid grid-cols-1 gap-2 max-h-64 overflow-y-scroll p-2 border rounded-lg bg-gray-50" id="edit_accepted_panel">
-                            <?php foreach ($accepted_panel_members as $panel_member): ?>
+                    <!-- Edit Chairperson Panel Content -->
+                    <div class="panel-content active" data-tab="edit_chairperson">
+                        <?php 
+                        $chairpersons = array_filter($accepted_panel_members, function($member) {
+                            return $member['role'] === 'chairperson';
+                        });
+                        if (!empty($chairpersons)): ?>
+                        <div class="grid grid-cols-1 gap-2 max-h-64 overflow-y-scroll p-2 border rounded-lg bg-gray-50">
+                            <?php foreach ($chairpersons as $panel_member): ?>
+                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="edit-panel-member mr-3 rounded text-primary focus:ring-primary" data-id="<?php echo $panel_member['id']; ?>">
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
+                                    <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                    <?php if (!empty($panel_member['specialization'])): ?>
+                                    <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Select chairperson for this defense schedule.</p>
+                        <?php else: ?>
+                        <div class="text-center p-6 border rounded-lg bg-gray-50">
+                            <i class="fas fa-user-tie text-gray-300 text-3xl mb-3"></i>
+                            <p class="text-gray-500 text-sm mb-2">No chairpersons found.</p>
+                            <p class="text-xs text-gray-400">Please add chairpersons in the Panel Assignment section first.</p>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <!-- Edit Members Panel Content -->
+                    <div class="panel-content" data-tab="edit_member">
+                        <?php 
+                        $members = array_filter($accepted_panel_members, function($member) {
+                            return $member['role'] === 'member';
+                        });
+                        if (!empty($members)): ?>
+                        <div class="grid grid-cols-1 gap-2 max-h-64 overflow-y-scroll p-2 border rounded-lg bg-gray-50">
+                            <?php foreach ($members as $panel_member): ?>
                             <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
                                 <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="edit-panel-member mr-3 rounded text-primary focus:ring-primary" data-id="<?php echo $panel_member['id']; ?>">
                                 <div class="flex-1">
@@ -862,9 +1032,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                             <i class="fas fa-users text-gray-300 text-3xl mb-3"></i>
                             <p class="text-gray-500 text-sm mb-2">No panel members found.</p>
                             <p class="text-xs text-gray-400">Please add panel members in the Panel Assignment section first.</p>
-                            <a href="panel-assignment.php" class="inline-block mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
-                                Go to Panel Assignment
-                            </a>
                         </div>
                         <?php endif; ?>
                     </div>
@@ -983,8 +1150,23 @@ function populateEditForm(schedule) {
         
         // Function to switch between panel member tabs in edit modal
         function switchEditPanelTab(tabName) {
-            // Only accepted panel tab exists now
-            console.log('Edit panel tab switched to:', tabName);
+            // Update active tab
+            document.querySelectorAll('.panel-tab').forEach(tab => {
+                if (tab.getAttribute('data-tab') === tabName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // Show active content
+            document.querySelectorAll('.panel-content').forEach(content => {
+                if (content.getAttribute('data-tab') === tabName) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
         }
         
         // Initialize edit modal tabs on page load
@@ -992,11 +1174,11 @@ function populateEditForm(schedule) {
             // Set default filter to 'all'
             filterStatus('all');
             
-            // Set default panel tab to 'accepted'
-            switchPanelTab('accepted');
+            // Set default panel tab to 'chairperson'
+            switchPanelTab('chairperson');
             
-            // Edit modal only has accepted panel tab
-            switchEditPanelTab('edit_accepted');
+            // Edit modal default to chairperson tab
+            switchEditPanelTab('edit_chairperson');
         });
     </script>
 </body>

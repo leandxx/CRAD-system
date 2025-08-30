@@ -178,6 +178,81 @@ $staffs = mysqli_fetch_all($staff_result, MYSQLI_ASSOC);
     <link rel="icon" href="../assets/img/sms-logo.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @keyframes slideInUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .animate-slide-up { animation: slideInUp 0.6s ease-out; }
+        .animate-fade-in { animation: fadeIn 0.8s ease-out; }
+        .animate-scale-in { animation: scaleIn 0.5s ease-out; }
+        
+        .stats-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+        .stats-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 35px -8px rgba(0, 0, 0, 0.1);
+        }
+        .gradient-blue {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+        .gradient-purple {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+        .enhanced-table {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .enhanced-table th {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.75rem;
+        }
+        .enhanced-table tr:hover {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            transform: scale(1.01);
+            transition: all 0.2s ease;
+        }
+        .action-button {
+            transition: all 0.2s ease;
+            padding: 0.5rem;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .action-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        .modal-overlay {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4));
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+    </style>
     <script>
         tailwind.config = {
             theme: {
@@ -194,7 +269,7 @@ $staffs = mysqli_fetch_all($staff_result, MYSQLI_ASSOC);
         }
     </script>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans h-screen overflow-hidden">
+<body class="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 text-gray-800 font-sans h-screen overflow-hidden">
 
     <div class="min-h-screen flex">
         <!-- Sidebar -->
@@ -212,8 +287,13 @@ $staffs = mysqli_fetch_all($staff_result, MYSQLI_ASSOC);
                 <?php endif; ?>
                 
                 <!-- Create Admin Form -->
-                <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 class="text-xl font-semibold mb-4">Create New Admin</h2>
+                <div class="stats-card p-8 mb-8 animate-slide-up">
+                    <div class="flex items-center mb-6">
+                        <div class="gradient-blue p-3 rounded-xl mr-4">
+                            <i class="fas fa-user-shield text-white text-xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-800">Create New Admin</h2>
+                    </div>
                     <form method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -227,16 +307,21 @@ $staffs = mysqli_fetch_all($staff_result, MYSQLI_ASSOC);
                         </div>
                         <div class="flex items-end">
                             <button type="submit" name="create_admin" 
-                                class="bg-primary text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors">
-                                Create Admin
+                                class="gradient-blue text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
+                                <i class="fas fa-plus mr-2"></i>Create Admin
                             </button>
                         </div>
                     </form>
                 </div>
                 
                 <!-- Create Staff Form -->
-                <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 class="text-xl font-semibold mb-4">Create New Staff</h2>
+                <div class="stats-card p-8 mb-8 animate-fade-in">
+                    <div class="flex items-center mb-6">
+                        <div class="gradient-purple p-3 rounded-xl mr-4">
+                            <i class="fas fa-user-tie text-white text-xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-800">Create New Staff</h2>
+                    </div>
                     <form method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label for="staff_email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -250,16 +335,21 @@ $staffs = mysqli_fetch_all($staff_result, MYSQLI_ASSOC);
                         </div>
                         <div class="flex items-end">
                             <button type="submit" name="create_staff" 
-                                class="bg-secondary text-white px-4 py-2 rounded-md hover:bg-purple-600 transition-colors">
-                                Create Staff
+                                class="gradient-purple text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
+                                <i class="fas fa-plus mr-2"></i>Create Staff
                             </button>
                         </div>
                     </form>
                 </div>
                 
                 <!-- Admins List -->
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-xl font-semibold mb-4">Admin Accounts</h2>
+                <div class="stats-card p-8 animate-scale-in">
+                    <div class="flex items-center mb-6">
+                        <div class="gradient-blue p-3 rounded-xl mr-4">
+                            <i class="fas fa-users-cog text-white text-xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-800">Admin Accounts</h2>
+                    </div>
                     
                     <?php if (count($admins) > 0): ?>
                         <div class="overflow-x-auto">
@@ -305,8 +395,13 @@ $staffs = mysqli_fetch_all($staff_result, MYSQLI_ASSOC);
                 </div>
                 
                 <!-- Staff List -->
-                <div class="bg-white p-6 rounded-lg shadow-md mt-6">
-                    <h2 class="text-xl font-semibold mb-4">Staff Accounts</h2>
+                <div class="stats-card p-8 mt-8 animate-scale-in">
+                    <div class="flex items-center mb-6">
+                        <div class="gradient-purple p-3 rounded-xl mr-4">
+                            <i class="fas fa-user-friends text-white text-xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-800">Staff Accounts</h2>
+                    </div>
                     <?php if (count($staffs) > 0): ?>
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
@@ -353,9 +448,14 @@ $staffs = mysqli_fetch_all($staff_result, MYSQLI_ASSOC);
     </div>
 
     <!-- Edit Modal -->
-    <div id="editModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
-            <h2 class="text-xl font-semibold mb-4">Edit Admin Account</h2>
+    <div id="editModal" class="modal-overlay fixed inset-0 flex items-center justify-center hidden">
+        <div class="modal-content p-8 w-full max-w-md">
+            <div class="flex items-center mb-6">
+                <div class="gradient-blue p-3 rounded-xl mr-4">
+                    <i class="fas fa-user-edit text-white text-lg"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">Edit Admin Account</h2>
+            </div>
             <form method="POST" id="editForm">
                 <input type="hidden" name="user_id" id="edit_user_id">
                 <input type="hidden" name="update_admin" value="1">
@@ -387,9 +487,14 @@ $staffs = mysqli_fetch_all($staff_result, MYSQLI_ASSOC);
     </div>
 
     <!-- Staff Edit Modal -->
-    <div id="staffEditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
-            <h2 class="text-xl font-semibold mb-4">Edit Staff Account</h2>
+    <div id="staffEditModal" class="modal-overlay fixed inset-0 flex items-center justify-center hidden">
+        <div class="modal-content p-8 w-full max-w-md">
+            <div class="flex items-center mb-6">
+                <div class="gradient-purple p-3 rounded-xl mr-4">
+                    <i class="fas fa-user-edit text-white text-lg"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">Edit Staff Account</h2>
+            </div>
             <form method="POST" id="staffEditForm">
                 <input type="hidden" name="user_id" id="staff_edit_user_id">
                 <input type="hidden" name="update_staff" value="1">

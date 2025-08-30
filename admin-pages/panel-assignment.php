@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $specialization = trim($conn->real_escape_string($_POST['specialization'] ?? ''));
         $program = $conn->real_escape_string($_POST['program'] ?? 'general');
         $status = $conn->real_escape_string($_POST['status'] ?? 'active');
+        $role = $conn->real_escape_string($_POST['role'] ?? 'member');
         
         // Validate inputs
         if (empty($first_name)) {
@@ -43,8 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($check_result->num_rows > 0) {
                 $error = "A panel member with this email already exists";
             } else {
-                $sql = "INSERT INTO panel_members (first_name, last_name, email, specialization, program, status) 
-                        VALUES ('$first_name', '$last_name', '$email', '$specialization', '$program', '$status')";
+                $sql = "INSERT INTO panel_members (first_name, last_name, email, specialization, program, status, role) 
+                        VALUES ('$first_name', '$last_name', '$email', '$specialization', '$program', '$status', '$role')";
                 
                 if ($conn->query($sql)) {
                     // Send notification to all users
@@ -69,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $specialization = $conn->real_escape_string($_POST['specialization']);
         $program = $conn->real_escape_string($_POST['program']);
         $status = $conn->real_escape_string($_POST['status']);
+        $role = $conn->real_escape_string($_POST['role']);
         
         // Validate inputs
         if (empty($first_name) || empty($last_name) || empty($email) || empty($specialization)) {
@@ -81,7 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'email' => $email,
                 'specialization' => $specialization,
                 'program' => $program,
-                'status' => $status
+                'status' => $status,
+                'role' => $role
             ];
         } else {
             // Check if email already exists for another panel member
@@ -97,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'email' => $email,
                     'specialization' => $specialization,
                     'program' => $program,
-                    'status' => $status
+                    'status' => $status,
+                    'role' => $role
                 ];
             } else {
                 $sql = "UPDATE panel_members SET 
@@ -106,7 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         email = '$email',
                         specialization = '$specialization',
                         program = '$program',
-                        status = '$status'
+                        status = '$status',
+                        role = '$role'
                         WHERE id = $id";
                 
                 if ($conn->query($sql)) {
@@ -126,7 +131,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'email' => $email,
                         'specialization' => $specialization,
                         'program' => $program,
-                        'status' => $status
+                        'status' => $status,
+                        'role' => $role
                     ];
                 }
             }
@@ -340,6 +346,8 @@ while ($row = $program_stats_result->fetch_assoc()) {
     <title>Panel Management System</title>
     <link rel="icon" href="../assets/img/sms-logo.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .notification-dot {
@@ -350,120 +358,261 @@ while ($row = $program_stats_result->fetch_assoc()) {
             50% { opacity: 0.5; }
             100% { opacity: 1; }
         }
+        @keyframes slideInUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .animate-slide-up { animation: slideInUp 0.6s ease-out; }
+        .animate-fade-in { animation: fadeIn 0.8s ease-out; }
+        .animate-scale-in { animation: scaleIn 0.5s ease-out; }
         [multiple] {
             height: auto;
             min-height: 42px;
         }
         .required:after {
             content: " *";
-            color: red;
+            color: #ef4444;
+            font-weight: bold;
         }
         .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.5);
-            transition: opacity 200ms ease-in-out;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4));
+            backdrop-filter: blur(4px);
+            transition: all 300ms ease-in-out;
         }
         .modal-content {
-            transform: translateY(-20px);
-            transition: transform 200ms ease-in-out, opacity 200ms ease-in-out;
+            transform: translateY(-30px) scale(0.95);
+            transition: all 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         }
         .modal-active {
             opacity: 1;
             pointer-events: auto;
         }
         .modal-content-active {
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
         }
         .email-preview {
             max-height: 400px;
             overflow-y: auto;
-            border: 1px solid #e2e8f0;
-            padding: 1rem;
-            background-color: #f8fafc;
-            border-radius: 0.375rem;
+            border: 2px solid #e2e8f0;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-radius: 12px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
         }
         .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
+            padding: 0.375rem 0.875rem;
+            border-radius: 20px;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        .status-pending { background-color: #fef3c7; color: #92400e; }
-        .status-accepted { background-color: #d1fae5; color: #065f46; }
-        .status-rejected { background-color: #fee2e2; color: #b91c1c; }
+        .status-pending { 
+            background: linear-gradient(135deg, #fef3c7, #fde68a); 
+            color: #92400e; 
+            border: 1px solid #f59e0b;
+        }
+        .status-accepted { 
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0); 
+            color: #065f46; 
+            border: 1px solid #10b981;
+        }
+        .status-rejected { 
+            background: linear-gradient(135deg, #fee2e2, #fecaca); 
+            color: #b91c1c; 
+            border: 1px solid #ef4444;
+        }
         .card-hover {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .card-hover::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        .card-hover:hover::before {
+            left: 100%;
         }
         .card-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.15);
         }
-        .email-template {
-            border: 1px solid #e2e8f0;
-            border-radius: 0.375rem;
-            padding: 1rem;
-            background-color: #f8fafc;
-            margin-top: 0.5rem;
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-        .email-template p {
-            margin-bottom: 1rem;
+        .gradient-blue {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
         }
-        .email-template ul {
-            list-style-type: disc;
-            margin-left: 1.5rem;
-            margin-bottom: 1rem;
+        .gradient-green {
+            background: linear-gradient(135deg, #10b981, #059669);
         }
-        .email-template a.button {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
-            text-decoration: none;
-            margin-right: 0.5rem;
+        .gradient-purple {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
         }
-        .accept-button {
-            background-color: #4CAF50;
-            color: white;
+        .gradient-red {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
         }
-        .decline-button {
-            background-color: #f44336;
-            color: white;
-        }
-        #sendInvitationModal .modal-content {
-            max-height: 90vh;
-            overflow-y: auto;
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         .program-tab {
             cursor: pointer;
-            padding: 0.5rem 1rem;
-            border-radius: 0.375rem;
-            margin-right: 0.5rem;
-            transition: all 0.2s;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            margin-right: 0.75rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-weight: 600;
+            border: 2px solid transparent;
+        }
+        .program-tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.4s;
+        }
+        .program-tab:hover::before {
+            left: 100%;
         }
         .program-tab.active {
-            background-color: #3b82f6;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
             color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.5);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .program-tab:not(.active):hover {
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.1);
         }
         .program-content {
             display: none;
+            animation: fadeIn 0.5s ease-out;
         }
         .program-content.active {
             display: block;
         }
         .program-badge {
             display: inline-block;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-left: 0.5rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-left: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        .bsit-badge { background-color: #e0f2fe; color: #0369a1; }
-        .bscs-badge { background-color: #fce7f3; color: #be185d; }
-        .bsis-badge { background-color: #dcfce7; color: #166534; }
-        .bsemc-badge { background-color: #fef3c7; color: #92400e; }
-        .general-badge { background-color: #e5e7eb; color: #374151; }
+        .bsit-badge { 
+            background: linear-gradient(135deg, #e0f2fe, #bae6fd); 
+            color: #0369a1; 
+            border: 1px solid #0ea5e9;
+        }
+        .bscs-badge { 
+            background: linear-gradient(135deg, #fce7f3, #fbcfe8); 
+            color: #be185d; 
+            border: 1px solid #ec4899;
+        }
+        .bsis-badge { 
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0); 
+            color: #166534; 
+            border: 1px solid #22c55e;
+        }
+        .bsemc-badge { 
+            background: linear-gradient(135deg, #fef3c7, #fde68a); 
+            color: #92400e; 
+            border: 1px solid #f59e0b;
+        }
+        .general-badge { 
+            background: linear-gradient(135deg, #e5e7eb, #d1d5db); 
+            color: #374151; 
+            border: 1px solid #6b7280;
+        }
+        .enhanced-table {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .enhanced-table th {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.75rem;
+        }
+        .enhanced-table tr:hover {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            transform: scale(1.01);
+            transition: all 0.2s ease;
+        }
+        .action-button {
+            transition: all 0.2s ease;
+            padding: 0.5rem;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .action-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        .floating-action {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 40;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 1rem;
+            border-radius: 50%;
+            box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.5);
+            transition: all 0.3s ease;
+        }
+        .floating-action:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 12px 35px -8px rgba(59, 130, 246, 0.7);
+        }
+        .stats-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+        .stats-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 35px -8px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+<body class="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 h-screen overflow-hidden">
     <div class="min-h-screen flex">
         <!-- Sidebar/header -->
         <?php include('../includes/admin-sidebar.php'); ?>
@@ -501,41 +650,53 @@ while ($row = $program_stats_result->fetch_assoc()) {
     </div>
 
             <!-- Stats Overview -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between card-hover">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-slide-up">
+                <div class="stats-card p-6 flex items-center justify-between card-hover">
                     <div>
-                        <p class="text-gray-600">Total Panel Members</p>
-                        <h3 class="text-2xl font-bold"><?php echo count($all_panel_members); ?></h3>
+                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Total Panel Members</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo count($all_panel_members); ?></h3>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                            <div class="gradient-blue h-1.5 rounded-full" style="width: 100%"></div>
+                        </div>
                     </div>
-                    <div class="bg-blue-100 p-3 rounded-full">
-                        <i class="fas fa-users text-blue-500 text-xl"></i>
+                    <div class="gradient-blue p-4 rounded-2xl shadow-lg">
+                        <i class="fas fa-users text-white text-2xl"></i>
                     </div>
                 </div>
-                <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between card-hover">
+                <div class="stats-card p-6 flex items-center justify-between card-hover">
                     <div>
-                        <p class="text-gray-600">Pending Invitations</p>
-                        <h3 class="text-2xl font-bold"><?php echo $stats['pending'] ?? 0; ?></h3>
+                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Pending Invitations</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo $stats['pending'] ?? 0; ?></h3>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                            <div class="bg-gradient-to-r from-yellow-400 to-orange-500 h-1.5 rounded-full" style="width: <?php echo ($stats['pending'] ?? 0) > 0 ? '75%' : '0%'; ?>"></div>
+                        </div>
                     </div>
-                    <div class="bg-yellow-100 p-3 rounded-full">
-                        <i class="fas fa-clock text-yellow-500 text-xl"></i>
+                    <div class="bg-gradient-to-r from-yellow-400 to-orange-500 p-4 rounded-2xl shadow-lg">
+                        <i class="fas fa-clock text-white text-2xl"></i>
                     </div>
                 </div>
-                <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between card-hover">
+                <div class="stats-card p-6 flex items-center justify-between card-hover">
                     <div>
-                        <p class="text-gray-600">Accepted</p>
-                        <h3 class="text-2xl font-bold"><?php echo $stats['accepted'] ?? 0; ?></h3>
+                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Accepted</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo $stats['accepted'] ?? 0; ?></h3>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                            <div class="gradient-green h-1.5 rounded-full" style="width: <?php echo ($stats['accepted'] ?? 0) > 0 ? '90%' : '0%'; ?>"></div>
+                        </div>
                     </div>
-                    <div class="bg-green-100 p-3 rounded-full">
-                        <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                    <div class="gradient-green p-4 rounded-2xl shadow-lg">
+                        <i class="fas fa-check-circle text-white text-2xl"></i>
                     </div>
                 </div>
-                <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between card-hover">
+                <div class="stats-card p-6 flex items-center justify-between card-hover">
                     <div>
-                        <p class="text-gray-600">Rejected</p>
-                        <h3 class="text-2xl font-bold"><?php echo $stats['rejected'] ?? 0; ?></h3>
+                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Rejected</p>
+                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo $stats['rejected'] ?? 0; ?></h3>
+                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                            <div class="gradient-red h-1.5 rounded-full" style="width: <?php echo ($stats['rejected'] ?? 0) > 0 ? '60%' : '0%'; ?>"></div>
+                        </div>
                     </div>
-                    <div class="bg-red-100 p-3 rounded-full">
-                        <i class="fas fa-times-circle text-red-500 text-xl"></i>
+                    <div class="gradient-red p-4 rounded-2xl shadow-lg">
+                        <i class="fas fa-times-circle text-white text-2xl"></i>
                     </div>
                 </div>
             </div>
@@ -582,36 +743,46 @@ while ($row = $program_stats_result->fetch_assoc()) {
 </div>
 
             <!-- Quick Actions Buttons -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 animate-fade-in">
     <!-- Add Panel Member Box -->
-    <div class="border border-gray-300 rounded-lg p-4 shadow-md bg-white">
-        <h3 class="text-lg font-medium text-gray-900 mb-2">
-            <i class="fas fa-user-plus text-blue-500 mr-2"></i>Add Panel Member
-        </h3>
-        <p class="text-sm text-gray-600 mb-3">Add a new panel member to the system with their contact information and specialization details.</p>
-        <button onclick="openModal('addPanelModal')" class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition flex items-center justify-center">
+    <div class="stats-card p-6 card-hover group">
+        <div class="flex items-center mb-4">
+            <div class="gradient-blue p-3 rounded-xl mr-4 group-hover:scale-110 transition-transform">
+                <i class="fas fa-user-plus text-white text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900">Add Panel Member</h3>
+        </div>
+        <p class="text-gray-600 mb-6 leading-relaxed">Add a new panel member to the system with their contact information and specialization details.</p>
+        <button onclick="openModal('addPanelModal')" class="w-full gradient-blue text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300 flex items-center justify-center font-semibold group-hover:scale-105">
             <i class="fas fa-user-plus mr-2"></i> Add New Member
         </button>
     </div>
 
     <!-- Send Invitation Box -->
-    <div class="border border-gray-300 rounded-lg p-4 shadow-md bg-white">
-        <h3 class="text-lg font-medium text-gray-900 mb-2">
-            <i class="fas fa-paper-plane text-green-500 mr-2"></i>Send Invitation
-        </h3>
-        <p class="text-sm text-gray-600 mb-3">Send email invitations to selected panel members for upcoming thesis defense sessions.</p>
-        <button onclick="openModal('sendInvitationModal')" class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition flex items-center justify-center">
+    <div class="stats-card p-6 card-hover group">
+        <div class="flex items-center mb-4">
+            <div class="gradient-green p-3 rounded-xl mr-4 group-hover:scale-110 transition-transform">
+                <i class="fas fa-paper-plane text-white text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900">Send Invitation</h3>
+        </div>
+        <p class="text-gray-600 mb-6 leading-relaxed">Send email invitations to selected panel members for upcoming thesis defense sessions.</p>
+        <button onclick="openModal('sendInvitationModal')" class="w-full gradient-green text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300 flex items-center justify-center font-semibold group-hover:scale-105">
             <i class="fas fa-paper-plane mr-2"></i> Send Invitations
         </button>
     </div>
 </div>
 
             <!-- Program Tabs -->
-            <div class="bg-white shadow rounded-lg p-4 mb-6">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">
-                    <i class="fas fa-graduation-cap mr-2 text-blue-500"></i>
-                    Panel Members by Program
-                </h2>
+            <div class="stats-card p-6 mb-8 animate-scale-in">
+                <div class="flex items-center mb-6">
+                    <div class="gradient-purple p-3 rounded-xl mr-4">
+                        <i class="fas fa-graduation-cap text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        Panel Members by Program
+                    </h2>
+                </div>
                 
                 <div class="flex flex-wrap mb-4">
                     <?php 
@@ -640,51 +811,57 @@ while ($row = $program_stats_result->fetch_assoc()) {
                 <div class="program-content <?php echo $first ? 'active' : ''; ?>" id="program-<?php echo $program_key; ?>">
                     <?php if (count($members) > 0): ?>
                         <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
+                            <table class="min-w-full divide-y divide-gray-200 enhanced-table">
+                                <thead>
                                     <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Name</th>
+                                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Specialization</th>
+                                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Email</th>
+                                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Role</th>
+                                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
+                                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
+                                <tbody class="bg-white divide-y divide-gray-100">
                                     <?php foreach ($members as $row): ?>
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap">
+                                    <tr class="transition-all duration-200">
+                                        <td class="px-6 py-5 whitespace-nowrap">
                                             <div class="flex items-center">
-                                                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                                                    <i class="fas fa-user text-indigo-600"></i>
+                                                <div class="flex-shrink-0 h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center shadow-md">
+                                                    <i class="fas fa-user text-indigo-600 text-lg"></i>
                                                 </div>
                                                 <div class="ml-4">
-                                                    <div class="text-sm font-medium text-gray-900"><?php echo $row['first_name'] . ' ' . $row['last_name']; ?></div>
+                                                    <div class="text-sm font-bold text-gray-900"><?php echo $row['first_name'] . ' ' . $row['last_name']; ?></div>
                                                     <span class="text-xs <?php echo $row['program'] . '-badge'; ?> program-badge">
                                                         <?php echo $programs[$row['program']]; ?>
                                                     </span>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900"><?php echo $row['specialization']; ?></div>
+                                        <td class="px-6 py-5 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900"><?php echo $row['specialization']; ?></div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900"><?php echo $row['email']; ?></div>
+                                        <td class="px-6 py-5 whitespace-nowrap">
+                                            <div class="text-sm text-gray-700"><?php echo $row['email']; ?></div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <?php echo $row['status'] == 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'; ?>">
+                                        <td class="px-6 py-5 whitespace-nowrap">
+                                            <span class="status-badge <?php echo $row['role'] == 'chairperson' ? 'status-accepted' : 'bg-blue-100 text-blue-800'; ?>">
+                                                <?php echo ucfirst($row['role']); ?>
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-5 whitespace-nowrap">
+                                            <span class="status-badge <?php echo $row['status'] == 'active' ? 'status-accepted' : 'bg-gray-100 text-gray-800'; ?>">
                                                 <?php echo ucfirst($row['status']); ?>
                                             </span>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-    <a href="admin-pages/panel-assignment.php?edit_id=<?php echo $row['id']; ?>" class="text-indigo-600 hover:text-indigo-900 mr-3" title="Edit">
+                                        <td class="px-6 py-5 whitespace-nowrap text-sm">
+    <a href="admin-pages/panel-assignment.php?edit_id=<?php echo $row['id']; ?>" class="action-button text-indigo-600 hover:text-white hover:bg-indigo-600 mr-2" title="Edit">
         <i class="fas fa-edit"></i>
     </a>
     <form action="" method="POST" class="inline">
         <input type="hidden" name="action" value="delete">
         <input type="hidden" name="id" value="<?php echo $row['id']; ?>">
-        <button type="submit" onclick="return confirm('Are you sure you want to delete this panel member?')" class="text-red-600 hover:text-red-900" title="Delete">
+        <button type="submit" onclick="return confirm('Are you sure you want to delete this panel member?')" class="action-button text-red-600 hover:text-white hover:bg-red-600" title="Delete">
             <i class="fas fa-trash"></i>
         </button>
     </form>
@@ -695,11 +872,14 @@ while ($row = $program_stats_result->fetch_assoc()) {
                             </table>
                         </div>
                     <?php else: ?>
-                        <div class="text-center py-8 text-gray-500">
-                            <i class="fas fa-users text-gray-300 text-4xl mb-3"></i>
-                            <p>No panel members found for <?php echo $program_name; ?>.</p>
-                            <button onclick="openModal('addPanelModal')" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
-                                Add Panel Member
+                        <div class="text-center py-12 text-gray-500">
+                            <div class="gradient-bg p-6 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                                <i class="fas fa-users text-white text-3xl"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-700 mb-2">No Panel Members Found</h3>
+                            <p class="text-gray-500 mb-6">No panel members found for <?php echo $program_name; ?>.</p>
+                            <button onclick="openModal('addPanelModal')" class="gradient-blue text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300 font-semibold">
+                                <i class="fas fa-plus mr-2"></i> Add Panel Member
                             </button>
                         </div>
                     <?php endif; ?>
@@ -756,6 +936,13 @@ while ($row = $program_stats_result->fetch_assoc()) {
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 required">Role</label>
+                        <select name="role" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="member">Member</option>
+                            <option value="chairperson">Chairperson</option>
+                        </select>
+                    </div>
                     <div class="flex justify-end gap-2">
                         <button type="button" onclick="closeModal('addPanelModal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition">Cancel</button>
                         <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
@@ -770,24 +957,37 @@ while ($row = $program_stats_result->fetch_assoc()) {
 
 <!-- Send Invitation Modal -->
 <div id="sendInvitationModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
-    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
+        <!-- Background Overlay -->
         <div class="fixed inset-0 transition-opacity" aria-hidden="true">
             <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
         </div>
+
+        <!-- Trick for vertical alignment -->
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full modal-content">
-            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border border-gray-300 rounded-lg shadow-md">
-                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
-                    <i class="fas fa-paper-plane text-green-500 mr-2"></i>
+
+        <!-- Modal Content (Scrollable) -->
+        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full modal-content">
+
+            <!-- Scrollable body wrapper -->
+            <div class="max-h-[80vh] overflow-y-auto p-8 border border-gray-300 rounded-xl">
+                
+                <!-- Header -->
+                <h3 class="text-2xl font-semibold text-gray-900 mb-4 flex items-center">
+                    <i class="fas fa-paper-plane text-green-600 mr-3 text-xl"></i>
                     Send Panel Invitation
                 </h3>
-                <p class="text-sm text-gray-600 mb-4">Select panel members and send them an invitation to serve on the panel.</p>
-                <form action="" method="POST" class="space-y-4" id="invitationForm">
+                <p class="text-base text-gray-600 mb-6">Select panel members and send them an invitation to serve on the panel.</p>
+
+                <!-- Form -->
+                <form action="" method="POST" class="space-y-6" id="invitationForm">
                     <input type="hidden" name="action" value="send_invitation">
+
+                    <!-- Panel Members -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 required">Select Panel Members</label>
+                        <label class="block text-sm font-medium text-gray-700 required mb-1">Select Panel Members</label>
                         <select name="panel_ids[]" multiple required 
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 h-40">
+                            class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-green-500 focus:border-green-500 h-56">
                             <?php foreach ($panel_members_by_program as $program => $members): ?>
                             <optgroup label="<?php echo $programs[$program]; ?>">
                                 <?php foreach ($members as $member): ?>
@@ -798,17 +998,21 @@ while ($row = $program_stats_result->fetch_assoc()) {
                             </optgroup>
                             <?php endforeach; ?>
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple panel members</p>
+                        <p class="text-xs text-gray-500 mt-2">Hold Ctrl/Cmd to select multiple panel members</p>
                     </div>
+
+                    <!-- Subject -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 required">Subject</label>
+                        <label class="block text-sm font-medium text-gray-700 required mb-1">Subject</label>
                         <input type="text" name="subject" required value="Invitation to Serve as Panel Member"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-green-500 focus:border-green-500">
                     </div>
+
+                    <!-- Message -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 required">Message</label>
-                        <textarea name="message" rows="6" required 
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">Dear Panel Member,
+                        <label class="block text-sm font-medium text-gray-700 required mb-1">Message</label>
+                        <textarea name="message" rows="8" required 
+                            class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-4 focus:outline-none focus:ring-green-500 focus:border-green-500">Dear Panel Member,
 
 You are invited to serve as a panel member for our upcoming thesis defenses.
 
@@ -817,12 +1021,14 @@ Please respond to this invitation by clicking the appropriate link below.
 Best regards,
 Thesis Coordinator</textarea>
                     </div>
-                    <div class="bg-gray-50 p-3 rounded-md">
-                        <h4 class="text-sm font-medium text-gray-700 mb-2">Email Preview:</h4>
-                        <div class="email-preview bg-white p-3 text-sm">
+
+                    <!-- Email Preview -->
+                    <div class="bg-gray-50 p-5 rounded-lg border">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2">Email Preview:</h4>
+                        <div class="email-preview bg-white p-4 rounded-md shadow-inner text-sm space-y-2">
                             <p><strong>Subject:</strong> <span id="preview-subject">Invitation to Serve as Panel Member</span></p>
                             <hr class="my-2">
-                            <div id="preview-message">
+                            <div id="preview-message" class="whitespace-pre-line">
                                 Dear Panel Member,
                                 You are invited to serve as a panel member for our upcoming thesis defenses.
                                 Please respond to this invitation by clicking the appropriate link below.
@@ -833,10 +1039,14 @@ Thesis Coordinator</textarea>
                             <p class="text-xs text-gray-500">*Accept/Decline buttons will be automatically added to the email</p>
                         </div>
                     </div>
-                    <div class="flex justify-end gap-2">
-                        <button type="button" onclick="closeModal('sendInvitationModal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition">Cancel</button>
-                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition">
-                            <i class="fas fa-paper-plane mr-1"></i> Send Invitations
+
+                    <!-- Footer -->
+                    <div class="flex justify-end gap-3 pt-4">
+                        <button type="button" onclick="closeModal('sendInvitationModal')" class="bg-gray-200 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-300 transition">
+                            Cancel
+                        </button>
+                        <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition shadow">
+                            <i class="fas fa-paper-plane mr-2"></i> Send Invitations
                         </button>
                     </div>
                 </form>
@@ -896,6 +1106,13 @@ Thesis Coordinator</textarea>
                                 <?php echo $program_name; ?>
                             </option>
                             <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 required">Role</label>
+                        <select name="role" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="member" <?php echo ($editData['role'] == 'member') ? 'selected' : ''; ?>>Member</option>
+                            <option value="chairperson" <?php echo ($editData['role'] == 'chairperson') ? 'selected' : ''; ?>>Chairperson</option>
                         </select>
                     </div>
                     <div>

@@ -138,28 +138,168 @@ $profile_check->close();
         }
     </script>
     <style>
-        .profile-card {
-            transition: all 0.3s ease;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+        
+        body {
+            background: #ffffff;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            animation: slideInUp 0.6s ease-out;
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+        }
+        
+        .profile-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+            animation: slideInUp 0.6s ease-out;
+        }
+        
         .profile-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
         }
+        
+        .enhanced-header {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.9) 0%, rgba(124, 58, 237, 0.9) 100%);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .info-card {
+            background: rgba(249, 250, 251, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .info-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .info-card:hover::before {
+            left: 100%;
+        }
+        
+        .info-card:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .input-field {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(209, 213, 219, 0.5);
+            transition: all 0.3s ease;
+        }
+        
         .input-field:focus {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+            border-color: rgba(37, 99, 235, 0.5);
         }
+        
         .cluster-display {
-            background-color: #f3f4f6;
+            background: rgba(243, 244, 246, 0.8);
+            backdrop-filter: blur(10px);
             padding: 0.75rem 1rem;
             border-radius: 0.5rem;
-            border: 1px solid #d1d5db;
+            border: 1px solid rgba(209, 213, 219, 0.5);
             min-height: 3rem;
             display: flex;
             align-items: center;
         }
+        
+        .enhanced-button {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .enhanced-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .enhanced-button:hover::before {
+            left: 100%;
+        }
+        
+        .enhanced-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .adviser-card {
+            background: rgba(249, 250, 251, 0.8);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .adviser-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .animate-delay-1 { animation-delay: 0.1s; }
+        .animate-delay-2 { animation-delay: 0.2s; }
+        .animate-delay-3 { animation-delay: 0.3s; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans h-screen overflow-hidden">
+<body class="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 text-gray-800 font-sans h-screen overflow-hidden">
 
     <div class="min-h-screen flex">
         <!-- Sidebar/header -->
@@ -184,8 +324,8 @@ $profile_check->close();
                     </div>
                 <?php endif; ?>
 
-                <div class="bg-white rounded-xl shadow-md overflow-hidden profile-card">
-                    <div class="bg-gradient-to-r from-primary to-secondary p-6 text-white">
+                <div class="profile-card rounded-xl overflow-hidden animate-delay-1">
+                    <div class="enhanced-header p-6 text-white">
                         <h2 class="text-2xl font-semibold">Personal Information</h2>
                         <p class="opacity-90">Please provide accurate information as it appears in school records</p>
                     </div>
@@ -254,29 +394,21 @@ $profile_check->close();
                             
                             <div>
                                 <label for="school_year" class="block text-sm font-medium text-gray-700 mb-1">School Year</label>
-                                <select 
+                                <input 
+                                    type="text" 
                                     id="school_year" 
                                     name="school_year" 
+                                    value="<?php echo isset($existing_profile['school_year']) ? htmlspecialchars($existing_profile['school_year']) : date('Y') . '-' . (date('Y') + 1); ?>" 
                                     class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition input-field"
                                     required
                                 >
-                                    <option value="">Select School Year</option>
-                                    <?php
-                                    $current_year = date('Y');
-                                    for ($i = 0; $i < 5; $i++) {
-                                        $year_option = ($current_year - $i) . '-' . ($current_year - $i + 1);
-                                        $selected = (isset($existing_profile['school_year']) && $existing_profile['school_year'] == $year_option) ? 'selected' : '';
-                                        echo "<option value=\"$year_option\" $selected>$year_option</option>";
-                                    }
-                                    ?>
-                                </select>
                             </div>
                         </div>
                         
                         <div class="flex justify-end pt-4">
                             <button 
                                 type="submit" 
-                                class="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 flex items-center"
+                                class="enhanced-button px-6 py-3 text-white font-medium rounded-lg transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 flex items-center"
                             >
                                 <i class="fas fa-save mr-2"></i>
                                 Save Profile

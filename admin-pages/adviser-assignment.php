@@ -345,29 +345,154 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
         }
     </script>
     <style>
+        @keyframes slideInUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .animate-slide-up { animation: slideInUp 0.6s ease-out; }
+        .animate-fade-in { animation: fadeIn 0.8s ease-out; }
+        .animate-scale-in { animation: scaleIn 0.5s ease-out; }
+        
         .nav-tabs .nav-link.active {
             position: relative;
             color: #4A6CF7;
+            background: linear-gradient(135deg, #4A6CF7, #3b82f6);
+            color: white;
+            border-radius: 12px 12px 0 0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px -4px rgba(74, 108, 247, 0.4);
         }
         
         .nav-tabs .nav-link.active:after {
             content: '';
             position: absolute;
-            bottom: 0;
+            bottom: -2px;
             left: 0;
             width: 100%;
-            height: 3px;
-            background-color: #4A6CF7;
-            border-radius: 3px 3px 0 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4A6CF7, #3b82f6);
+            border-radius: 2px;
+        }
+        
+        .nav-tabs .nav-link {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px 12px 0 0;
+            margin-right: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-tabs .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.4s;
+        }
+        
+        .nav-tabs .nav-link:hover::before {
+            left: 100%;
+        }
+        
+        .nav-tabs .nav-link:not(.active):hover {
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.1);
         }
         
         .cluster-card, .group-item, .faculty-item {
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .cluster-card::before, .group-item::before, .faculty-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .cluster-card:hover::before, .group-item:hover::before, .faculty-item:hover::before {
+            left: 100%;
         }
         
         .cluster-card:hover, .group-item:hover, .faculty-item:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 35px -8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .gradient-blue {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+        
+        .gradient-green {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .gradient-purple {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+        
+        .gradient-red {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        .gradient-yellow {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
+        .gradient-cyan {
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+        }
+        
+        .action-button {
+            transition: all 0.2s ease;
+            padding: 0.5rem;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .action-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
         
         .modal {
@@ -480,7 +605,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+<body class="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 text-gray-800 font-sans min-h-screen">
     <div class="min-h-screen flex">
         <!-- Sidebar/header -->
         <?php include('../includes/admin-sidebar.php'); ?>
@@ -489,103 +614,97 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
         <main class="flex-1 overflow-y-auto p-6">
             <div class="container mx-auto">
                 <!-- Statistics Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8 animate-slide-up">
     
     <!-- Total Clusters -->
-    <div class="bg-white text-gray-800 rounded-lg shadow-sm overflow-hidden border-l-4 border-blue-600">
-        <div class="p-5">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h6 class="text-gray-500 text-sm font-medium uppercase">Total Clusters</h6>
-                    <h3 class="text-2xl font-bold"><?= $total_clusters ?></h3>
-                </div>
-                <div class="text-2xl text-blue-600">
-                    <i class="fas fa-layer-group"></i>
-                </div>
+    <div class="stats-card p-6 flex items-center justify-between">
+        <div>
+            <h6 class="text-gray-600 font-medium text-sm uppercase tracking-wide">Total Clusters</h6>
+            <h3 class="text-3xl font-bold text-gray-800 mt-2"><?= $total_clusters ?></h3>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                <div class="gradient-blue h-1.5 rounded-full" style="width: 100%"></div>
             </div>
+        </div>
+        <div class="gradient-blue p-4 rounded-2xl shadow-lg">
+            <i class="fas fa-layer-group text-white text-2xl"></i>
         </div>
     </div>
 
     <!-- Assigned Clusters -->
-    <div class="bg-white text-gray-800 rounded-lg shadow-sm overflow-hidden border-l-4 border-green-600">
-        <div class="p-5">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h6 class="text-gray-500 text-sm font-medium uppercase">Assigned Clusters</h6>
-                    <h3 class="text-2xl font-bold"><?= $assigned_clusters ?></h3>
-                </div>
-                <div class="text-2xl text-green-600">
-                    <i class="fas fa-check-circle"></i>
-                </div>
+    <div class="stats-card p-6 flex items-center justify-between">
+        <div>
+            <h6 class="text-gray-600 font-medium text-sm uppercase tracking-wide">Assigned Clusters</h6>
+            <h3 class="text-3xl font-bold text-gray-800 mt-2"><?= $assigned_clusters ?></h3>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                <div class="gradient-green h-1.5 rounded-full" style="width: <?= $total_clusters > 0 ? ($assigned_clusters / $total_clusters * 100) : 0 ?>%"></div>
             </div>
+        </div>
+        <div class="gradient-green p-4 rounded-2xl shadow-lg">
+            <i class="fas fa-check-circle text-white text-2xl"></i>
         </div>
     </div>
 
     <!-- Total Groups -->
-    <div class="bg-white text-gray-800 rounded-lg shadow-sm overflow-hidden border-l-4 border-cyan-600">
-        <div class="p-5">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h6 class="text-gray-500 text-sm font-medium uppercase">Total Groups</h6>
-                    <h3 class="text-2xl font-bold"><?= $total_groups ?></h3>
-                </div>
-                <div class="text-2xl text-cyan-600">
-                    <i class="fas fa-users"></i>
-                </div>
+    <div class="stats-card p-6 flex items-center justify-between">
+        <div>
+            <h6 class="text-gray-600 font-medium text-sm uppercase tracking-wide">Total Groups</h6>
+            <h3 class="text-3xl font-bold text-gray-800 mt-2"><?= $total_groups ?></h3>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                <div class="gradient-cyan h-1.5 rounded-full" style="width: 85%"></div>
             </div>
+        </div>
+        <div class="gradient-cyan p-4 rounded-2xl shadow-lg">
+            <i class="fas fa-users text-white text-2xl"></i>
         </div>
     </div>
 
     <!-- Assigned Groups -->
-    <div class="bg-white text-gray-800 rounded-lg shadow-sm overflow-hidden border-l-4 border-yellow-600">
-        <div class="p-5">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h6 class="text-gray-500 text-sm font-medium uppercase">Assigned Groups</h6>
-                    <h3 class="text-2xl font-bold"><?= $assigned_groups ?></h3>
-                </div>
-                <div class="text-2xl text-yellow-600">
-                    <i class="fas fa-user-check"></i>
-                </div>
+    <div class="stats-card p-6 flex items-center justify-between">
+        <div>
+            <h6 class="text-gray-600 font-medium text-sm uppercase tracking-wide">Assigned Groups</h6>
+            <h3 class="text-3xl font-bold text-gray-800 mt-2"><?= $assigned_groups ?></h3>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                <div class="gradient-yellow h-1.5 rounded-full" style="width: <?= $total_groups > 0 ? ($assigned_groups / $total_groups * 100) : 0 ?>%"></div>
             </div>
+        </div>
+        <div class="gradient-yellow p-4 rounded-2xl shadow-lg">
+            <i class="fas fa-user-check text-white text-2xl"></i>
         </div>
     </div>
 
     <!-- Total Faculty -->
-    <div class="bg-white text-gray-800 rounded-lg shadow-sm overflow-hidden border-l-4 border-gray-600">
-        <div class="p-5">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h6 class="text-gray-500 text-sm font-medium uppercase">Total Faculty</h6>
-                    <h3 class="text-2xl font-bold"><?= $total_faculty ?></h3>
-                </div>
-                <div class="text-2xl text-gray-600">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                </div>
+    <div class="stats-card p-6 flex items-center justify-between">
+        <div>
+            <h6 class="text-gray-600 font-medium text-sm uppercase tracking-wide">Total Faculty</h6>
+            <h3 class="text-3xl font-bold text-gray-800 mt-2"><?= $total_faculty ?></h3>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                <div class="gradient-purple h-1.5 rounded-full" style="width: 90%"></div>
             </div>
+        </div>
+        <div class="gradient-purple p-4 rounded-2xl shadow-lg">
+            <i class="fas fa-chalkboard-teacher text-white text-2xl"></i>
         </div>
     </div>
 
     <!-- Assigned Faculty -->
-    <div class="bg-white text-gray-800 rounded-lg shadow-sm overflow-hidden border-l-4 border-red-600">
-        <div class="p-5">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h6 class="text-gray-500 text-sm font-medium uppercase">Assigned Faculty</h6>
-                    <h3 class="text-2xl font-bold"><?= $assigned_faculty ?></h3>
-                </div>
-                <div class="text-2xl text-red-600">
-                    <i class="fas fa-user-tie"></i>
-                </div>
+    <div class="stats-card p-6 flex items-center justify-between">
+        <div>
+            <h6 class="text-gray-600 font-medium text-sm uppercase tracking-wide">Assigned Faculty</h6>
+            <h3 class="text-3xl font-bold text-gray-800 mt-2"><?= $assigned_faculty ?></h3>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                <div class="gradient-red h-1.5 rounded-full" style="width: <?= $total_faculty > 0 ? ($assigned_faculty / $total_faculty * 100) : 0 ?>%"></div>
             </div>
+        </div>
+        <div class="gradient-red p-4 rounded-2xl shadow-lg">
+            <i class="fas fa-user-tie text-white text-2xl"></i>
         </div>
     </div>
 
 </div>
                 
                 <!-- Tabs Section -->
-                <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
-                    <ul class="nav-tabs flex border-b border-gray-200 px-6" id="myTab" role="tablist">
+                <div class="stats-card rounded-2xl overflow-hidden mb-8 animate-scale-in">
+                    <ul class="nav-tabs flex border-b border-gray-100 px-6" id="myTab" role="tablist">
                         <li class="mr-2" role="presentation">
                             <button class="nav-link py-4 px-6 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-primary relative flex items-center active" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab">
                                 <i class="fas fa-layer-group mr-2"></i>Manage Clusters
@@ -603,15 +722,18 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                         </li>
                     </ul>
                     
-                    <div class="tab-content p-6" id="myTabContent">
+                    <div class="tab-content p-8" id="myTabContent">
                         <!-- Manage Clusters Tab -->
                         <div class="tab-pane active" id="manage" role="tabpanel">
-                            <div class="flex justify-between items-center mb-6">
-                                <h4 class="text-lg font-bold text-gray-900 flex items-center">
-                                    <i class="fas fa-layer-group text-primary mr-2"></i>Manage Clusters
-                                </h4>
-                                <div class="flex gap-2">
-                                    <select id="programFilter" class="border border-gray-300 text-gray-700 py-2 px-3 rounded-lg text-sm font-medium">
+                            <div class="flex justify-between items-center mb-8">
+                                <div class="flex items-center">
+                                    <div class="gradient-blue p-3 rounded-xl mr-4">
+                                        <i class="fas fa-layer-group text-white text-xl"></i>
+                                    </div>
+                                    <h4 class="text-2xl font-bold text-gray-900">Manage Clusters</h4>
+                                </div>
+                                <div class="flex gap-3">
+                                    <select id="programFilter" class="border-2 border-gray-200 text-gray-700 py-3 px-4 rounded-xl text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
                                         <option value="">All Programs</option>
                                         <option value="BSCS">BSCS - Computer Science</option>
                                         <option value="BSBA">BSBA - Business Administration</option>
@@ -619,10 +741,10 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                         <option value="BSIT">BSIT - Information Technology</option>
                                         <option value="BSCRIM">BSCRIM - Criminology</option>
                                     </select>
-                                    <button class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition duration-200" data-bs-toggle="modal" data-bs-target="#bulkCreateModal">
+                                    <button class="gradient-green text-white font-semibold py-3 px-6 rounded-xl flex items-center transition-all duration-300 hover:shadow-lg hover:scale-105" data-bs-toggle="modal" data-bs-target="#bulkCreateModal">
                                         <i class="fas fa-magic mr-2"></i>Auto Generate
                                     </button>
-                                    <button class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition duration-200" data-bs-toggle="modal" data-bs-target="#createClusterModal">
+                                    <button class="gradient-blue text-white font-semibold py-3 px-6 rounded-xl flex items-center transition-all duration-300 hover:shadow-lg hover:scale-105" data-bs-toggle="modal" data-bs-target="#createClusterModal">
                                         <i class="fas fa-plus-circle mr-2"></i>Create New Cluster
                                     </button>
                                 </div>
@@ -705,10 +827,13 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                         
                         <!-- Unassigned Groups Tab -->
                         <div class="tab-pane" id="unassigned" role="tabpanel">
-                            <div class="flex justify-between items-center mb-6">
-                                <h4 class="text-lg font-bold text-gray-900 flex items-center">
-                                    <i class="fas fa-users text-primary mr-2"></i>Unassigned Groups
-                                </h4>
+                            <div class="flex justify-between items-center mb-8">
+                                <div class="flex items-center">
+                                    <div class="gradient-cyan p-3 rounded-xl mr-4">
+                                        <i class="fas fa-users text-white text-xl"></i>
+                                    </div>
+                                    <h4 class="text-2xl font-bold text-gray-900">Unassigned Groups</h4>
+                                </div>
                                 <div class="flex gap-2">
                                     <button class="border border-gray-300 text-gray-700 hover:bg-gray-50 py-2 px-3 rounded-lg text-sm font-medium flex items-center">
                                         <i class="fas fa-download mr-1"></i>Export
@@ -747,12 +872,15 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                         
                         <!-- Faculty List Tab -->
                         <div class="tab-pane" id="faculty" role="tabpanel">
-                            <div class="flex justify-between items-center mb-6">
-                                <h4 class="text-lg font-bold text-gray-900 flex items-center">
-                                    <i class="fas fa-chalkboard-teacher text-primary mr-2"></i>Faculty List
-                                </h4>
+                            <div class="flex justify-between items-center mb-8">
+                                <div class="flex items-center">
+                                    <div class="gradient-purple p-3 rounded-xl mr-4">
+                                        <i class="fas fa-chalkboard-teacher text-white text-xl"></i>
+                                    </div>
+                                    <h4 class="text-2xl font-bold text-gray-900">Faculty List</h4>
+                                </div>
                                 <div>
-                                    <button class="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition duration-200" data-bs-toggle="modal" data-bs-target="#createFacultyModal">
+                                    <button class="gradient-purple text-white font-semibold py-3 px-6 rounded-xl flex items-center transition-all duration-300 hover:shadow-lg hover:scale-105" data-bs-toggle="modal" data-bs-target="#createFacultyModal">
                                         <i class="fas fa-plus-circle mr-2"></i>Add New Faculty
                                     </button>
                                 </div>
@@ -867,7 +995,14 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                     <div class="modal-body p-6">
                         <div class="mb-4">
                             <label class="block text-gray-700 mb-2">Program</label>
-                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="program" required>
+                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="program" required>
+                                <option value="">-- Select Program --</option>
+                                <option value="BSCS">BSCS - Computer Science</option>
+                                <option value="BSBA">BSBA - Business Administration</option>
+                                <option value="BSED">BSED - Education</option>
+                                <option value="BSIT">BSIT - Information Technology</option>
+                                <option value="BSCRIM">BSCRIM - Criminology</option>
+                            </select>
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 mb-2">Cluster Name/Number</label>
@@ -875,7 +1010,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 mb-2">School Year</label>
-                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="school_year" placeholder="e.g., 2023-2024" required>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="school_year" value="<?php echo date('Y') . '-' . (date('Y') + 1); ?>" required>
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 mb-2">Capacity</label>

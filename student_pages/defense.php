@@ -114,14 +114,159 @@ if ($has_group) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #ffffff;
+            min-height: 100vh;
+        }
+        
         .countdown-timer {
             font-family: 'Courier New', monospace;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
+        
         .floating-panel {
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(124, 58, 237, 0.9) 100%);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            animation: slideInDown 0.8s ease-out;
         }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            animation: slideInUp 0.6s ease-out;
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+        }
+        
         .requirement-status {
             transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .requirement-status:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .timeline-item:not(:last-child):after {
+            content: '';
+            position: absolute;
+            left: -1.6rem;
+            bottom: -1.5rem;
+            height: 2rem;
+            width: 2px;
+            background: linear-gradient(to bottom, #e5e7eb, transparent);
+        }
+        
+        .resource-card {
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .resource-card:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .glow {
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);
+        }
+        
+        .stats-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stats-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .stats-card:hover::before {
+            left: 100%;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .animate-delay-1 { animation-delay: 0.1s; }
+        .animate-delay-2 { animation-delay: 0.2s; }
+        .animate-delay-3 { animation-delay: 0.3s; }
+        .animate-delay-4 { animation-delay: 0.4s; }
+        
+        .enhanced-timeline {
+            position: relative;
+        }
+        
+        .enhanced-timeline::before {
+            content: '';
+            position: absolute;
+            left: -2px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, #3b82f6, #8b5cf6, #06b6d4);
         }
     </style>
     <script>
@@ -129,119 +274,140 @@ if ($has_group) {
             theme: {
                 extend: {
                     colors: {
-                        primary: '#2563eb',
+                        primary: '#4f46e5',
                         secondary: '#7c3aed',
                         success: '#10b981',
                         warning: '#f59e0b',
-                        danger: '#ef4444'
+                        danger: '#ef4444',
+                        dark: {
+                            100: '#1f2937',
+                            200: '#111827'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                     }
                 }
             }
         }
     </script>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="font-sans bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 text-gray-800 min-h-screen">
     <div class="flex min-h-screen">
         <!-- Sidebar/header -->
         <?php include('../includes/student-sidebar.php'); ?>
         
-        <main class="flex-1 overflow-y-auto p-6">
+        <main class="flex-1 overflow-y-auto p-6 lg:p-8">
             <!-- Status Messages -->
             <?php if (isset($_SESSION['success_message'])): ?>
-                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <div class="bg-green-100 border-l-4 border-green-500 text-green-700 px-4 py-3 rounded-r-lg mb-6 flex items-center shadow-sm" role="alert">
+                    <i class="fas fa-check-circle mr-3"></i>
                     <span class="block sm:inline"><?php echo $_SESSION['success_message']; unset($_SESSION['success_message']); ?></span>
                 </div>
             <?php endif; ?>
             
             <?php if (isset($_SESSION['error_message'])): ?>
-                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-r-lg mb-6 flex items-center shadow-sm" role="alert">
+                    <i class="fas fa-exclamation-circle mr-3"></i>
                     <span class="block sm:inline"><?php echo $_SESSION['error_message']; unset($_SESSION['error_message']); ?></span>
                 </div>
             <?php endif; ?>
 
             <!-- Countdown Banner (only show if defense is scheduled) -->
             <?php if ($defense_schedule): ?>
-            <div class="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-xl p-6 mb-6 floating-panel">
-                <div class="flex flex-col md:flex-row items-center justify-between">
+            <div class="floating-panel text-white rounded-2xl p-6 mb-8 relative overflow-hidden">
+                <div class="absolute inset-0 bg-black opacity-10"></div>
+                <div class="absolute -right-6 -bottom-6 w-40 h-40 rounded-full bg-white opacity-10"></div>
+                <div class="absolute -right-12 -bottom-12 w-64 h-64 rounded-full bg-white opacity-5"></div>
+                
+                <div class="flex flex-col md:flex-row items-center justify-between relative z-10">
                     <div class="mb-4 md:mb-0">
-                        <h2 class="text-xl font-bold mb-2">Your Defense Countdown</h2>
-                        <p class="text-blue-100">Final defense presentation on <?php echo date('F j, Y', strtotime($defense_schedule['defense_date'])); ?></p>
+                        <h2 class="text-2xl font-bold mb-2">Your Defense Countdown</h2>
+                        <p class="text-blue-100 opacity-90">Final defense presentation on <?php echo date('F j, Y', strtotime($defense_schedule['defense_date'])); ?></p>
                     </div>
-                    <div class="countdown-timer text-3xl font-bold">
-                        <span id="days">00</span>d : 
-                        <span id="hours">00</span>h : 
-                        <span id="minutes">00</span>m : 
-                        <span id="seconds">00</span>s
+                    <div class="countdown-timer text-4xl font-bold bg-white bg-opacity-10 px-6 py-4 rounded-xl">
+                        <span id="days" class="text-white">00</span>d 
+                        <span class="opacity-70">:</span>
+                        <span id="hours" class="text-white">00</span>h 
+                        <span class="opacity-70">:</span>
+                        <span id="minutes" class="text-white">00</span>m 
+                        <span class="opacity-70">:</span>
+                        <span id="seconds" class="text-white">00</span>s
                     </div>
                 </div>
             </div>
             <?php endif; ?>
 
             <!-- Requirements Status Card -->
-            <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition duration-300 mb-6">
-                <h2 class="text-xl font-semibold text-gray-700 mb-4">Defense Requirements Status</h2>
+            <div class="glass-card p-6 rounded-2xl mb-8 glow animate-delay-1">
+                <h2 class="text-xl font-semibold text-gray-800 mb-6 pb-3 border-b border-gray-100 flex items-center">
+                    <i class="fas fa-clipboard-list text-primary mr-3"></i>
+                    Defense Requirements Status
+                </h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                     <!-- Proposal Submission -->
-                    <div class="requirement-status p-4 rounded-lg border <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-gray-50'; ?>">
-                        <div class="flex items-center mb-2">
-                            <div class="w-8 h-8 rounded-full <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'; ?> flex items-center justify-center mr-2">
-                                <i class="fas fa-file-alt text-xs"></i>
+                    <div class="requirement-status stats-card p-5 rounded-xl <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 glow' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'; ?> border">
+                        <div class="flex items-center mb-3">
+                            <div class="w-10 h-10 rounded-full <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'; ?> flex items-center justify-center mr-3 shadow-sm">
+                                <i class="fas fa-file-alt"></i>
                             </div>
-                            <h3 class="font-medium">Proposal Submitted</h3>
+                            <h3 class="font-medium text-gray-700">Proposal Submitted</h3>
                         </div>
-                        <p class="text-sm <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'text-green-700' : 'text-gray-600'; ?>">
+                        <p class="text-sm font-medium <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'text-green-700' : 'text-gray-600'; ?>">
                             <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'Completed' : 'Pending'; ?>
                         </p>
                     </div>
                     
                     <!-- Payment -->
-                    <div class="requirement-status p-4 rounded-lg border <?php echo ($requirements_status['payment_completed'] > 0) ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-gray-50'; ?>">
-                        <div class="flex items-center mb-2">
-                            <div class="w-8 h-8 rounded-full <?php echo ($requirements_status['payment_completed'] > 0) ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'; ?> flex items-center justify-center mr-2">
-                                <i class="fas fa-credit-card text-xs"></i>
+                    <div class="requirement-status stats-card p-5 rounded-xl <?php echo ($requirements_status['payment_completed'] > 0) ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 glow' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'; ?> border">
+                        <div class="flex items-center mb-3">
+                            <div class="w-10 h-10 rounded-full <?php echo ($requirements_status['payment_completed'] > 0) ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'; ?> flex items-center justify-center mr-3 shadow-sm">
+                                <i class="fas fa-credit-card"></i>
                             </div>
-                            <h3 class="font-medium">Payment Completed</h3>
+                            <h3 class="font-medium text-gray-700">Payment Completed</h3>
                         </div>
-                        <p class="text-sm <?php echo ($requirements_status['payment_completed'] > 0) ? 'text-green-700' : 'text-gray-600'; ?>">
+                        <p class="text-sm font-medium <?php echo ($requirements_status['payment_completed'] > 0) ? 'text-green-700' : 'text-gray-600'; ?>">
                             <?php echo ($requirements_status['payment_completed'] > 0) ? 'Completed' : 'Pending'; ?>
                         </p>
                     </div>
                     
                     <!-- Documents -->
-                    <div class="requirement-status p-4 rounded-lg border <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-gray-50'; ?>">
-                        <div class="flex items-center mb-2">
-                            <div class="w-8 h-8 rounded-full <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'; ?> flex items-center justify-center mr-2">
-                                <i class="fas fa-file-upload text-xs"></i>
+                    <div class="requirement-status stats-card p-5 rounded-xl <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 glow' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'; ?> border">
+                        <div class="flex items-center mb-3">
+                            <div class="w-10 h-10 rounded-full <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'; ?> flex items-center justify-center mr-3 shadow-sm">
+                                <i class="fas fa-file-upload"></i>
                             </div>
-                            <h3 class="font-medium">Required Documents</h3>
+                            <h3 class="font-medium text-gray-700">Required Documents</h3>
                         </div>
-                        <p class="text-sm <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'text-green-700' : 'text-gray-600'; ?>">
+                        <p class="text-sm font-medium <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'text-green-700' : 'text-gray-600'; ?>">
                             <?php echo $requirements_status['documents_submitted'] . '/' . $requirements_status['total_required_docs']; ?> Submitted
                         </p>
                     </div>
                     
                     <!-- Overall Status -->
-                    <div class="requirement-status p-4 rounded-lg border <?php echo $all_requirements_met ? 'border-green-500 bg-green-50' : 'border-yellow-500 bg-yellow-50'; ?>">
-                        <div class="flex items-center mb-2">
-                            <div class="w-8 h-8 rounded-full <?php echo $all_requirements_met ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'; ?> flex items-center justify-center mr-2">
-                                <i class="fas fa-flag text-xs"></i>
+                    <div class="requirement-status stats-card p-5 rounded-xl <?php echo $all_requirements_met ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 glow' : 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200'; ?> border">
+                        <div class="flex items-center mb-3">
+                            <div class="w-10 h-10 rounded-full <?php echo $all_requirements_met ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'; ?> flex items-center justify-center mr-3 shadow-sm">
+                                <i class="fas fa-flag"></i>
                             </div>
-                            <h3 class="font-medium">Defense Eligibility</h3>
+                            <h3 class="font-medium text-gray-700">Defense Eligibility</h3>
                         </div>
-                        <p class="text-sm <?php echo $all_requirements_met ? 'text-green-700' : 'text-yellow-700'; ?>">
+                        <p class="text-sm font-medium <?php echo $all_requirements_met ? 'text-green-700' : 'text-yellow-700'; ?>">
                             <?php echo $all_requirements_met ? 'Eligible for Defense' : 'Requirements Pending'; ?>
                         </p>
                     </div>
                 </div>
                 
                 <?php if (!$all_requirements_met): ?>
-                <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl backdrop-filter backdrop-blur-sm">
                     <div class="flex items-start">
-                        <i class="fas fa-info-circle text-blue-500 mt-1 mr-3"></i>
+                        <div class="flex-shrink-0 bg-blue-100 p-2 rounded-lg mr-4">
+                            <i class="fas fa-info-circle text-blue-500 text-lg"></i>
+                        </div>
                         <div>
                             <h3 class="font-semibold text-blue-800">Defense Scheduling</h3>
-                            <p class="text-blue-700">Your defense schedule will be assigned once all requirements are completed. Please complete the pending requirements above.</p>
+                            <p class="text-blue-700 mt-1">Your defense schedule will be assigned once all requirements are completed. Please complete the pending requirements above.</p>
                         </div>
                     </div>
                 </div>
@@ -249,60 +415,89 @@ if ($has_group) {
             </div>
 
             <!-- Defense Overview -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                 <!-- Schedule Card -->
                 <?php if ($defense_schedule): ?>
-                <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition duration-300">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-semibold text-gray-700">Defense Schedule</h2>
-                        <div class="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-1 rounded-full">
+                <div class="glass-card p-6 rounded-2xl glow animate-delay-2">
+                    <div class="flex items-center justify-between mb-6 pb-3 border-b border-gray-100">
+                        <h2 class="text-xl font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-calendar-day text-primary mr-3"></i>
+                            Defense Schedule
+                        </h2>
+                        <div class="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">
                             CONFIRMED
                         </div>
                     </div>
                     
-                    <div class="space-y-4">
+                    <div class="space-y-5">
                         <div class="flex items-start">
-                            <div class="p-2 bg-blue-100 text-blue-600 rounded-lg mr-4">
+                            <div class="flex-shrink-0 p-2 bg-blue-100 text-blue-600 rounded-lg mr-4">
                                 <i class="fas fa-calendar-day"></i>
                             </div>
                             <div>
-                                <h3 class="font-medium text-gray-600">Date & Time</h3>
-                                <p class="text-gray-900"><?php echo date('F j, Y', strtotime($defense_schedule['defense_date'])); ?> • <?php echo date('g:i A', strtotime($defense_schedule['start_time'])); ?> – <?php echo date('g:i A', strtotime($defense_schedule['end_time'])); ?></p>
+                                <h3 class="font-medium text-gray-600 text-sm">Date & Time</h3>
+                                <p class="text-gray-900 font-medium"><?php echo date('F j, Y', strtotime($defense_schedule['defense_date'])); ?></p>
+                                <p class="text-gray-700"><?php echo date('g:i A', strtotime($defense_schedule['start_time'])); ?> – <?php echo date('g:i A', strtotime($defense_schedule['end_time'])); ?></p>
                             </div>
                         </div>
                         
                         <?php if (!empty($defense_schedule['building']) && !empty($defense_schedule['room_name'])): ?>
                         <div class="flex items-start">
-                            <div class="p-2 bg-blue-100 text-blue-600 rounded-lg mr-4">
+                            <div class="flex-shrink-0 p-2 bg-blue-100 text-blue-600 rounded-lg mr-4">
                                 <i class="fas fa-map-marker-alt"></i>
                             </div>
                             <div>
-                                <h3 class="font-medium text-gray-600">Venue</h3>
-                                <p class="text-gray-900"><?php echo $defense_schedule['building'] . ' ' . $defense_schedule['room_name']; ?></p>
+                                <h3 class="font-medium text-gray-600 text-sm">Venue</h3>
+                                <p class="text-gray-900 font-medium"><?php echo $defense_schedule['building'] . ' ' . $defense_schedule['room_name']; ?></p>
                             </div>
                         </div>
                         <?php endif; ?>
                         
                         <?php if (!empty($panel_members)): ?>
                         <div class="flex items-start">
-                            <div class="p-2 bg-blue-100 text-blue-600 rounded-lg mr-4">
+                            <div class="flex-shrink-0 p-2 bg-blue-100 text-blue-600 rounded-lg mr-4">
                                 <i class="fas fa-users"></i>
                             </div>
-                            <div>
-                                <h3 class="font-medium text-gray-600">Panel Members</h3>
-                                <div class="mt-1 space-y-2">
+                            <div class="flex-1">
+                                <h3 class="font-medium text-gray-600 text-sm mb-2">Panel Members</h3>
+                                <div class="space-y-3">
                                     <?php 
-                                    foreach ($panel_members as $panel): 
-                                        $colors = ['blue', 'purple', 'green', 'yellow', 'red'];
+                                    // Separate chairpersons and members
+                                    $chairpersons = array_filter($panel_members, function($panel) {
+                                        return $panel['role'] === 'chairperson';
+                                    });
+                                    $members = array_filter($panel_members, function($panel) {
+                                        return $panel['role'] === 'member';
+                                    });
+                                    
+                                    // Display chairpersons first
+                                    foreach ($chairpersons as $panel): 
+                                    ?>
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 text-xs font-semibold mr-3 shadow-sm">
+                                            <?php echo strtoupper($panel['initials']); ?>
+                                        </div>
+                                        <div>
+                                            <p class="text-gray-900 font-medium text-sm"><?php echo $panel['name']; ?></p>
+                                            <p class="text-yellow-600 text-xs font-semibold">Chairperson</p>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                    
+                                    <?php 
+                                    // Display members
+                                    foreach ($members as $panel): 
+                                        $colors = ['blue', 'purple', 'green', 'indigo'];
                                         $color = $colors[array_rand($colors)];
                                     ?>
                                     <div class="flex items-center">
-                                        <div class="w-6 h-6 rounded-full bg-<?php echo $color; ?>-200 flex items-center justify-center text-<?php echo $color; ?>-700 text-xs mr-2">
+                                        <div class="w-8 h-8 rounded-full bg-<?php echo $color; ?>-100 flex items-center justify-center text-<?php echo $color; ?>-700 text-xs font-semibold mr-3 shadow-sm">
                                             <?php echo strtoupper($panel['initials']); ?>
                                         </div>
-                                        <span>
-                                            <?php echo $panel['name'] . ' (' . ucfirst($panel['role']) . ')'; ?>
-                                        </span>
+                                        <div>
+                                            <p class="text-gray-900 font-medium text-sm"><?php echo $panel['name']; ?></p>
+                                            <p class="text-gray-600 text-xs">Member</p>
+                                        </div>
                                     </div>
                                     <?php endforeach; ?>
                                 </div>
@@ -312,80 +507,88 @@ if ($has_group) {
                     </div>
                 </div>
                 <?php else: ?>
-                <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition duration-300">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-semibold text-gray-700">Defense Schedule</h2>
-                        <div class="bg-gray-100 text-gray-700 text-xs font-medium px-2 py-1 rounded-full">
+                <div class="glass-card p-6 rounded-2xl glow flex flex-col animate-delay-2">
+                    <div class="flex items-center justify-between mb-6 pb-3 border-b border-gray-100">
+                        <h2 class="text-xl font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-calendar-day text-primary mr-3"></i>
+                            Defense Schedule
+                        </h2>
+                        <div class="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
                             PENDING
                         </div>
                     </div>
                     
-                    <div class="text-center py-8">
-                        <i class="fas fa-calendar-times text-gray-300 text-5xl mb-4"></i>
+                    <div class="text-center py-8 flex-1 flex flex-col items-center justify-center">
+                        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                            <i class="fas fa-calendar-times text-gray-400 text-2xl"></i>
+                        </div>
                         <h3 class="text-lg font-semibold text-gray-600">No Defense Scheduled Yet</h3>
-                        <p class="text-gray-500 mt-2">Your defense schedule will be assigned once all requirements are completed.</p>
+                        <p class="text-gray-500 mt-2 max-w-xs">Your defense schedule will be assigned once all requirements are completed.</p>
                     </div>
                 </div>
                 <?php endif; ?>
 
                 <!-- Preparation Timeline -->
-                <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition duration-300">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Preparation Timeline</h2>
+                <div class="glass-card p-6 rounded-2xl glow animate-delay-3">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-6 pb-3 border-b border-gray-100 flex items-center">
+                        <i class="fas fa-road text-primary mr-3"></i>
+                        Preparation Timeline
+                    </h2>
                     
                     <div class="relative">
                         <!-- Timeline -->
-                        <div class="border-l-2 border-blue-200 pl-6 space-y-6">
+                        <div class="enhanced-timeline border-l-2 border-gray-200 pl-8 space-y-8">
                             <!-- Item 1 - Proposal Submission -->
-                            <div class="relative">
-                                <div class="absolute -left-9 top-0 w-6 h-6 rounded-full <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'bg-green-500' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
+                            <div class="relative timeline-item">
+                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'bg-green-500 shadow-md' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
                                     <i class="fas <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'fa-check' : 'fa-clock'; ?> text-white text-xs"></i>
                                 </div>
                                 <div class="pl-2">
-                                    <h3 class="font-medium">Proposal Submission</h3>
-                                    <p class="text-sm text-gray-600">Required for defense scheduling</p>
-                                    <p class="text-xs <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'text-green-600' : 'text-gray-500'; ?> mt-1">
+                                    <h3 class="font-medium text-gray-800">Proposal Submission</h3>
+                                    <p class="text-sm text-gray-600 mt-1">Required for defense scheduling</p>
+                                    <p class="text-xs font-medium <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'text-green-600' : 'text-gray-500'; ?> mt-2">
                                         <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'Completed' : 'Pending'; ?>
                                     </p>
                                 </div>
                             </div>
                             
                             <!-- Item 2 - Payment -->
-                            <div class="relative">
-                                <div class="absolute -left-9 top-0 w-6 h-6 rounded-full <?php echo ($requirements_status['payment_completed'] > 0) ? 'bg-green-500' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
+                            <div class="relative timeline-item">
+                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo ($requirements_status['payment_completed'] > 0) ? 'bg-green-500 shadow-md' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
                                     <i class="fas <?php echo ($requirements_status['payment_completed'] > 0) ? 'fa-check' : 'fa-clock'; ?> text-white text-xs"></i>
                                 </div>
                                 <div class="pl-2">
-                                    <h3 class="font-medium">Payment Completion</h3>
-                                    <p class="text-sm text-gray-600">Required for defense scheduling</p>
-                                    <p class="text-xs <?php echo ($requirements_status['payment_completed'] > 0) ? 'text-green-600' : 'text-gray-500'; ?> mt-1">
+                                    <h3 class="font-medium text-gray-800">Payment Completion</h3>
+                                    <p class="text-sm text-gray-600 mt-1">Required for defense scheduling</p>
+                                    <p class="text-xs font-medium <?php echo ($requirements_status['payment_completed'] > 0) ? 'text-green-600' : 'text-gray-500'; ?> mt-2">
                                         <?php echo ($requirements_status['payment_completed'] > 0) ? 'Completed' : 'Pending'; ?>
                                     </p>
                                 </div>
                             </div>
                             
                             <!-- Item 3 - Documents -->
-                            <div class="relative">
-                                <div class="absolute -left-9 top-0 w-6 h-6 rounded-full <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'bg-green-500' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
+                            <div class="relative timeline-item">
+                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'bg-green-500 shadow-md' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
                                     <i class="fas <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'fa-check' : 'fa-clock'; ?> text-white text-xs"></i>
                                 </div>
                                 <div class="pl-2">
-                                    <h3 class="font-medium">Required Documents Submission</h3>
-                                    <p class="text-sm text-gray-600">Required for defense scheduling</p>
-                                    <p class="text-xs <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'text-green-600' : 'text-gray-500'; ?> mt-1">
+                                    <h3 class="font-medium text-gray-800">Required Documents Submission</h3>
+                                    <p class="text-sm text-gray-600 mt-1">Required for defense scheduling</p>
+                                    <p class="text-xs font-medium <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'text-green-600' : 'text-gray-500'; ?> mt-2">
                                         <?php echo $requirements_status['documents_submitted'] . '/' . $requirements_status['total_required_docs']; ?> Submitted
                                     </p>
                                 </div>
                             </div>
                             
                             <!-- Item 4 - Defense Scheduling -->
-                            <div class="relative">
-                                <div class="absolute -left-9 top-0 w-6 h-6 rounded-full <?php echo ($defense_schedule) ? 'bg-green-500' : ($all_requirements_met ? 'bg-yellow-500' : 'bg-gray-300'); ?> border-4 border-white flex items-center justify-center">
-                                    <i class="fas <?php echo ($defense_schedule) ? 'fa-check' : ($all_requirements_met ? 'fa-spinner' : 'fa-clock'); ?> text-white text-xs"></i>
+                            <div class="relative timeline-item">
+                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo ($defense_schedule) ? 'bg-green-500 shadow-md' : ($all_requirements_met ? 'bg-yellow-500 shadow-md' : 'bg-gray-300'); ?> border-4 border-white flex items-center justify-center">
+                                    <i class="fas <?php echo ($defense_schedule) ? 'fa-check' : ($all_requirements_met ? 'fa-spinner fa-pulse' : 'fa-clock'); ?> text-white text-xs"></i>
                                 </div>
                                 <div class="pl-2">
-                                    <h3 class="font-medium">Defense Schedule Assignment</h3>
-                                    <p class="text-sm text-gray-600">Assigned by coordinator</p>
-                                    <p class="text-xs <?php echo ($defense_schedule) ? 'text-green-600' : ($all_requirements_met ? 'text-yellow-600' : 'text-gray-500'); ?> mt-1">
+                                    <h3 class="font-medium text-gray-800">Defense Schedule Assignment</h3>
+                                    <p class="text-sm text-gray-600 mt-1">Assigned by coordinator</p>
+                                    <p class="text-xs font-medium <?php echo ($defense_schedule) ? 'text-green-600' : ($all_requirements_met ? 'text-yellow-600' : 'text-gray-500'); ?> mt-2">
                                         <?php echo ($defense_schedule) ? 'Scheduled' : ($all_requirements_met ? 'Pending Assignment' : 'Requirements Pending'); ?>
                                     </p>
                                 </div>
@@ -393,13 +596,13 @@ if ($has_group) {
                             
                             <!-- Item 5 - Final Defense -->
                             <div class="relative">
-                                <div class="absolute -left-9 top-0 w-6 h-6 rounded-full <?php echo ($defense_schedule && strtotime($defense_schedule['defense_date']) < time()) ? 'bg-green-500' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
+                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo ($defense_schedule && strtotime($defense_schedule['defense_date']) < time()) ? 'bg-green-500 shadow-md' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
                                     <i class="fas <?php echo ($defense_schedule && strtotime($defense_schedule['defense_date']) < time()) ? 'fa-check' : 'fa-clock'; ?> text-white text-xs"></i>
                                 </div>
                                 <div class="pl-2">
-                                    <h3 class="font-medium">Final Defense</h3>
-                                    <p class="text-sm text-gray-600">Presentation and evaluation</p>
-                                    <p class="text-xs <?php echo ($defense_schedule && strtotime($defense_schedule['defense_date']) < time()) ? 'text-green-600' : 'text-gray-500'; ?> mt-1">
+                                    <h3 class="font-medium text-gray-800">Final Defense</h3>
+                                    <p class="text-sm text-gray-600 mt-1">Presentation and evaluation</p>
+                                    <p class="text-xs font-medium <?php echo ($defense_schedule && strtotime($defense_schedule['defense_date']) < time()) ? 'text-green-600' : 'text-gray-500'; ?> mt-2">
                                         <?php echo ($defense_schedule) ? date('F j, Y', strtotime($defense_schedule['defense_date'])) : 'Not Scheduled'; ?>
                                     </p>
                                 </div>
@@ -409,47 +612,62 @@ if ($has_group) {
                 </div>
 
                 <!-- Additional Resources Card -->
-                <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition duration-300">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Defense Resources</h2>
+                <div class="glass-card p-6 rounded-2xl glow animate-delay-4">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-6 pb-3 border-b border-gray-100 flex items-center">
+                        <i class="fas fa-toolbox text-primary mr-3"></i>
+                        Defense Resources
+                    </h2>
                     
                     <div class="space-y-4">
-                        <a href="#" class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition">
-                            <div class="p-2 bg-blue-100 text-blue-600 rounded-lg mr-4">
+                        <a href="#" class="resource-card flex items-center p-4 border border-gray-100 rounded-xl hover:border-primary-100 hover:bg-primary-50 transition group">
+                            <div class="flex-shrink-0 p-3 bg-blue-100 text-blue-600 rounded-lg mr-4 group-hover:bg-blue-200 transition">
                                 <i class="fas fa-file-powerpoint"></i>
                             </div>
                             <div>
-                                <h3 class="font-medium">Presentation Template</h3>
-                                <p class="text-sm text-gray-600">Download defense slides template</p>
+                                <h3 class="font-medium text-gray-800 group-hover:text-primary transition">Presentation Template</h3>
+                                <p class="text-sm text-gray-600 mt-1">Download defense slides template</p>
+                            </div>
+                            <div class="ml-auto text-gray-300 group-hover:text-primary transition">
+                                <i class="fas fa-chevron-right"></i>
                             </div>
                         </a>
                         
-                        <a href="#" class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition">
-                            <div class="p-2 bg-blue-100 text-blue-600 rounded-lg mr-4">
+                        <a href="#" class="resource-card flex items-center p-4 border border-gray-100 rounded-xl hover:border-primary-100 hover:bg-primary-50 transition group">
+                            <div class="flex-shrink-0 p-3 bg-blue-100 text-blue-600 rounded-lg mr-4 group-hover:bg-blue-200 transition">
                                 <i class="fas fa-list-alt"></i>
                             </div>
                             <div>
-                                <h3 class="font-medium">Evaluation Rubric</h3>
-                                <p class="text-sm text-gray-600">View defense evaluation criteria</p>
+                                <h3 class="font-medium text-gray-800 group-hover:text-primary transition">Evaluation Rubric</h3>
+                                <p class="text-sm text-gray-600 mt-1">View defense evaluation criteria</p>
+                            </div>
+                            <div class="ml-auto text-gray-300 group-hover:text-primary transition">
+                                <i class="fas fa-chevron-right"></i>
                             </div>
                         </a>
                         
-                        <a href="#" class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition">
-                            <div class="p-2 bg-blue-100 text-blue-600 rounded-lg mr-4">
+                        <a href="#" class="resource-card flex items-center p-4 border border-gray-100 rounded-xl hover:border-primary-100 hover:bg-primary-50 transition group">
+                            <div class="flex-shrink-0 p-3 bg-blue-100 text-blue-600 rounded-lg mr-4 group-hover:bg-blue-200 transition">
                                 <i class="fas fa-question-circle"></i>
                             </div>
                             <div>
-                                <h3 class="font-medium">FAQ & Guidelines</h3>
-                                <p class="text-sm text-gray-600">Common questions and defense tips</p>
+                                <h3 class="font-medium text-gray-800 group-hover:text-primary transition">FAQ & Guidelines</h3>
+                                <p class="text-sm text-gray-600 mt-1">Common questions and defense tips</p>
+                            </div>
+                            <div class="ml-auto text-gray-300 group-hover:text-primary transition">
+                                <i class="fas fa-chevron-right"></i>
                             </div>
                         </a>
                         
-                        <a href="#" class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition">
-                            <div class="p-2 bg-blue-100 text-blue-600 rounded-lg mr-4">
+                        <a href="#" class="resource-card flex items-center p-4 border border-gray-100 rounded-xl hover:border-primary-100 hover:bg-primary-50 transition group">
+                            <div class="flex-shrink-0 p-3 bg-blue-100 text-blue-600 rounded-lg mr-4 group-hover:bg-blue-200 transition">
                                 <i class="fas fa-calendar-check"></i>
                             </div>
                             <div>
-                                <h3 class="font-medium">Schedule Practice Session</h3>
-                                <p class="text-sm text-gray-600">Book a practice room with your adviser</p>
+                                <h3 class="font-medium text-gray-800 group-hover:text-primary transition">Schedule Practice Session</h3>
+                                <p class="text-sm text-gray-600 mt-1">Book a practice room with your adviser</p>
+                            </div>
+                            <div class="ml-auto text-gray-300 group-hover:text-primary transition">
+                                <i class="fas fa-chevron-right"></i>
                             </div>
                         </a>
                     </div>

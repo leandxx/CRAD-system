@@ -1,6 +1,7 @@
 <?php
 session_start();
 include('../includes/connection.php');
+include('../includes/notification-helper.php');
 
 // Include PHPMailer
 require '../assets/PHPMailer/src/Exception.php';
@@ -46,6 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         VALUES ('$first_name', '$last_name', '$email', '$specialization', '$program', '$status')";
                 
                 if ($conn->query($sql)) {
+                    // Send notification to all users
+                    notifyAllUsers($conn, "New Panel Member Added", "A new panel member has been added: $first_name $last_name ($specialization)", 'info');
+                    
                     $success = "Panel member added successfully";
                     // Redirect to avoid resubmission
                     header("Location: panel-assignment.php?success=" . urlencode($success));
@@ -106,6 +110,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         WHERE id = $id";
                 
                 if ($conn->query($sql)) {
+                    // Send notification to all users
+                    notifyAllUsers($conn, "Panel Member Updated", "Panel member information has been updated: $first_name $last_name", 'info');
+                    
                     $success = "Panel member updated successfully";
                     // Redirect to remove edit_id from URL
                     header("Location: panel-assignment.php?success=" . urlencode($success));
@@ -223,6 +230,13 @@ $emailContent = "
                         
                         $mail->send();
                         $sent_count++;
+                        
+                        // Send notification to all users about invitation sent
+                        notifyAllUsers($conn, 
+                            "Panel Invitation Sent", 
+                            "Panel invitation has been sent to {$panel['first_name']} {$panel['last_name']} for thesis defense panel.", 
+                            "info"
+                        );
                     } catch (Exception $e) {
                         $error_count++;
                         $error_details[] = "Message could not be sent to {$panel['email']}. Mailer Error: {$mail->ErrorInfo}";

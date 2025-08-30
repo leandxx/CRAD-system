@@ -373,8 +373,8 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
             <div class="bg-white rounded-2xl shadow-xl p-6 mb-8 border border-gray-100">
                 <div class="flex items-center justify-between mb-6">
                     <div class="flex items-center space-x-3">
-                        <div class="bg-primary/10 p-3 rounded-full">
-                            <i class="fas fa-users text-primary text-xl"></i>
+                        <div class="crad-icon-circle crad-icon-primary">
+                            <i class="fas fa-users"></i>
                         </div>
                         <div>
                             <h2 class="text-2xl font-bold text-gray-800">Program Group Status</h2>
@@ -612,8 +612,8 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
             <?php if ($has_group): ?>
                 <div class="bg-white rounded-xl shadow-lg p-6">
                     <div class="flex items-center mb-6">
-                        <div class="bg-primary/10 p-3 rounded-full mr-4">
-                            <i class="fas fa-file-upload text-primary text-xl"></i>
+                        <div class="crad-icon-circle crad-icon-primary mr-4">
+                            <i class="fas fa-file-upload"></i>
                         </div>
                         <h2 class="text-2xl font-bold text-gray-800">Submit Proposal Letter</h2>
                     </div>

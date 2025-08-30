@@ -1,6 +1,7 @@
 <?php
 session_start();
 include('../includes/connection.php'); // Your DB connection
+include('../includes/notification-helper.php');
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

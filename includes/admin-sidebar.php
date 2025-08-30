@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 
 // Get username and role from user_tbl
-$sql = "SELECT role, role FROM user_tbl WHERE user_id = ?";
+$sql = "SELECT role FROM user_tbl WHERE user_id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -173,13 +173,13 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">Research Management</p>
             <ul>
                 <li>
-                    <a href="admin-pages/admin-timeline.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Submission Timeline">
+                    <a href="admin-pages/admin-timeline.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700" data-page-title="Admin Submission Timeline">
                         <i class="fas fa-file-alt nav-icon"></i>
                         <span class="nav-text">Research Timeline & Submission</span>
                     </a>
                 </li>
                 <li>
-                    <a href="admin-pages/admin-defense.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Defense Scheduling">
+                    <a href="admin-pages/admin-defense.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700" data-page-title="Admin Defense Scheduling">
                         <i class="fas fa-calendar-alt nav-icon"></i>
                         <span class="nav-text">Defense Scheduling</span>
                     </a>
@@ -187,14 +187,14 @@ $greeting = "Hello, " . match($role) {
 
                  <!-- Panel Assignment Module -->
                 <li>
-                    <a href="admin-pages/panel-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Admin Panel Assignment">
+                    <a href="admin-pages/panel-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700" data-page-title="Admin Panel Assignment">
                         <i class="fas fa-users nav-icon"></i>
                         <span class="nav-text">Panel Management & Assignment</span>
                     </a>
                 </li>
 
                 <li>
-                    <a href="admin-pages/adviser-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700"data-page-title="Adviser Assignment">
+                    <a href="admin-pages/adviser-assignment.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700" data-page-title="Adviser Assignment">
                         <i class="fas fa-user-tie nav-icon"></i>
                         <span class="nav-text">Adviser Assignment</span>
                     </a>

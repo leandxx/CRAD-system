@@ -50,27 +50,11 @@ $stmt->close();
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRAD student-portal</title>
-    <link rel="icon" href="../assets/img/sms-logo.png" type="image/png">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#2563eb',
-                        secondary: '#7c3aed',
-                        success: '#10b981',
-                        warning: '#f59e0b',
-                        danger: '#ef4444'
-                    }
-                }
-            }
-        }
-    </script>
+    <title>Student Dashboard - CRAD System</title>
+    <?php 
+        $base_url = '../';
+        include('../includes/crad-head.php'); 
+    ?>
     <style>
         .progress-bar {
             width: 100%;
@@ -124,7 +108,7 @@ $stmt->close();
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="crad-page">
     <div class="min-h-screen flex">
           <!-- Sidebar/header -->
         <?php include('../includes/student-sidebar.php'); ?>
@@ -174,11 +158,11 @@ $stmt->close();
                 </div>
 
                 <!-- Research Submission Overview -->
-                <section class="mb-8">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-800 flex items-center">
+                <section class="mb-8 crad-slide-up">
+                    <h2 class="crad-heading-2 flex items-center">
                         <i class="fas fa-chart-line mr-2 text-primary"></i> Submission Timeline
                     </h2>
-                    <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="crad-card">
                         <?php if ($active_timeline): ?>
                             <h3 class="text-lg font-semibold mb-2"><?= htmlspecialchars($active_timeline['title']) ?></h3>
                             <p class="text-gray-600 mb-4"><?= htmlspecialchars($active_timeline['description']) ?></p>
@@ -244,12 +228,12 @@ $stmt->close();
                 </section>
 
                 <!-- Quick Access Cards -->
-                <section class="mb-8">
-                    <h2 class="text-xl font-semibold mb-6 text-gray-800 flex items-center">
+                <section class="mb-8 crad-slide-up">
+                    <h2 class="crad-heading-2 mb-6 flex items-center">
                         <i class="fas fa-bolt mr-2 text-yellow-500"></i> Quick Access
                     </h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <a href="student_pages/proposal.php" class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 border-l-4 border-blue-500 hover:border-blue-600 group">
+                        <a href="student_pages/proposal.php" class="crad-card crad-hover-lift transition-all duration-300 border-l-4 border-blue-500 hover:border-blue-600 group">
                             <div class="flex items-center space-x-4">
                                 <div class="p-3 rounded-full bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                                     <i class="fas fa-file-upload text-xl"></i>
@@ -266,7 +250,7 @@ $stmt->close();
                             </div>
                         </a>
                         
-                        <a href="student_pages/defense.php" class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 border-l-4 border-green-500 hover:border-green-600 group">
+                        <a href="student_pages/defense.php" class="crad-card crad-hover-lift transition-all duration-300 border-l-4 border-green-500 hover:border-green-600 group">
                             <div class="flex items-center space-x-4">
                                 <div class="p-3 rounded-full bg-green-100 text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
                                     <i class="fas fa-calendar-check text-xl"></i>
@@ -283,7 +267,7 @@ $stmt->close();
                             </div>
                         </a>
                         
-                        <a href="student_pages/documents.php" class="bg-white rounded-xl shadow-md p-6 transition-all duration-300 border-l-4 border-purple-500 hover:border-purple-600 group">
+                        <a href="student_pages/documents.php" class="crad-card crad-hover-lift transition-all duration-300 border-l-4 border-purple-500 hover:border-purple-600 group">
                             <div class="flex items-center space-x-4">
                                 <div class="p-3 rounded-full bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
                                     <i class="fas fa-tasks text-xl"></i>

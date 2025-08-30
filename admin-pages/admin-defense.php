@@ -1,6 +1,7 @@
 <?php
 session_start();
 include('../includes/connection.php');
+include('../includes/notification-helper.php');
 
 // Check if admin is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'Admin') {
@@ -17,6 +18,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $end_time = mysqli_real_escape_string($conn, $_POST['end_time']);
         $room_id = mysqli_real_escape_string($conn, $_POST['room_id']);
         $panel_members = isset($_POST['panel_members']) ? $_POST['panel_members'] : [];
+        
+        // Validate required fields
+        if (empty($group_id) || empty($defense_date) || empty($start_time) || empty($end_time) || empty($room_id)) {
+            $error_message = "All fields are required for scheduling a defense.";
+        } elseif (strtotime($defense_date) < strtotime(date('Y-m-d'))) {
+            $error_message = "Defense date cannot be in the past.";
+        } elseif (strtotime($start_time) >= strtotime($end_time)) {
+            $error_message = "End time must be after start time.";
+        } else {
 
         // Default status = scheduled
         $status = 'scheduled';
@@ -37,11 +47,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 mysqli_query($conn, $panel_query);
             }
 
+            // Get group name for notification
+            $group_query = "SELECT name FROM groups WHERE id = '$group_id'";
+            $group_result = mysqli_query($conn, $group_query);
+            $group_data = mysqli_fetch_assoc($group_result);
+            $group_name = $group_data['name'];
+
+            // Send notification to all users
+            $notification_title = "Defense Scheduled";
+            $notification_message = "A defense has been scheduled for group: $group_name on $defense_date at $start_time";
+            notifyAllUsers($conn, $notification_title, $notification_message, 'info');
+
             $_SESSION['success_message'] = "Defense scheduled successfully!";
             header("Location: admin-defense.php");
             exit();
         } else {
             $error_message = "Error scheduling defense: " . mysqli_error($conn);
+        }
         }
     }
 
@@ -71,6 +93,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $end_time = mysqli_real_escape_string($conn, $_POST['end_time']);
         $room_id = mysqli_real_escape_string($conn, $_POST['room_id']);
         $panel_members = isset($_POST['panel_members']) ? $_POST['panel_members'] : [];
+        
+        // Validate required fields
+        if (empty($defense_id) || empty($defense_date) || empty($start_time) || empty($end_time) || empty($room_id)) {
+            $error_message = "All fields are required for updating a defense.";
+        } elseif (strtotime($defense_date) < strtotime(date('Y-m-d'))) {
+            $error_message = "Defense date cannot be in the past.";
+        } elseif (strtotime($start_time) >= strtotime($end_time)) {
+            $error_message = "End time must be after start time.";
+        } else {
 
         // Update defense schedule (don't update group_id as it shouldn't change)
         $update_query = "UPDATE defense_schedules 
@@ -91,11 +122,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 mysqli_query($conn, $panel_query);
             }
 
+            // Get group name for notification
+            $group_query = "SELECT g.name FROM groups g JOIN defense_schedules ds ON g.id = ds.group_id WHERE ds.id = '$defense_id'";
+            $group_result = mysqli_query($conn, $group_query);
+            $group_data = mysqli_fetch_assoc($group_result);
+            $group_name = $group_data['name'];
+
+            // Send notification to all users
+            $notification_title = "Defense Schedule Updated";
+            $notification_message = "Defense schedule has been updated for group: $group_name on $defense_date at $start_time";
+            notifyAllUsers($conn, $notification_title, $notification_message, 'info');
+
             $_SESSION['success_message'] = "Defense schedule updated successfully!";
             header("Location: admin-defense.php");
             exit();
         } else {
             $error_message = "Error updating defense schedule: " . mysqli_error($conn);
+        }
         }
     }
 }
@@ -116,14 +159,15 @@ $defense_schedules = [];
 
 while ($schedule = mysqli_fetch_assoc($defense_result)) {
     // Get panel members for each defense
-    $panel_query = "SELECT u.user_id, u.email
+        $panel_query = "SELECT u.user_id, u.email, pm.id as panel_member_id
                    FROM defense_panel dp 
                    JOIN user_tbl u ON dp.faculty_id = u.user_id 
+                   LEFT JOIN panel_members pm ON u.user_id = pm.id
                    WHERE dp.defense_id = '{$schedule['id']}'";
     $panel_result = mysqli_query($conn, $panel_query);
     $panel_members = [];
 
-    while ($panel = mysqli_fetch_assoc($panel_result)) {
+   while ($panel = mysqli_fetch_assoc($panel_result)) {
         $panel_members[] = $panel;
     }
 
@@ -140,15 +184,15 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
         }
     }
 
-    $schedule['panel_members'] = $panel_members;
+   $schedule['panel_members'] = $panel_members;
     $defense_schedules[] = $schedule;
 }
 
-// Get all groups with approved proposals
+// Get all groups with completed proposals
 $groups_query = "SELECT g.*, p.title as proposal_title 
                 FROM groups g 
                 JOIN proposals p ON g.id = p.group_id 
-                WHERE p.status = 'Approved'
+                WHERE p.status = 'Completed'
                 ORDER BY g.name";
 $groups_result = mysqli_query($conn, $groups_query);
 $groups = [];
@@ -167,17 +211,26 @@ while ($faculty = mysqli_fetch_assoc($faculty_result)) {
 }
 
 // Get accepted panel members from panel management system
-$accepted_panel_query = "SELECT pm.*, pi.status as invitation_status 
+// First, try to get all active panel members
+$accepted_panel_query = "SELECT DISTINCT pm.* 
                         FROM panel_members pm 
-                        LEFT JOIN panel_invitations pi ON pm.id = pi.panel_id 
-                        WHERE pi.status = 'accepted' OR pm.status = 'active'
-                        GROUP BY pm.id
+                        WHERE pm.status = 'active'
                         ORDER BY pm.last_name, pm.first_name";
 $accepted_panel_result = mysqli_query($conn, $accepted_panel_query);
 $accepted_panel_members = [];
 
 while ($panel_member = mysqli_fetch_assoc($accepted_panel_result)) {
     $accepted_panel_members[] = $panel_member;
+}
+
+// If no active panel members found, get all panel members
+if (empty($accepted_panel_members)) {
+    $all_panel_query = "SELECT * FROM panel_members ORDER BY last_name, first_name";
+    $all_panel_result = mysqli_query($conn, $all_panel_query);
+    
+    while ($panel_member = mysqli_fetch_assoc($all_panel_result)) {
+        $accepted_panel_members[] = $panel_member;
+    }
 }
 
 // Get all rooms
@@ -190,7 +243,7 @@ while ($room = mysqli_fetch_assoc($rooms_result)) {
 }
 
 // Get stats for dashboard
-$total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE status = 'Approved'"));
+$total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE status = 'Completed'"));
 $scheduled_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'scheduled'"));
 $pending_defenses = $total_proposals - $scheduled_defenses;
 $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'completed'"));
@@ -208,6 +261,10 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     <style>
         .scroll-container {
             max-height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+        .main-content {
+            max-height: 100vh;
             overflow-y: auto;
         }
         .notification-dot.pulse {
@@ -412,14 +469,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             });
         }
         
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set default filter to 'all'
-            filterStatus('all');
-            
-            // Set default panel tab to 'accepted'
-            switchPanelTab('accepted');
-        });
+
     </script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -429,7 +479,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         <?php include('../includes/admin-sidebar.php'); ?>
         
         <!-- Main content area -->
-        <main class="flex-1 overflow-y-auto p-6 scroll-container">
+        <main class="flex-1 p-6 main-content">
             <!-- Status Messages -->
             <?php if (isset($_SESSION['success_message'])): ?>
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
@@ -548,9 +598,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <span class="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Scheduled</span>
                             <?php endif; ?>
                             
-                            <div>
-                                <button class="text-indigo-600 hover:text-indigo-900 mr-3" onclick="populateEditForm(<?php echo htmlspecialchars(json_encode($schedule)); ?>)"><i class="fas fa-edit"></i></button>
-                                <button onclick="confirmDelete(<?php echo $schedule['id']; ?>, '<?php echo $schedule['group_name']; ?>')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>
+                            <div class="flex space-x-2">
+                                <button class="text-indigo-600 hover:text-indigo-900 p-1" onclick="populateEditForm(<?php echo htmlspecialchars(json_encode($schedule)); ?>)" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="confirmDelete(<?php echo $schedule['id']; ?>, '<?php echo $schedule['group_name']; ?>')" class="text-red-600 hover:text-red-900 p-1" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -562,7 +616,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                         FROM groups g 
                                         JOIN proposals p ON g.id = p.group_id 
                                         WHERE g.id NOT IN (SELECT group_id FROM defense_schedules) 
-                                        AND p.status = 'Approved'
+                                        AND p.status = 'Completed'
                                         ORDER BY g.name";
                     $unscheduled_result = mysqli_query($conn, $unscheduled_query);
 
@@ -657,7 +711,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2" for="defense_date">Defense Date</label>
-                        <input type="date" name="defense_date" id="defense_date" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <input type="date" name="defense_date" id="defense_date" required min="<?php echo date('Y-m-d'); ?>" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2" for="room_id">Room</label>
@@ -692,22 +746,41 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <!-- Accepted Panel Content -->
                     <div class="panel-content active" data-tab="accepted">
                         <?php if (!empty($accepted_panel_members)): ?>
-                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg">
+                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
                             <?php foreach ($accepted_panel_members as $panel_member): ?>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-2 rounded text-primary focus:ring-primary">
-                                <span><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name'] . ' (' . $panel_member['email'] . ')'; ?></span>
+                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-3 rounded text-primary focus:ring-primary">
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
+                                    <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                    <?php if (!empty($panel_member['specialization'])): ?>
+                                    <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
+                                    <?php endif; ?>
+                                </div>
                             </label>
                             <?php endforeach; ?>
                         </div>
+                        <p class="text-xs text-gray-500 mt-2">Select panel members for this defense schedule.</p>
                         <?php else: ?>
-                        <p class="text-gray-500 text-sm p-2 border rounded-lg">No accepted panel members found.</p>
+                        <div class="text-center p-6 border rounded-lg bg-gray-50">
+                            <i class="fas fa-users text-gray-300 text-3xl mb-3"></i>
+                            <p class="text-gray-500 text-sm mb-2">No panel members found.</p>
+                            <p class="text-xs text-gray-400">Please add panel members in the Panel Assignment section first.</p>
+                            <a href="panel-assignment.php" class="inline-block mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
+                                Go to Panel Assignment
+                            </a>
+                        </div>
                         <?php endif; ?>
                     </div>
+                </div>
                 
                 <div class="flex justify-end gap-3 pt-4 border-t">
-                    <button type="button" onclick="toggleModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" name="schedule_defense" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">Schedule Defense</button>
+                    <button type="button" onclick="toggleModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button type="submit" name="schedule_defense" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center">
+                        <i class="fas fa-calendar-plus mr-2"></i>Schedule Defense
+                    </button>
                 </div>
             </form>
         </div>
@@ -715,14 +788,15 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
     <!-- Edit Defense Modal -->
     <div id="editDefenseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
-         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-auto my-auto">
-            <div class="border-b px-6 py-4 flex justify-between items-center">
+         <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[85vh] flex flex-col mx-auto my-auto">
+            <div class="border-b px-6 py-4 flex justify-between items-center flex-shrink-0">
                 <h3 class="text-lg font-semibold">Edit Defense Schedule</h3>
                 <button onclick="toggleEditModal()" class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <form method="POST" action="" class="p-6">
+            <div class="flex-1 overflow-y-auto">
+            <form method="POST" action="" class="p-6" id="editForm">
                 <input type="hidden" name="defense_id" id="edit_defense_id">
                 
                 <div class="mb-4">
@@ -733,7 +807,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_defense_date">Defense Date</label>
-                        <input type="date" name="defense_date" id="edit_defense_date" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <input type="date" name="defense_date" id="edit_defense_date" required min="<?php echo date('Y-m-d'); ?>" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_room_id">Room</label>
@@ -763,47 +837,51 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <!-- Panel Tabs -->
                     <div class="panel-tabs mb-3">
                         <div class="panel-tab active" data-tab="edit_accepted" onclick="switchEditPanelTab('edit_accepted')">Accepted Panel</div>
-                        <div class="panel-tab" data-tab="edit_faculty" onclick="switchEditPanelTab('edit_faculty')">All Faculty</div>
                     </div>
                     
                     <!-- Accepted Panel Content -->
                     <div class="panel-content active" data-tab="edit_accepted">
                         <?php if (!empty($accepted_panel_members)): ?>
-                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg" id="edit_accepted_panel">
+                        <div class="grid grid-cols-1 gap-2 max-h-64 overflow-y-scroll p-2 border rounded-lg bg-gray-50" id="edit_accepted_panel">
                             <?php foreach ($accepted_panel_members as $panel_member): ?>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="edit-panel-member mr-2 rounded text-primary focus:ring-primary" data-id="<?php echo $panel_member['id']; ?>">
-                                <span><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name'] . ' (' . $panel_member['email'] . ')'; ?></span>
+                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="edit-panel-member mr-3 rounded text-primary focus:ring-primary" data-id="<?php echo $panel_member['id']; ?>">
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
+                                    <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                    <?php if (!empty($panel_member['specialization'])): ?>
+                                    <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
+                                    <?php endif; ?>
+                                </div>
                             </label>
                             <?php endforeach; ?>
                         </div>
+                        <p class="text-xs text-gray-500 mt-2">Select panel members for this defense schedule.</p>
                         <?php else: ?>
-                        <p class="text-gray-500 text-sm p-2 border rounded-lg">No accepted panel members found.</p>
+                        <div class="text-center p-6 border rounded-lg bg-gray-50">
+                            <i class="fas fa-users text-gray-300 text-3xl mb-3"></i>
+                            <p class="text-gray-500 text-sm mb-2">No panel members found.</p>
+                            <p class="text-xs text-gray-400">Please add panel members in the Panel Assignment section first.</p>
+                            <a href="panel-assignment.php" class="inline-block mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
+                                Go to Panel Assignment
+                            </a>
+                        </div>
                         <?php endif; ?>
                     </div>
                     
-                    <!-- All Faculty Content -->
-                    <div class="panel-content" data-tab="edit_faculty">
-                        <?php if (!empty($faculty_members)): ?>
-                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg" id="edit_faculty_panel">
-                            <?php foreach ($faculty_members as $faculty): ?>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="checkbox" name="panel_members[]" value="<?php echo $faculty['user_id']; ?>" class="edit-panel-member mr-2 rounded text-primary focus:ring-primary" data-id="<?php echo $faculty['user_id']; ?>">
-                                <span><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name'] . ' (' . $panel_member['email'] . ')'; ?></span>
-                            </label>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php else: ?>
-                        <p class="text-gray-500 text-sm p-2 border rounded-lg">No faculty members found.</p>
-                        <?php endif; ?>
-                    </div>
+                </div>
                 </div>
                 
-                <div class="flex justify-end gap-3 pt-4 border-t">
-                    <button type="button" onclick="toggleEditModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" name="edit_defense" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">Update Schedule</button>
+                <div class="flex justify-end gap-3 pt-4 border-t mt-6 px-6 pb-6">
+                    <button type="button" onclick="toggleEditModal()" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button type="submit" name="edit_defense" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center">
+                        <i class="fas fa-save mr-2"></i>Update Schedule
+                    </button>
                 </div>
             </form>
+            </div>
         </div>
     </div>
 
@@ -866,53 +944,60 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     </form>
 
     <script>
-        // Function to populate edit form with defense data
-        function populateEditForm(schedule) {
-            document.getElementById('edit_defense_id').value = schedule.id;
-            document.getElementById('edit_group_name').textContent = schedule.group_name + ' - ' + (schedule.proposal_title || 'No Title');
-            document.getElementById('edit_defense_date').value = schedule.defense_date;
-            document.getElementById('edit_room_id').value = schedule.room_id;
-            document.getElementById('edit_start_time').value = schedule.start_time;
-            document.getElementById('edit_end_time').value = schedule.end_time;
-            
-            // Clear all checkboxes first
-            document.querySelectorAll('.edit-panel-member').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            
-            // Check the panel members for this defense
-            if (schedule.panel_members && schedule.panel_members.length > 0) {
-                schedule.panel_members.forEach(panel => {
-                    const checkbox = document.querySelector(`.edit-panel-member[data-id="${panel.user_id}"]`);
+       // Function to populate edit form with defense data
+function populateEditForm(schedule) {
+    try {
+        document.getElementById('edit_defense_id').value = schedule.id;
+        document.getElementById('edit_group_name').textContent = schedule.group_name + ' - ' + (schedule.proposal_title || 'No Title');
+        document.getElementById('edit_defense_date').value = schedule.defense_date;
+        document.getElementById('edit_room_id').value = schedule.room_id || '';
+        document.getElementById('edit_start_time').value = schedule.start_time;
+        document.getElementById('edit_end_time').value = schedule.end_time;
+        
+        // Clear all checkboxes first
+        document.querySelectorAll('.edit-panel-member').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        // Check the panel members for this defense
+        // The panel members might be stored differently in the schedule object
+        if (schedule.panel_members && schedule.panel_members.length > 0) {
+            schedule.panel_members.forEach(panel => {
+                // Try different possible ID fields
+                const panelId = panel.user_id || panel.id || panel.faculty_id;
+                if (panelId) {
+                    const checkbox = document.querySelector(`.edit-panel-member[value="${panelId}"]`);
                     if (checkbox) {
                         checkbox.checked = true;
                     }
-                });
-            }
-            
-            toggleEditModal();
+                }
+            });
         }
+        
+        toggleEditModal();
+    } catch (error) {
+        console.error('Error populating edit form:', error);
+        alert('Error loading defense data for editing.');
+    }
+}
         
         // Function to switch between panel member tabs in edit modal
         function switchEditPanelTab(tabName) {
-            // Update active tab
-            document.querySelectorAll('.panel-tab[data-tab^="edit_"]').forEach(tab => {
-                if (tab.getAttribute('data-tab') === tabName) {
-                    tab.classList.add('active');
-                } else {
-                    tab.classList.remove('active');
-                }
-            });
-            
-            // Show active content
-            document.querySelectorAll('.panel-content[data-tab^="edit_"]').forEach(content => {
-                if (content.getAttribute('data-tab') === tabName) {
-                    content.classList.add('active');
-                } else {
-                    content.classList.remove('active');
-                }
-            });
+            // Only accepted panel tab exists now
+            console.log('Edit panel tab switched to:', tabName);
         }
+        
+        // Initialize edit modal tabs on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default filter to 'all'
+            filterStatus('all');
+            
+            // Set default panel tab to 'accepted'
+            switchPanelTab('accepted');
+            
+            // Edit modal only has accepted panel tab
+            switchEditPanelTab('edit_accepted');
+        });
     </script>
 </body>
 </html>

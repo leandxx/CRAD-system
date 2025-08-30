@@ -1,6 +1,7 @@
 <?php
 session_start();
 include('../includes/connection.php');
+include('../includes/notification-helper.php');
 
 
 // Handle form submissions
@@ -31,6 +32,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                VALUES ('$defense_id', '$faculty_id', 'member')";
                 mysqli_query($conn, $panel_query);
             }
+
+            // Get group name for notification
+            $group_query = "SELECT name FROM groups WHERE id = '$group_id'";
+            $group_result = mysqli_query($conn, $group_query);
+            $group_data = mysqli_fetch_assoc($group_result);
+            $group_name = $group_data['name'];
+
+            // Send notification to all users
+            $notification_title = "Defense Scheduled";
+            $notification_message = "A defense has been scheduled for group: $group_name on $defense_date at $start_time";
+            notifyAllUsers($conn, $notification_title, $notification_message, 'info');
 
             $_SESSION['success_message'] = "Defense scheduled successfully!";
             header("Location: admin-defense.php");
@@ -85,6 +97,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                VALUES ('$defense_id', '$faculty_id', 'member')";
                 mysqli_query($conn, $panel_query);
             }
+
+            // Get group name for notification
+            $group_query = "SELECT g.name FROM groups g JOIN defense_schedules ds ON g.id = ds.group_id WHERE ds.id = '$defense_id'";
+            $group_result = mysqli_query($conn, $group_query);
+            $group_data = mysqli_fetch_assoc($group_result);
+            $group_name = $group_data['name'];
+
+            // Send notification to all users
+            $notification_title = "Defense Schedule Updated";
+            $notification_message = "Defense schedule has been updated for group: $group_name on $defense_date at $start_time";
+            notifyAllUsers($conn, $notification_title, $notification_message, 'info');
 
             $_SESSION['success_message'] = "Defense schedule updated successfully!";
             header("Location: admin-defense.php");

@@ -1,6 +1,7 @@
 <?php
 session_start();
 include('../includes/connection.php');
+include('../includes/notification-helper.php');
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'Student') {

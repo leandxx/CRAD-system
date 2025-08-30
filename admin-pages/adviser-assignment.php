@@ -77,9 +77,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cluster_id = (int) $_POST['cluster_id'];
         $faculty_id = (int) $_POST['faculty_id'];
 
-        // Get cluster name
-        $cluster_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT cluster FROM clusters WHERE id = $cluster_id"));
+        // Get cluster name and program
+        $cluster_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT cluster, program FROM clusters WHERE id = $cluster_id"));
         $cluster_name = $cluster_info['cluster'] ?? null;
+        $cluster_program = $cluster_info['program'] ?? null;
+        
+        // Get adviser name
+        $adviser_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT fullname FROM faculty WHERE id = $faculty_id"));
+        $adviser_name = $adviser_info['fullname'] ?? 'Unknown';
 
         // Update cluster with adviser
         $sql = "UPDATE clusters 
@@ -91,6 +96,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($cluster_name) {
             $sql = "UPDATE student_profiles SET faculty_id = $faculty_id WHERE cluster = '$cluster_name'";
             mysqli_query($conn, $sql);
+            
+            // Include notification helper and send notifications
+            include('../includes/notification-helper.php');
+            
+            // Get all students in this cluster
+            $students_query = "SELECT user_id FROM student_profiles WHERE cluster = '$cluster_name'";
+            $students_result = mysqli_query($conn, $students_query);
+            
+            // Notify all students in the cluster
+            while ($student = mysqli_fetch_assoc($students_result)) {
+                notifyUser($conn, $student['user_id'], 
+                    "Adviser Assigned", 
+                    "Prof. $adviser_name has been assigned as your thesis adviser for $cluster_program - Cluster $cluster_name.", 
+                    "success"
+                );
+            }
         }
     }
     
@@ -958,7 +979,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 mb-2">Select Faculty Adviser</label>
-                        <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="faculty_id" required>
+                        <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="faculty_id" id="adviser_select" required>
                             <option value="">-- Select Faculty --</option>
                             <?php
                             // Reset faculty pointer
@@ -971,7 +992,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                 
                                 if (!$is_assigned):
                             ?>
-                            <option value="<?= $fac['id'] ?>">
+                            <option value="<?= $fac['id'] ?>" data-program="<?= htmlspecialchars($fac['department']) ?>">
                                 <?= htmlspecialchars($fac['fullname']) ?> - <?= htmlspecialchars($fac['department']) ?>
                             </option>
                             <?php endif; endwhile; ?>
@@ -1005,7 +1026,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 mb-2">Select Cluster</label>
-                        <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="cluster_id" required>
+                        <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="cluster_id" id="cluster_select_faculty" required>
                             <option value="">-- Select Cluster --</option>
                             <?php
                             // Get clusters without advisers
@@ -1016,7 +1037,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             
                             while ($cluster = mysqli_fetch_assoc($available_clusters)):
                             ?>
-                            <option value="<?= $cluster['id'] ?>">
+                            <option value="<?= $cluster['id'] ?>" data-program="<?= htmlspecialchars($cluster['program']) ?>">
                                 <?= htmlspecialchars($cluster['program']) ?> - Cluster <?= htmlspecialchars($cluster['cluster']) ?>
                             </option>
                             <?php endwhile; ?>
@@ -1405,10 +1426,30 @@ document.addEventListener('click', function(e) {
         
         const clusterId = clusterAdviserBtn.getAttribute('data-cluster-id');
         const clusterName = clusterAdviserBtn.getAttribute('data-cluster-name');
+        const clusterProgram = clusterName.split(' - ')[0]; // Extract program from cluster name
         
         // Set the cluster ID and name in the form
         document.getElementById('assign_cluster_id').value = clusterId;
         document.getElementById('assign_cluster_name').textContent = clusterName;
+        
+        // Filter advisers by program
+        const adviserSelect = document.querySelector('#assignAdviserModal select[name="faculty_id"]');
+        const options = adviserSelect.querySelectorAll('option');
+        options.forEach(option => {
+            if (option.value === '') {
+                option.style.display = 'block';
+            } else {
+                const optionProgram = option.getAttribute('data-program');
+                // Match program with department
+                const programMatch = 
+                    (clusterProgram === 'BSCS' && optionProgram === 'Information Technology') ||
+                    (clusterProgram === 'BSIT' && optionProgram === 'Information Technology') ||
+                    (clusterProgram === 'BSBA' && optionProgram === 'Business Administration') ||
+                    (clusterProgram === 'BSED' && optionProgram === 'Education') ||
+                    (clusterProgram === 'BSCRIM' && optionProgram === 'Criminology');
+                option.style.display = programMatch ? 'block' : 'none';
+            }
+        });
         
         // Show the modal
         showModal('assignAdviserModal');
@@ -1423,10 +1464,29 @@ document.addEventListener('click', function(e) {
         
         const facultyId = facultyAssignBtn.getAttribute('data-faculty-id');
         const facultyName = facultyAssignBtn.getAttribute('data-faculty-name');
+        const facultyDept = facultyName.split(' - ')[1] || ''; // Extract department from name
         
         // Set the faculty ID and name in the form
         document.getElementById('assign_faculty_id').value = facultyId;
         document.getElementById('assign_faculty_name').textContent = facultyName;
+        
+        // Filter clusters by program matching faculty department
+        const clusterSelect = document.querySelector('#assignFacultyToClusterModal select[name="cluster_id"]');
+        const options = clusterSelect.querySelectorAll('option');
+        options.forEach(option => {
+            if (option.value === '') {
+                option.style.display = 'block';
+            } else {
+                const optionProgram = option.getAttribute('data-program');
+                // Show clusters from matching programs
+                const programMatch = 
+                    (facultyDept === 'Information Technology' && (optionProgram === 'BSCS' || optionProgram === 'BSIT')) ||
+                    (facultyDept === 'Business Administration' && optionProgram === 'BSBA') ||
+                    (facultyDept === 'Education' && optionProgram === 'BSED') ||
+                    (facultyDept === 'Criminology' && optionProgram === 'BSCRIM');
+                option.style.display = programMatch ? 'block' : 'none';
+            }
+        });
         
         // Show the modal
         showModal('assignFacultyToClusterModal');

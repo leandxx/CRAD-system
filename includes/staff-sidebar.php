@@ -96,6 +96,29 @@ $greeting = "Hello, " . match($role) {
             width: 1.25rem;
             text-align: center;
         }
+
+        .notification-dropdown {
+            transform: translateY(-10px);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .notification-dropdown.show {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -211,10 +234,231 @@ $greeting = "Hello, " . match($role) {
         </h1>
     </div>
     <div class="flex items-center space-x-4">
-        <button class="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 relative transition-all hover:scale-105">
-            <i class="fas fa-bell"></i>
-            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 notification-dot pulse"></span>
-        </button>
+        <div class="relative">
+            <button id="notificationBtn" class="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 relative transition-all hover:scale-105">
+                <i class="fas fa-bell"></i>
+                <span id="notificationCount" class="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center notification-dot pulse" style="display: none;">0</span>
+            </button>
+            <div id="notificationDropdown" class="notification-dropdown absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50">
+                <div class="p-4 border-b">
+                    <h3 class="font-semibold text-gray-800">Notifications</h3>
+                </div>
+                <div id="notificationList" class="max-h-64 overflow-y-auto">
+                    <div class="p-4 text-center text-gray-500">
+                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                    </div>
+                </div>
+                <div class="p-3 border-t text-center">
+                    <button id="markAllRead" class="text-sm text-blue-600 hover:text-blue-800">Mark all as read</button>
+                </div>
+            </div>
+        </div>
+        <div class="relative group">
+            <button class="flex items-center space-x-2 focus:outline-none">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white">
+                    <i class="fas fa-user text-sm"></i>
+                </div>
+                <i class="fas fa-chevron-down text-xs opacity-70 group-hover:opacity-100 transition"></i>
+            </button>
+            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">
+                <a href="staff-pages/staff-profile.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i>Profile</a>
+                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i>Settings</a>
+                <a href="auth/admin-logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-sign-out-alt mr-2"></i>Logout</a>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+<!-- JS TOGGLE -->
+
+<script>
+    const toggleBtn = document.getElementById('toggleSidebar');
+    const sidebar = document.getElementById('sidebar');
+
+    toggleBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('sidebar-collapsed');
+    });
+
+    // Notification system
+    const notificationBtn = document.getElementById('notificationBtn');
+    const notificationDropdown = document.getElementById('notificationDropdown');
+    const notificationCount = document.getElementById('notificationCount');
+    const notificationList = document.getElementById('notificationList');
+    const markAllReadBtn = document.getElementById('markAllRead');
+
+    // Load notifications on page load
+    loadNotifications();
+    updateNotificationCount();
+
+    // Refresh notifications every 30 seconds
+    setInterval(() => {
+        updateNotificationCount();
+    }, 30000);
+
+    notificationBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        notificationDropdown.classList.toggle('show');
+        if (notificationDropdown.classList.contains('show')) {
+            loadNotifications();
+        }
+    });
+
+    markAllReadBtn.addEventListener('click', () => {
+        markAllAsRead();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!notificationBtn.contains(e.target) && !notificationDropdown.contains(e.target)) {
+            notificationDropdown.classList.remove('show');
+        }
+    });
+
+    function loadNotifications() {
+        fetch('includes/notification-api.php?action=get')
+            .then(response => response.json())
+            .then(notifications => {
+                displayNotifications(notifications);
+            })
+            .catch(error => {
+                console.error('Error loading notifications:', error);
+                notificationList.innerHTML = '<div class="p-4 text-center text-red-500">Error loading notifications</div>';
+            });
+    }
+
+    function updateNotificationCount() {
+        fetch('includes/notification-api.php?action=count')
+            .then(response => response.json())
+            .then(data => {
+                const count = data.count;
+                if (count > 0) {
+                    notificationCount.textContent = count;
+                    notificationCount.style.display = 'flex';
+                } else {
+                    notificationCount.style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Error updating count:', error));
+    }
+
+    function displayNotifications(notifications) {
+        if (notifications.length === 0) {
+            notificationList.innerHTML = '<div class="p-4 text-center text-gray-500">No notifications</div>';
+            return;
+        }
+
+        const html = notifications.map(notification => {
+            const typeColors = {
+                'info': 'bg-blue-500',
+                'success': 'bg-green-500',
+                'warning': 'bg-yellow-500',
+                'error': 'bg-red-500'
+            };
+            
+            return `
+                <div class="p-3 border-b hover:bg-gray-50 cursor-pointer notification-item ${notification.is_read ? 'opacity-60' : ''}" data-id="${notification.id}">
+                    <div class="flex items-start space-x-3">
+                        <div class="w-2 h-2 ${typeColors[notification.type]} rounded-full mt-2 flex-shrink-0"></div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-800">${notification.title}</p>
+                            <p class="text-xs text-gray-500 mt-1">${notification.message}</p>
+                            <p class="text-xs text-gray-400 mt-1">${notification.time_ago}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        notificationList.innerHTML = html;
+
+        // Add click handlers to mark as read
+        document.querySelectorAll('.notification-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const id = item.dataset.id;
+                markAsRead(id);
+                item.classList.add('opacity-60');
+            });
+        });
+    }
+
+    function markAsRead(notificationId) {
+        const formData = new FormData();
+        formData.append('notification_id', notificationId);
+
+        fetch('includes/notification-api.php?action=mark_read', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateNotificationCount();
+            }
+        })
+        .catch(error => console.error('Error marking as read:', error));
+    }
+
+    function markAllAsRead() {
+        fetch('includes/notification-api.php?action=mark_all_read', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadNotifications();
+                updateNotificationCount();
+            }
+        })
+        .catch(error => console.error('Error marking all as read:', error));
+    }
+
+    // Function to update page title based on clicked link
+    function updatePageTitle(linkText) {
+        const titleElement = document.getElementById('page-title');
+        titleElement.textContent = linkText;
+        // Store the title in localStorage
+        localStorage.setItem('selectedPageTitle', linkText);
+    }
+
+    // Add click event listeners to all navigation links
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if there's a stored title and restore it
+        const storedTitle = localStorage.getItem('selectedPageTitle');
+        if (storedTitle) {
+            document.getElementById('page-title').textContent = storedTitle;
+        }
+
+        const navLinks = document.querySelectorAll('nav a');
+        
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                // Use data attribute if available, otherwise use text content
+                const pageTitle = this.dataset.pageTitle || this.querySelector('.nav-text').textContent.trim();
+                updatePageTitle(pageTitle);
+            });
+        });
+
+    });
+</script>
+
+</body>
+</html>
+            </button>
+            <div id="notificationDropdown" class="notification-dropdown absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50">
+                <div class="p-4 border-b">
+                    <h3 class="font-semibold text-gray-800">Notifications</h3>
+                </div>
+                <div id="notificationList" class="max-h-64 overflow-y-auto">
+                    <div class="p-4 text-center text-gray-500">
+                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                    </div>
+                </div>
+                <div class="p-3 border-t text-center">
+                    <button id="markAllRead" class="text-sm text-blue-600 hover:text-blue-800">Mark all as read</button>
+                </div>
+            </div>
+        </div>
         <div class="relative group">
             <button class="flex items-center space-x-2 focus:outline-none">
                 <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white">
@@ -241,6 +485,139 @@ $greeting = "Hello, " . match($role) {
     toggleBtn.addEventListener('click', () => {
         sidebar.classList.toggle('sidebar-collapsed');
     });
+
+    // Notification system
+    const notificationBtn = document.getElementById('notificationBtn');
+    const notificationDropdown = document.getElementById('notificationDropdown');
+    const notificationCount = document.getElementById('notificationCount');
+    const notificationList = document.getElementById('notificationList');
+    const markAllReadBtn = document.getElementById('markAllRead');
+
+    // Load notifications on page load
+    loadNotifications();
+    updateNotificationCount();
+
+    // Refresh notifications every 30 seconds
+    setInterval(() => {
+        updateNotificationCount();
+    }, 30000);
+
+    notificationBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        notificationDropdown.classList.toggle('show');
+        if (notificationDropdown.classList.contains('show')) {
+            loadNotifications();
+        }
+    });
+
+    markAllReadBtn.addEventListener('click', () => {
+        markAllAsRead();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!notificationBtn.contains(e.target) && !notificationDropdown.contains(e.target)) {
+            notificationDropdown.classList.remove('show');
+        }
+    });
+
+    function loadNotifications() {
+        fetch('includes/notification-api.php?action=get')
+            .then(response => response.json())
+            .then(notifications => {
+                displayNotifications(notifications);
+            })
+            .catch(error => {
+                console.error('Error loading notifications:', error);
+                notificationList.innerHTML = '<div class="p-4 text-center text-red-500">Error loading notifications</div>';
+            });
+    }
+
+    function updateNotificationCount() {
+        fetch('includes/notification-api.php?action=count')
+            .then(response => response.json())
+            .then(data => {
+                const count = data.count;
+                if (count > 0) {
+                    notificationCount.textContent = count;
+                    notificationCount.style.display = 'flex';
+                } else {
+                    notificationCount.style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Error updating count:', error));
+    }
+
+    function displayNotifications(notifications) {
+        if (notifications.length === 0) {
+            notificationList.innerHTML = '<div class="p-4 text-center text-gray-500">No notifications</div>';
+            return;
+        }
+
+        const html = notifications.map(notification => {
+            const typeColors = {
+                'info': 'bg-blue-500',
+                'success': 'bg-green-500',
+                'warning': 'bg-yellow-500',
+                'error': 'bg-red-500'
+            };
+            
+            return `
+                <div class="p-3 border-b hover:bg-gray-50 cursor-pointer notification-item ${notification.is_read ? 'opacity-60' : ''}" data-id="${notification.id}">
+                    <div class="flex items-start space-x-3">
+                        <div class="w-2 h-2 ${typeColors[notification.type]} rounded-full mt-2 flex-shrink-0"></div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-800">${notification.title}</p>
+                            <p class="text-xs text-gray-500 mt-1">${notification.message}</p>
+                            <p class="text-xs text-gray-400 mt-1">${notification.time_ago}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        notificationList.innerHTML = html;
+
+        // Add click handlers to mark as read
+        document.querySelectorAll('.notification-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const id = item.dataset.id;
+                markAsRead(id);
+                item.classList.add('opacity-60');
+            });
+        });
+    }
+
+    function markAsRead(notificationId) {
+        const formData = new FormData();
+        formData.append('notification_id', notificationId);
+
+        fetch('includes/notification-api.php?action=mark_read', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateNotificationCount();
+            }
+        })
+        .catch(error => console.error('Error marking as read:', error));
+    }
+
+    function markAllAsRead() {
+        fetch('includes/notification-api.php?action=mark_all_read', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadNotifications();
+                updateNotificationCount();
+            }
+        })
+        .catch(error => console.error('Error marking all as read:', error));
+    }
 
     // Function to update page title based on clicked link
     function updatePageTitle(linkText) {

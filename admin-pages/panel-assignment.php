@@ -223,6 +223,16 @@ $emailContent = "
                         
                         $mail->send();
                         $sent_count++;
+                        
+                        // Include notification helper and send notification
+                        include('../includes/notification-helper.php');
+                        
+                        // Create notification for admin about sent invitation
+                        notifyAllAdmins($conn, 
+                            "Panel Invitation Sent", 
+                            "Panel invitation has been sent to {$panel['first_name']} {$panel['last_name']} ({$panel['email']}).", 
+                            "info"
+                        );
                     } catch (Exception $e) {
                         $error_count++;
                         $error_details[] = "Message could not be sent to {$panel['email']}. Mailer Error: {$mail->ErrorInfo}";

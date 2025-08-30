@@ -97,6 +97,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             VALUES ('$group_id', '$title', '$description', '$target_file')";
             
             if (mysqli_query($conn, $insert_query)) {
+                // Include notification helper
+                include('../includes/notification-helper.php');
+                
+                // Get student name for notification
+                $student_query = "SELECT sp.full_name FROM student_profiles sp WHERE sp.user_id = '$user_id'";
+                $student_result = mysqli_query($conn, $student_query);
+                $student_data = mysqli_fetch_assoc($student_result);
+                $student_name = $student_data['full_name'] ?? 'Student';
+                
+                // Notify the student
+                notifyUser($conn, $user_id, 
+                    "Proposal Submitted Successfully", 
+                    "Your research proposal '$title' has been submitted and is under review.", 
+                    "success"
+                );
+                
+                // Notify all admins
+                notifyAllAdmins($conn, 
+                    "New Proposal Submitted", 
+                    "$student_name submitted a new research proposal '$title' for review.", 
+                    "info"
+                );
+                
                 $success_message = "Proposal submitted successfully!";
                 $has_proposal = true;
                 header("Location: ../student_pages/proposal.php");
@@ -180,26 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
     
-    if (isset($_POST['leave_group'])) {
-        // Remove user from group_members
-        $leave_query = "DELETE FROM group_members WHERE group_id = '$group_id' AND student_id = '$user_id'";
-        if (mysqli_query($conn, $leave_query)) {
-            // Reset student's cluster in student_profiles
-            $reset_cluster_query = "UPDATE student_profiles 
-                                    SET cluster = NULL, updated_at = NOW() 
-                                    WHERE user_id = '$user_id'";
-            if (mysqli_query($conn, $reset_cluster_query)) {
-                $success_message = "You have left the group and your cluster has been reset.";
-            } else {
-                $error_message = "Left the group, but error resetting cluster: " . mysqli_error($conn);
-            }
 
-            header("Location: ../student_pages/proposal.php");
-            exit();
-        } else {
-            $error_message = "Error leaving group: " . mysqli_error($conn);
-        }
-    }
     
     if (isset($_POST['make_payment'])) {
         // Simulate payment processing
@@ -304,9 +308,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
             });
         }
         
-        function confirmLeaveGroup() {
-            return confirm("Are you sure you want to leave this program group?");
-        }
+
         
         function confirmRemoveMember(memberName) {
             return confirm("Are you sure you want to remove " + memberName + " from the group?");
@@ -380,14 +382,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                         </div>
                     </div>
 
-                    <?php if ($has_group): ?>
-                        <form method="POST" onsubmit="return confirmLeaveGroup();">
-                            <button type="submit" name="leave_group" 
-                                class="flex items-center bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow-sm transition-all duration-200">
-                                <i class="fas fa-sign-out-alt mr-2"></i> Leave Group
-                            </button>
-                        </form>
-                    <?php endif; ?>
+
                 </div>
 
                 <?php if ($has_group): ?>

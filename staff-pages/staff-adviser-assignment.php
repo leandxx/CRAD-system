@@ -715,10 +715,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_students'])) {
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Select Adviser</label>
-                        <select name="faculty_id" class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary" required>
+                        <select name="faculty_id" id="faculty_select" class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary" required>
                             <option value="">Select an adviser</option>
                             <?php foreach ($faculty as $f): ?>
-                            <option value="<?php echo $f['id']; ?>"><?php echo $f['fullname']; ?> - <?php echo $f['department']; ?> (<?php echo $f['expertise']; ?>)</option>
+                            <option value="<?php echo $f['id']; ?>" data-department="<?php echo $f['department']; ?>"><?php echo $f['fullname']; ?> - <?php echo $f['department']; ?> (<?php echo $f['expertise']; ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -770,7 +770,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_students'])) {
                         <select name="faculty_id" id="edit_faculty_id" class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary" required>
                             <option value="">Select an adviser</option>
                             <?php foreach ($faculty as $f): ?>
-                            <option value="<?php echo $f['id']; ?>"><?php echo $f['fullname']; ?> - <?php echo $f['department']; ?> (<?php echo $f['expertise']; ?>)</option>
+                            <option value="<?php echo $f['id']; ?>" data-department="<?php echo $f['department']; ?>"><?php echo $f['fullname']; ?> - <?php echo $f['department']; ?> (<?php echo $f['expertise']; ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -926,6 +926,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_students'])) {
             } else {
                 document.getElementById('modal_cluster_number').value = 'Cluster ' + clusterId;
             }
+            
+            // Filter faculty by program compatibility
+            const facultySelect = document.getElementById('faculty_select');
+            const options = facultySelect.querySelectorAll('option');
+            
+            options.forEach(option => {
+                if (option.value === '') {
+                    option.style.display = 'block';
+                } else {
+                    const department = option.getAttribute('data-department');
+                    const programMatch = 
+                        (course.includes('Computer Science') && department === 'Information Technology') ||
+                        (course.includes('Information Technology') && department === 'Information Technology') ||
+                        (course.includes('Business') && department === 'Accounting') ||
+                        (course.includes('Accounting') && department === 'Accounting') ||
+                        (course.includes('Education') && department === 'Education') ||
+                        (course.includes('Criminology') && department === 'Criminology') ||
+                        (course.includes('Tourism') && department === 'Tourism') ||
+                        (course.includes('Hospitality') && department === 'Hospitality Management');
+                    
+                    option.style.display = programMatch ? 'block' : 'none';
+                }
+            });
             
             toggleModal('assignmentModal');
         }

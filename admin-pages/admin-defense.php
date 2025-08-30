@@ -11,32 +11,24 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'Admin') {
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['schedule_defense'])) {
-        $group_id = mysqli_real_escape_string($conn, $_POST['group_id']);
         $defense_date = mysqli_real_escape_string($conn, $_POST['defense_date']);
+        $program = mysqli_real_escape_string($conn, $_POST['program']);
+        $set_number = mysqli_real_escape_string($conn, $_POST['set_number']);
+        $chairperson_id = mysqli_real_escape_string($conn, $_POST['chairperson_id']);
+        $member_id = mysqli_real_escape_string($conn, $_POST['member_id']);
+        $adviser_id = mysqli_real_escape_string($conn, $_POST['adviser_id']);
+        $group_number = mysqli_real_escape_string($conn, $_POST['group_number']);
+        $defense_time = mysqli_real_escape_string($conn, $_POST['defense_time']);
+        $number_of_groups = mysqli_real_escape_string($conn, $_POST['number_of_groups']);
         $start_time = mysqli_real_escape_string($conn, $_POST['start_time']);
         $end_time = mysqli_real_escape_string($conn, $_POST['end_time']);
-        $room_id = mysqli_real_escape_string($conn, $_POST['room_id']);
-        $panel_members = isset($_POST['panel_members']) ? $_POST['panel_members'] : [];
-
-        // Default status = scheduled
-        $status = 'scheduled';
 
         // Insert defense schedule
         $schedule_query = "INSERT INTO defense_schedules 
-                          (group_id, defense_date, start_time, end_time, room_id, status) 
-                          VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status')";
+                          (defense_date, program, set_number, chairperson_id, member_id, adviser_id, group_number, defense_time, number_of_groups, start_time, end_time, status) 
+                          VALUES ('$defense_date', '$program', '$set_number', '$chairperson_id', '$member_id', '$adviser_id', '$group_number', '$defense_time', '$number_of_groups', '$start_time', '$end_time', 'scheduled')";
 
         if (mysqli_query($conn, $schedule_query)) {
-            $defense_id = mysqli_insert_id($conn);
-
-            // Insert panel members
-            foreach ($panel_members as $faculty_id) {
-                $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
-                $panel_query = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
-                               VALUES ('$defense_id', '$faculty_id', 'member')";
-                mysqli_query($conn, $panel_query);
-            }
-
             $_SESSION['success_message'] = "Defense scheduled successfully!";
             header("Location: admin-defense.php");
             exit();
@@ -100,16 +92,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// Get all defense schedules
-$defense_query = "SELECT ds.*, g.name as group_name, r.room_name, r.building, p.title as proposal_title,
-                 GROUP_CONCAT(CONCAT(pm.first_name, ' ', pm.last_name) SEPARATOR ', ') as panel_names
+// Get faculty data
+$faculty_query = "SELECT * FROM faculty ORDER BY department, fullname";
+$faculty_result = mysqli_query($conn, $faculty_query);
+$faculty = [];
+while ($f = mysqli_fetch_assoc($faculty_result)) {
+    $faculty[] = $f;
+}
+
+// Get all defense schedules with faculty names
+$defense_query = "SELECT ds.*, 
+                 c.fullname as chairperson_name,
+                 m.fullname as member_name,
+                 a.fullname as adviser_name
                  FROM defense_schedules ds 
-                 LEFT JOIN groups g ON ds.group_id = g.id 
-                 LEFT JOIN rooms r ON ds.room_id = r.id 
-                 LEFT JOIN proposals p ON g.id = p.group_id
-                 LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
-                 LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
-                 GROUP BY ds.id
+                 LEFT JOIN faculty c ON ds.chairperson_id = c.id
+                 LEFT JOIN faculty m ON ds.member_id = m.id
+                 LEFT JOIN faculty a ON ds.adviser_id = a.id
                  ORDER BY ds.defense_date, ds.start_time";
 $defense_result = mysqli_query($conn, $defense_query);
 $defense_schedules = [];
@@ -516,8 +515,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                          data-status="<?php echo $schedule['status']; ?>" 
                          data-defense-id="<?php echo $schedule['id']; ?>">
                         <div>
-                            <h3 class="text-lg font-semibold text-gray-900"><?php echo $schedule['proposal_title'] ?? 'No Title'; ?></h3>
-                            <p class="text-sm text-gray-500 mb-3"><?php echo $schedule['group_name']; ?></p>
+                            <h3 class="text-lg font-semibold text-gray-900"><?php echo $schedule['program']; ?> - Set <?php echo $schedule['set_number']; ?></h3>
+                            <p class="text-sm text-gray-500 mb-3">Group <?php echo $schedule['group_number']; ?></p>
 
                             <p class="text-sm text-gray-700 mb-1">
                                 <i class="fas fa-calendar mr-2 text-gray-400"></i>
@@ -525,17 +524,20 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                             </p>
                             <p class="text-sm text-gray-700 mb-1">
                                 <i class="fas fa-clock mr-2 text-gray-400"></i>
-                                <?php echo date('g:i A', strtotime($schedule['start_time'])); ?> - 
-                                <?php echo date('g:i A', strtotime($schedule['end_time'])); ?>
+                                <?php echo date('g:i A', strtotime($schedule['defense_time'])); ?>
                             </p>
                             <p class="text-sm text-gray-700 mb-1">
-                                <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>
-                                <?php echo $schedule['building'] . ' ' . $schedule['room_name']; ?>
+                                <i class="fas fa-users mr-2 text-gray-400"></i>
+                                Chair: <?php echo $schedule['chairperson_name'] ?? 'Not assigned'; ?>
+                            </p>
+                            <p class="text-sm text-gray-700 mb-1">
+                                <i class="fas fa-user mr-2 text-gray-400"></i>
+                                Member: <?php echo $schedule['member_name'] ?? 'Not assigned'; ?>
                             </p>
                             <p class="text-sm text-gray-700 mb-3">
-    <i class="fas fa-users mr-2 text-gray-400"></i>
-    <?php echo !empty($schedule['panel_names']) ? $schedule['panel_names'] : 'No panel assigned'; ?>
-</p>
+                                <i class="fas fa-user-tie mr-2 text-gray-400"></i>
+                                Adviser: <?php echo $schedule['adviser_name'] ?? 'Not assigned'; ?>
+                            </p>
                         </div>
 
                         <!-- Status & Actions -->
@@ -644,33 +646,74 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </button>
             </div>
             <form method="POST" action="" class="p-6">
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-medium mb-2" for="group_id">Select Group</label>
-                    <select name="group_id" id="group_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        <option value="">Select a group</option>
-                        <?php foreach ($groups as $group): ?>
-                        <option value="<?php echo $group['id']; ?>"><?php echo $group['name'] . ' - ' . $group['proposal_title']; ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="defense_date">Date</label>
+                        <input type="date" name="defense_date" id="defense_date" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="program">Program</label>
+                        <select name="program" id="program" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">Select Program</option>
+                            <option value="BSCS">BSCS</option>
+                            <option value="BSIT">BSIT</option>
+                            <option value="BSBA">BSBA</option>
+                            <option value="BSED">BSED</option>
+                            <option value="BSCRIM">BSCRIM</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label class="block text-gray-700 text-sm font-medium mb-2" for="defense_date">Defense Date</label>
-                        <input type="date" name="defense_date" id="defense_date" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="set_number">Set</label>
+                        <input type="number" name="set_number" id="set_number" min="1" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                     </div>
                     <div>
-                        <label class="block text-gray-700 text-sm font-medium mb-2" for="room_id">Room</label>
-                        <select name="room_id" id="room_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                            <option value="">Select a room</option>
-                            <?php foreach ($rooms as $room): ?>
-                            <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="group_number">Group No.</label>
+                        <input type="text" name="group_number" id="group_number" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="chairperson_id">Chairperson</label>
+                        <select name="chairperson_id" id="chairperson_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">Select Chairperson</option>
+                            <?php foreach ($faculty as $f): ?>
+                            <option value="<?php echo $f['id']; ?>"><?php echo $f['fullname']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="member_id">Member</label>
+                        <select name="member_id" id="member_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">Select Member</option>
+                            <?php foreach ($faculty as $f): ?>
+                            <option value="<?php echo $f['id']; ?>"><?php echo $f['fullname']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="adviser_id">Adviser</label>
+                        <select name="adviser_id" id="adviser_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">Select Adviser</option>
+                            <?php foreach ($faculty as $f): ?>
+                            <option value="<?php echo $f['id']; ?>"><?php echo $f['fullname']; ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="defense_time">Time</label>
+                        <input type="time" name="defense_time" id="defense_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="number_of_groups">Number of Groups</label>
+                        <input type="number" name="number_of_groups" id="number_of_groups" min="1" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2" for="start_time">Start Time</label>
                         <input type="time" name="start_time" id="start_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
@@ -680,30 +723,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         <input type="time" name="end_time" id="end_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                     </div>
                 </div>
-                
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-medium mb-2">Panel Members</label>
-                    
-                    <!-- Panel Tabs -->
-                    <div class="panel-tabs mb-3">
-                        <div class="panel-tab active" data-tab="accepted" onclick="switchPanelTab('accepted')">Accepted Panel</div>
-                    </div>
-                    
-                    <!-- Accepted Panel Content -->
-                    <div class="panel-content active" data-tab="accepted">
-                        <?php if (!empty($accepted_panel_members)): ?>
-                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg">
-                            <?php foreach ($accepted_panel_members as $panel_member): ?>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-2 rounded text-primary focus:ring-primary">
-                                <span><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name'] . ' (' . $panel_member['email'] . ')'; ?></span>
-                            </label>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php else: ?>
-                        <p class="text-gray-500 text-sm p-2 border rounded-lg">No accepted panel members found.</p>
-                        <?php endif; ?>
-                    </div>
                 
                 <div class="flex justify-end gap-3 pt-4 border-t">
                     <button type="button" onclick="toggleModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>

@@ -128,6 +128,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $stmt->close();
 
+        // Include notification helper and send notifications
+        include('../includes/notification-helper.php');
+        
+        // Get proposal and group information
+        $proposal_info_query = "SELECT p.title, g.name as group_name, gm.student_id 
+                               FROM proposals p 
+                               JOIN groups g ON p.group_id = g.id 
+                               JOIN group_members gm ON g.id = gm.group_id 
+                               WHERE p.id = '$proposal_id'";
+        $proposal_info_result = mysqli_query($conn, $proposal_info_query);
+        
+        // Notify all students in the group
+        while ($student = mysqli_fetch_assoc($proposal_info_result)) {
+            $type = $status === 'approved' ? 'success' : 'warning';
+            $message = $status === 'approved' 
+                ? "Your research proposal '{$student['title']}' has been approved!" 
+                : "Your research proposal '{$student['title']}' status has been updated to: $db_status. $feedback";
+            
+            notifyUser($conn, $student['student_id'], 
+                "Proposal " . ucfirst($status), 
+                $message, 
+                $type
+            );
+        }
+
         $_SESSION['success_message'] = "Proposal status updated successfully!";
         header("Location: " . $_SERVER['REQUEST_URI']);
         exit();

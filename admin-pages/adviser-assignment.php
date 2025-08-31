@@ -1259,8 +1259,15 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="fullname" required>
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 mb-2">Department</label>
-                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="department" required>
+                            <label class="block text-gray-700 mb-2">Program</label>
+                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="department" required>
+                                <option value="">-- Select Program --</option>
+                                <option value="Computer Science">Computer Science</option>
+                                <option value="Information Technology">Information Technology</option>
+                                <option value="Business Administration">Business Administration</option>
+                                <option value="Education">Education</option>
+                                <option value="Criminology">Criminology</option>
+                            </select>
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 mb-2">Expertise/Field</label>
@@ -1298,8 +1305,15 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="fullname" id="edit_fullname" required>
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 mb-2">Department</label>
-                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="department" id="edit_department" required>
+                            <label class="block text-gray-700 mb-2">Program</label>
+                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" name="department" id="edit_department" required>
+                                <option value="">-- Select Program --</option>
+                                <option value="Computer Science">Computer Science</option>
+                                <option value="Information Technology">Information Technology</option>
+                                <option value="Business Administration">Business Administration</option>
+                                <option value="Education">Education</option>
+                                <option value="Criminology">Criminology</option>
+                            </select>
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 mb-2">Expertise/Field</label>

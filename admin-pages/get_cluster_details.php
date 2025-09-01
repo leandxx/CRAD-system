@@ -25,11 +25,12 @@ if (!$cluster_result || mysqli_num_rows($cluster_result) == 0) {
 
 $cluster = mysqli_fetch_assoc($cluster_result);
 
-// Get students in this cluster
+// Get students in this cluster (program-specific)
 $cluster_name = $cluster['cluster'];
+$cluster_program = $cluster['program'];
 $students_query = "SELECT sp.id, sp.school_id, sp.full_name, sp.program
                    FROM student_profiles sp
-                   WHERE sp.cluster = '$cluster_name'
+                   WHERE sp.cluster = '$cluster_name' AND sp.program = '$cluster_program'
                    ORDER BY sp.full_name ASC";
 $students_result = mysqli_query($conn, $students_query);
 

@@ -22,7 +22,7 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Proposal Submission</title>
-    <link rel="icon" href="../assets/img/sms-logo.png" type="image/png">
+    <link rel="icon" href="assets/img/sms-logo.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -240,7 +240,7 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
                 <div class="mt-4 lg:mt-0">
                     <div class="bg-white/20 backdrop-blur-sm rounded-xl p-4">
                         <div class="text-center">
-                            <div class="text-2xl font-bold"><?= date('M d, Y') ?></div>
+                            <div class="text-2xl font-bold"><?= date('F d, Y') ?></div>
                             <div class="text-sm text-blue-100"><?= date('l') ?></div>
                         </div>
                     </div>

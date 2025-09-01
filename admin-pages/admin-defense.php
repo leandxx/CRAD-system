@@ -18,6 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $end_time = mysqli_real_escape_string($conn, $_POST['end_time']);
         $room_id = mysqli_real_escape_string($conn, $_POST['room_id']);
         $panel_members = isset($_POST['panel_members']) ? $_POST['panel_members'] : [];
+        $defense_type = mysqli_real_escape_string($conn, $_POST['defense_type'] ?? 'initial');
+        $parent_defense_id = !empty($_POST['parent_defense_id']) ? mysqli_real_escape_string($conn, $_POST['parent_defense_id']) : 'NULL';
+        $redefense_reason = !empty($_POST['redefense_reason']) ? mysqli_real_escape_string($conn, $_POST['redefense_reason']) : 'NULL';
         
         // Validate required fields
         if (empty($group_id) || empty($defense_date) || empty($start_time) || empty($end_time) || empty($room_id)) {
@@ -50,8 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // Insert defense schedule
         $schedule_query = "INSERT INTO defense_schedules 
-                          (group_id, defense_date, start_time, end_time, room_id, status) 
-                          VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status')";
+                          (group_id, defense_date, start_time, end_time, room_id, status, defense_type, parent_defense_id, redefense_reason) 
+                          VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status', '$defense_type', $parent_defense_id, '$redefense_reason')";
 
         if (mysqli_query($conn, $schedule_query)) {
             $defense_id = mysqli_insert_id($conn);
@@ -86,6 +89,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
+    if (isset($_POST['mark_failed'])) {
+        $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
+        $update_query = "UPDATE defense_schedules SET status = 'failed' WHERE id = '$defense_id'";
+        if (mysqli_query($conn, $update_query)) {
+            $_SESSION['success_message'] = "Defense marked as failed. You can now schedule a redefense.";
+        } else {
+            $error_message = "Error updating defense status: " . mysqli_error($conn);
+        }
+        header("Location: admin-defense.php");
+        exit();
+    }
+
     if (isset($_POST['delete_schedule'])) {
         $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
 
@@ -114,9 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $panel_members = isset($_POST['panel_members']) ? $_POST['panel_members'] : [];
         
         // Validate required fields
-        if (empty($defense_id) || empty($defense_date) || empty($start_time) || empty($end_time) || empty($room_id)) {
-            $error_message = "All fields are required for updating a defense.";
-        } elseif (strtotime($defense_date) < strtotime(date('Y-m-d'))) {
+        if (strtotime($defense_date) < strtotime(date('Y-m-d'))) {
             $error_message = "Defense date cannot be in the past.";
         } elseif (strtotime($start_time) >= strtotime($end_time)) {
             $error_message = "End time must be after start time.";
@@ -293,7 +306,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Defense Scheduling</title>
-    <link rel="icon" href="../assets/img/sms-logo.png" type="image/png">
+    <link rel="icon" href="assets/img/sms-logo.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -354,14 +367,78 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             transform: translateY(-8px) scale(1.02);
             box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.15);
         }
-        .modal {
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            transform: scale(0.95);
-            opacity: 0;
+        .modal-overlay {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4));
+            backdrop-filter: blur(4px);
+            transition: all 300ms ease-in-out;
         }
-        .modal.active {
-            transform: scale(1);
+        .modal-content {
+            transform: translateY(-30px) scale(0.95);
+            transition: all 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .modal-active {
             opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content-active {
+            transform: translateY(0) scale(1);
+        }
+        .custom-scrollbar-blue::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar-blue::-webkit-scrollbar-track {
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 10px;
+        }
+        .custom-scrollbar-blue::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.4);
+            border-radius: 10px;
+        }
+        .custom-scrollbar-blue::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.6);
+        }
+        .custom-scrollbar-indigo::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar-indigo::-webkit-scrollbar-track {
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 10px;
+        }
+        .custom-scrollbar-indigo::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.4);
+            border-radius: 10px;
+        }
+        .custom-scrollbar-indigo::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.6);
+        }
+        .custom-scrollbar-green::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar-green::-webkit-scrollbar-track {
+            background: rgba(34, 197, 94, 0.1);
+            border-radius: 10px;
+        }
+        .custom-scrollbar-green::-webkit-scrollbar-thumb {
+            background: rgba(34, 197, 94, 0.4);
+            border-radius: 10px;
+        }
+        .custom-scrollbar-green::-webkit-scrollbar-thumb:hover {
+            background: rgba(34, 197, 94, 0.6);
+        }
+        .custom-scrollbar-red::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar-red::-webkit-scrollbar-track {
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 10px;
+        }
+        .custom-scrollbar-red::-webkit-scrollbar-thumb {
+            background: rgba(239, 68, 68, 0.4);
+            border-radius: 10px;
+        }
+        .custom-scrollbar-red::-webkit-scrollbar-thumb:hover {
+            background: rgba(239, 68, 68, 0.6);
         }
         .stats-card {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
@@ -464,26 +541,93 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             }
         }
 
+        // ===== MODAL FUNCTIONS =====
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modal.classList.add('modal-active');
+
+                const modalContent = modal.querySelector('.modal-content');
+                if (modalContent) {
+                    setTimeout(() => {
+                        modalContent.classList.add('modal-content-active');
+                    }, 10);
+                }
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+
+            const modalContent = modal.querySelector('.modal-content');
+            if (modalContent) {
+                modalContent.classList.remove('modal-content-active');
+            }
+
+            setTimeout(() => {
+                modal.classList.remove('modal-active');
+                modal.classList.add('opacity-0', 'pointer-events-none');
+            }, 200);
+        }
+
         function toggleModal() {
             const modal = document.getElementById('proposalModal');
-            modal.classList.toggle('hidden');
-            modal.classList.toggle('flex');
+            if (modal.classList.contains('opacity-0')) {
+                openModal('proposalModal');
+            } else {
+                closeModal('proposalModal');
+            }
         }
 
         function toggleEditModal() {
             const modal = document.getElementById('editDefenseModal');
-            modal.classList.toggle('hidden');
-            modal.classList.toggle('flex');
+            if (modal.classList.contains('opacity-0')) {
+                openModal('editDefenseModal');
+            } else {
+                closeModal('editDefenseModal');
+            }
         }
         
         function toggleDetailsModal() {
             const modal = document.getElementById('detailsModal');
-            modal.classList.toggle('hidden');
-            modal.classList.toggle('flex');
-            setTimeout(() => {
-                modal.classList.toggle('active');
-            }, 10);
+            if (modal.classList.contains('opacity-0')) {
+                openModal('detailsModal');
+            } else {
+                closeModal('detailsModal');
+            }
         }
+
+        // ===== CLICK OUTSIDE TO CLOSE =====
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                closeModal(event.target.id);
+            }
+        });
+
+        // ===== ESC KEY TO CLOSE =====
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay').forEach(modal => {
+                    if (!modal.classList.contains('opacity-0')) {
+                        closeModal(modal.id);
+                    }
+                });
+            }
+        });
+
+        // ===== DELETE MODAL =====
+        function showDeleteModal(defenseId, groupName) {
+            document.getElementById('defense_id').value = defenseId;
+            openModal('deleteConfirmModal');
+        }
+
+        // Make function globally accessible
+        window.showDeleteModal = showDeleteModal;
+        window.confirmDelete = confirmDelete;
+        window.openModal = openModal;
+        window.closeModal = closeModal;
         
         // Function to handle status filtering
         function filterStatus(status) {
@@ -530,10 +674,29 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         
         // Function to confirm deletion
         function confirmDelete(defenseId, groupName) {
-            if (confirm(`Are you sure you want to delete the defense schedule for ${groupName}?`)) {
-                document.getElementById('defense_id').value = defenseId;
-                document.getElementById('deleteForm').submit();
+            showDeleteModal(defenseId, groupName);
+        }
+        
+        // Function to mark defense as failed
+        function markFailed(defenseId) {
+            if (confirm('Mark this defense as failed? This will allow scheduling a redefense.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `<input type="hidden" name="defense_id" value="${defenseId}"><input type="hidden" name="mark_failed" value="1">`;
+                document.body.appendChild(form);
+                form.submit();
             }
+        }
+        
+        // Function to schedule redefense
+        function scheduleRedefense(groupId, parentDefenseId) {
+            document.getElementById('defense_type').value = 'redefense';
+            document.getElementById('parent_defense_id').value = parentDefenseId;
+            document.getElementById('group_id').value = groupId;
+            document.getElementById('group_id').disabled = true;
+            document.getElementById('redefense_reason_div').classList.remove('hidden');
+            document.querySelector('#proposalModal h3').textContent = 'Schedule Redefense';
+            toggleModal();
         }
         
         // Function to view defense details
@@ -624,6 +787,215 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             }
         }
         
+        // Function to validate defense duration (minimum 30 minutes)
+        function validateDefenseDuration() {
+            const startTime = document.getElementById('start_time').value;
+            const endTime = document.getElementById('end_time').value;
+            
+            if (startTime && endTime) {
+                const start = new Date('1970-01-01T' + startTime);
+                const end = new Date('1970-01-01T' + endTime);
+                const duration = (end - start) / (1000 * 60); // minutes
+                
+                if (duration < 30) {
+                    alert('Defense duration must be at least 30 minutes.');
+                    return false;
+                }
+                
+                // Suggest optimal end time if duration is not in 30-minute increments
+                if (duration % 30 !== 0) {
+                    const optimalDuration = Math.ceil(duration / 30) * 30;
+                    const optimalEnd = new Date(start.getTime() + optimalDuration * 60000);
+                    const optimalEndTime = optimalEnd.toTimeString().slice(0, 5);
+                    
+                    if (confirm(`For optimal room usage, consider extending to ${optimalEndTime} (${optimalDuration} minutes total). Update end time?`)) {
+                        document.getElementById('end_time').value = optimalEndTime;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        // Function to populate available time slots
+        function populateTimeSlots() {
+            const roomId = document.getElementById('room_id').value;
+            const date = document.getElementById('defense_date').value;
+            const timeSlotSelect = document.getElementById('time_slot');
+            
+            if (!roomId || !date) {
+                timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+                return;
+            }
+            
+            timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+            
+            fetch('admin-pages/get_room_availability.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const room = data.find(r => r.id == roomId);
+                const slots = generateTimeSlots(room ? room.schedules : []);
+                
+                timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+                slots.forEach(slot => {
+                    const option = document.createElement('option');
+                    option.value = `${slot.start}|${slot.end}`;
+                    option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                    timeSlotSelect.appendChild(option);
+                });
+                
+                if (slots.length === 0) {
+                    timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+            });
+        }
+        
+        // Function to generate available time slots
+        function generateTimeSlots(schedules) {
+            const slots = [];
+            const workStart = 9 * 60; // 9:00 AM
+            const workEnd = 17 * 60;  // 5:00 PM
+            
+            // Sort schedules by start time
+            schedules.sort((a, b) => {
+                const timeA = timeToMinutes(a.start_time);
+                const timeB = timeToMinutes(b.start_time);
+                return timeA - timeB;
+            });
+            
+            let currentTime = workStart;
+            
+            schedules.forEach(schedule => {
+                const startMinutes = timeToMinutes(schedule.start_time);
+                const endMinutes = timeToMinutes(schedule.end_time);
+                
+                // Add slots before this schedule
+                while (currentTime + 30 <= startMinutes) {
+                    const slotEnd = Math.min(currentTime + 30, startMinutes);
+                    if (slotEnd - currentTime >= 30) {
+                        slots.push({
+                            start: minutesToTime(currentTime),
+                            end: minutesToTime(slotEnd),
+                            duration: slotEnd - currentTime
+                        });
+                    }
+                    currentTime += 30;
+                }
+                currentTime = Math.max(currentTime, endMinutes);
+            });
+            
+            // Add remaining slots after last schedule
+            while (currentTime + 30 <= workEnd) {
+                slots.push({
+                    start: minutesToTime(currentTime),
+                    end: minutesToTime(currentTime + 30),
+                    duration: 30
+                });
+                currentTime += 30;
+            }
+            
+            return slots;
+        }
+        
+        // Helper functions
+        function timeToMinutes(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+        
+        function minutesToTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        }
+        
+        // Function to populate edit modal time slots
+        function populateEditTimeSlots() {
+            const roomId = document.getElementById('edit_room_id').value;
+            const date = document.getElementById('edit_defense_date').value;
+            const timeSlotSelect = document.getElementById('edit_time_slot');
+            const currentDefenseId = document.getElementById('edit_defense_id').value;
+            
+            if (!roomId || !date) {
+                timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+                return;
+            }
+            
+            timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+            
+            fetch('admin-pages/get_room_availability.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}&exclude_defense_id=${encodeURIComponent(currentDefenseId)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const room = data.find(r => r.id == roomId);
+                const slots = generateTimeSlots(room ? room.schedules : []);
+                
+                timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+                slots.forEach(slot => {
+                    const option = document.createElement('option');
+                    option.value = `${slot.start}|${slot.end}`;
+                    option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                    timeSlotSelect.appendChild(option);
+                });
+                
+                if (slots.length === 0) {
+                    timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+            });
+        }
+        
+        // Function to update edit modal hidden time inputs
+        function updateEditTimeInputs() {
+            const timeSlot = document.getElementById('edit_time_slot').value;
+            const durationDisplay = document.getElementById('edit_duration_display');
+            
+            if (timeSlot) {
+                const [startTime, endTime] = timeSlot.split('|');
+                document.getElementById('edit_start_time').value = startTime;
+                document.getElementById('edit_end_time').value = endTime;
+                
+                const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+                durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+            } else {
+                document.getElementById('edit_start_time').value = '';
+                document.getElementById('edit_end_time').value = '';
+                durationDisplay.textContent = 'No slot selected';
+            }
+        }
+
+        // Function to update hidden time inputs when slot is selected
+        function updateTimeInputs() {
+            const timeSlot = document.getElementById('time_slot').value;
+            const durationDisplay = document.getElementById('duration_display');
+            
+            if (timeSlot) {
+                const [startTime, endTime] = timeSlot.split('|');
+                document.getElementById('start_time').value = startTime;
+                document.getElementById('end_time').value = endTime;
+                
+                const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+                durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+            } else {
+                document.getElementById('start_time').value = '';
+                document.getElementById('end_time').value = '';
+                durationDisplay.textContent = 'No slot selected';
+            }
+        }
+
         // Function to check room availability
         function checkRoomAvailability() {
             const selectedDate = document.getElementById('availabilityDate').value;
@@ -692,46 +1064,74 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 
                 const statusIcon = hasSchedules ? 'fa-times-circle' : 'fa-check-circle';
                 
+                const gradientClass = hasSchedules ? 'from-white via-red-50 to-rose-100 border-red-200' : 'from-white via-green-50 to-emerald-100 border-green-200';
+                const iconGradient = hasSchedules ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-green-500 to-emerald-600';
+                
                 html += `
-                    <div class="bg-white border border-gray-200 rounded-xl shadow-md p-5 hover:shadow-lg transition-shadow">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex-1">
-                                <div class="flex items-center mb-2">
-                                    <i class="fas fa-door-open text-gray-400 mr-2"></i>
-                                    <h3 class="text-lg font-semibold text-gray-900">${room.room_name}</h3>
+                    <div class="defense-card bg-gradient-to-br ${gradientClass} border rounded-2xl shadow-lg p-6 relative overflow-hidden">
+                        <!-- Decorative elements -->
+                        <div class="absolute top-0 right-0 w-20 h-20 ${hasSchedules ? 'bg-red-400/10' : 'bg-green-400/10'} rounded-full -translate-y-10 translate-x-10"></div>
+                        <div class="absolute bottom-0 left-0 w-16 h-16 ${hasSchedules ? 'bg-rose-400/10' : 'bg-emerald-400/10'} rounded-full translate-y-8 -translate-x-8"></div>
+                        
+                        <div class="relative z-10">
+                            <!-- Header -->
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center">
+                                    <div class="${iconGradient} p-3 rounded-xl mr-3 shadow-lg">
+                                        <i class="fas fa-door-open text-white text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-bold text-gray-900 leading-tight">${room.room_name}</h3>
+                                        <p class="text-xs ${hasSchedules ? 'text-red-600' : 'text-green-600'} font-medium">${room.building}</p>
+                                    </div>
                                 </div>
-                                <div class="flex items-center text-sm text-gray-500 mb-1">
-                                    <i class="fas fa-building text-gray-400 mr-2"></i>
-                                    <span>${room.building}</span>
-                                </div>
-                                <div class="flex items-center text-sm text-gray-600">
-                                    <i class="fas fa-users text-gray-400 mr-2"></i>
-                                    <span>Capacity: ${room.capacity || 'N/A'}</span>
-                                </div>
-                            </div>
-                            <div class="flex flex-col items-end">
-                                <span class="px-3 py-1 text-xs font-medium rounded-full ${statusClass} flex items-center">
-                                    <i class="fas ${statusIcon} mr-1"></i>
-                                    ${statusText}
+                                <span class="${statusClass} px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
+                                    <i class="fas ${statusIcon} mr-1 text-xs"></i>${hasSchedules ? 'Occupied' : 'Available'}
                                 </span>
                             </div>
-                        </div>
-                        
-                        <div class="border-t pt-3">
-                            ${hasSchedules ? `
-                                <div class="space-y-1">
-                                    ${room.schedules.map(schedule => `
-                                        <div class="text-xs bg-red-50 rounded p-2">
-                                            <span class="text-red-600">Occupied ${schedule.start_time} - ${schedule.end_time} (${schedule.group_name})</span>
-                                        </div>
-                                    `).join('')}
+
+                            <!-- Details Section -->
+                            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+                                <div class="flex items-center text-sm mb-2">
+                                    <i class="fas fa-users ${hasSchedules ? 'text-red-500' : 'text-green-500'} mr-3 w-4"></i>
+                                    <span class="text-gray-700 font-medium">Capacity: ${room.capacity || 'N/A'}</span>
                                 </div>
-                            ` : `
-                                <div class="flex items-center text-sm text-green-600">
-                                    <i class="fas fa-calendar-check text-green-500 mr-2"></i>
-                                    <span>Available all day</span>
-                                </div>
-                            `}
+                                ${(() => {
+                                    const availableSlots = generateTimeSlots(room.schedules || []);
+                                    if (availableSlots.length > 0) {
+                                        return `
+                                            <div class="space-y-1">
+                                                <p class="text-xs text-green-600 font-medium mb-2">Available Slots:</p>
+                                                ${availableSlots.slice(0, 4).map(slot => `
+                                                    <div class="flex items-center text-sm">
+                                                        <i class="fas fa-clock text-green-500 mr-3 w-4"></i>
+                                                        <span class="text-gray-700 font-medium">${slot.start} - ${slot.end} (${slot.duration} min)</span>
+                                                    </div>
+                                                `).join('')}
+                                                ${availableSlots.length > 4 ? `<p class="text-xs text-gray-500">+${availableSlots.length - 4} more slots</p>` : ''}
+                                            </div>
+                                        `;
+                                    } else {
+                                        return `
+                                            <div class="flex items-center text-sm">
+                                                <i class="fas fa-times-circle text-red-500 mr-3 w-4"></i>
+                                                <span class="text-gray-700 font-medium">No available slots</span>
+                                            </div>
+                                        `;
+                                    }
+                                })()}
+                                ${hasSchedules ? `
+                                    <div class="mt-3 pt-2 border-t border-gray-200">
+                                        <p class="text-xs text-red-600 font-medium mb-1">In Use:</p>
+                                        ${room.schedules.map(schedule => `
+                                            <div class="flex items-center text-xs text-red-600 mb-1">
+                                                <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
+                                                ${schedule.start_time} - ${schedule.end_time} (${schedule.group_name})
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -765,54 +1165,61 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             <?php endif; ?>
 
             <!-- Stats Overview -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-slide-up">
-                <div class="stats-card p-6 flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Total Proposals</p>
-                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo $total_proposals; ?></h3>
-                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
-                            <div class="gradient-blue h-1.5 rounded-full" style="width: 100%"></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-slide-up">
+                <div class="stats-card p-4 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-full -translate-y-8 translate-x-8"></div>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="gradient-blue p-2 rounded-lg">
+                            <i class="fas fa-file-alt text-white text-lg"></i>
                         </div>
+                        <span class="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                            Total
+                        </span>
                     </div>
-                    <div class="gradient-blue p-4 rounded-2xl shadow-lg">
-                        <i class="fas fa-file-alt text-white text-2xl"></i>
-                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800"><?php echo $total_proposals; ?></h3>
+                    <p class="text-xs text-gray-600 font-medium uppercase tracking-wide">Proposals</p>
                 </div>
-                <div class="stats-card p-6 flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Scheduled</p>
-                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo $scheduled_defenses; ?></h3>
-                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
-                            <div class="gradient-green h-1.5 rounded-full" style="width: <?php echo $total_proposals > 0 ? ($scheduled_defenses / $total_proposals * 100) : 0; ?>%"></div>
+
+                <div class="stats-card p-4 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-full -translate-y-8 translate-x-8"></div>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="gradient-green p-2 rounded-lg">
+                            <i class="fas fa-calendar-check text-white text-lg"></i>
                         </div>
+                        <span class="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                            Scheduled
+                        </span>
                     </div>
-                    <div class="gradient-green p-4 rounded-2xl shadow-lg">
-                        <i class="fas fa-calendar-check text-white text-2xl"></i>
-                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800"><?php echo $scheduled_defenses; ?></h3>
+                    <p class="text-xs text-gray-600 font-medium uppercase tracking-wide">Defenses</p>
                 </div>
-                <div class="stats-card p-6 flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Pending</p>
-                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo $pending_defenses; ?></h3>
-                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
-                            <div class="gradient-yellow h-1.5 rounded-full" style="width: <?php echo $total_proposals > 0 ? ($pending_defenses / $total_proposals * 100) : 0; ?>%"></div>
+
+                <div class="stats-card p-4 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-16 h-16 bg-orange-500/10 rounded-full -translate-y-8 translate-x-8"></div>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="bg-gradient-to-r from-yellow-400 to-orange-500 p-2 rounded-lg">
+                            <i class="fas fa-clock text-white text-lg"></i>
                         </div>
+                        <span class="text-xs font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
+                            Pending
+                        </span>
                     </div>
-                    <div class="gradient-yellow p-4 rounded-2xl shadow-lg">
-                        <i class="fas fa-clock text-white text-2xl"></i>
-                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800"><?php echo $pending_defenses; ?></h3>
+                    <p class="text-xs text-gray-600 font-medium uppercase tracking-wide">Defenses</p>
                 </div>
-                <div class="stats-card p-6 flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-600 font-medium text-sm uppercase tracking-wide">Completed</p>
-                        <h3 class="text-3xl font-bold text-gray-800 mt-2"><?php echo $completed_defenses; ?></h3>
-                        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
-                            <div class="gradient-purple h-1.5 rounded-full" style="width: <?php echo $total_proposals > 0 ? ($completed_defenses / $total_proposals * 100) : 0; ?>%"></div>
+
+                <div class="stats-card p-4 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 rounded-full -translate-y-8 translate-x-8"></div>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="gradient-purple p-2 rounded-lg">
+                            <i class="fas fa-check-circle text-white text-lg"></i>
                         </div>
+                        <span class="text-xs font-medium text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+                            Completed
+                        </span>
                     </div>
-                    <div class="gradient-purple p-4 rounded-2xl shadow-lg">
-                        <i class="fas fa-check-circle text-white text-2xl"></i>
-                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800"><?php echo $completed_defenses; ?></h3>
+                    <p class="text-xs text-gray-600 font-medium uppercase tracking-wide">Defenses</p>
                 </div>
             </div>
 
@@ -879,48 +1286,96 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <?php foreach ($defense_schedules as $schedule): ?>
                     <!-- Scheduled Defense Card -->
-                    <div class="defense-card bg-white border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between" 
+                    <div class="defense-card bg-gradient-to-br from-white via-blue-50 to-indigo-100 border border-blue-200 rounded-2xl shadow-lg p-6 flex flex-col justify-between relative overflow-hidden" 
                          data-status="<?php echo $schedule['status']; ?>" 
                          data-defense-id="<?php echo $schedule['id']; ?>">
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900"><?php echo $schedule['proposal_title'] ?? 'No Title'; ?></h3>
-                            <p class="text-sm text-gray-500 mb-3"><?php echo $schedule['group_name']; ?></p>
+                        
+                        <!-- Decorative elements -->
+                        <div class="absolute top-0 right-0 w-20 h-20 bg-blue-400/10 rounded-full -translate-y-10 translate-x-10"></div>
+                        <div class="absolute bottom-0 left-0 w-16 h-16 bg-indigo-400/10 rounded-full translate-y-8 -translate-x-8"></div>
+                        
+                        <div class="relative z-10">
+                            <!-- Header -->
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center">
+                                    <div class="gradient-blue p-3 rounded-xl mr-3 shadow-lg">
+                                        <i class="fas fa-calendar-alt text-white text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-bold text-gray-900 leading-tight"><?php echo $schedule['group_name']; ?></h3>
+                                        <p class="text-xs text-blue-600 font-medium"><?php echo $schedule['proposal_title'] ?? 'No Title'; ?></p>
+                                    </div>
+                                </div>
+                                <?php if ($schedule['status'] == 'completed'): ?>
+                                    <span class="bg-gradient-to-r from-green-400 to-green-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                                        <i class="fas fa-check-circle mr-1"></i>Completed
+                                    </span>
+                                <?php elseif ($schedule['status'] == 'cancelled'): ?>
+                                    <span class="bg-gradient-to-r from-red-400 to-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                                        <i class="fas fa-times-circle mr-1"></i>Cancelled
+                                    </span>
+                                <?php elseif ($schedule['status'] == 'failed'): ?>
+                                    <span class="bg-gradient-to-r from-orange-400 to-orange-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>Failed
+                                    </span>
+                                <?php else: ?>
+                                    <span class="bg-gradient-to-r from-blue-400 to-blue-600 text-white px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
+                                        <i class="fas fa-clock mr-1 text-xs"></i>Scheduled
+                                    </span>
+                                <?php endif; ?>
+                            </div>
 
-                            <p class="text-sm text-gray-700 mb-1">
-                                <i class="fas fa-calendar mr-2 text-gray-400"></i>
-                                <?php echo date('M j, Y', strtotime($schedule['defense_date'])); ?>
-                            </p>
-                            <p class="text-sm text-gray-700 mb-1">
-                                <i class="fas fa-clock mr-2 text-gray-400"></i>
-                                <?php echo date('g:i A', strtotime($schedule['start_time'])); ?> - 
-                                <?php echo date('g:i A', strtotime($schedule['end_time'])); ?>
-                            </p>
-                            <p class="text-sm text-gray-700 mb-1">
-                                <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>
-                                <?php echo $schedule['building'] . ' ' . $schedule['room_name']; ?>
-                            </p>
-                            <p class="text-sm text-gray-700 mb-3">
-    <i class="fas fa-users mr-2 text-gray-400"></i>
-    <?php echo !empty($schedule['panel_names']) ? $schedule['panel_names'] : 'No panel assigned'; ?>
-</p>
-                        </div>
+                            <!-- Details Section -->
+                            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+                                <div class="grid grid-cols-1 gap-3">
+                                    <div class="flex items-center text-sm">
+                                        <i class="fas fa-calendar text-blue-500 mr-3 w-4"></i>
+                                        <span class="text-gray-700 font-medium"><?php echo date('M j, Y', strtotime($schedule['defense_date'])); ?></span>
+                                    </div>
+                                    <div class="flex items-center text-sm">
+                                        <i class="fas fa-clock text-blue-500 mr-3 w-4"></i>
+                                        <span class="text-gray-700 font-medium">
+                                            <?php echo date('g:i A', strtotime($schedule['start_time'])); ?> - 
+                                            <?php echo date('g:i A', strtotime($schedule['end_time'])); ?>
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center text-sm">
+                                        <i class="fas fa-map-marker-alt text-blue-500 mr-3 w-4"></i>
+                                        <span class="text-gray-700 font-medium"><?php echo $schedule['building'] . ' ' . $schedule['room_name']; ?></span>
+                                    </div>
+                                </div>
+                            </div>
 
-                        <!-- Status & Actions -->
-                        <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-                            <?php if ($schedule['status'] == 'completed'): ?>
-                                <span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Completed</span>
-                            <?php elseif ($schedule['status'] == 'cancelled'): ?>
-                                <span class="px-3 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Cancelled</span>
-                            <?php else: ?>
-                                <span class="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Scheduled</span>
-                            <?php endif; ?>
-                            
-                            <div class="flex space-x-2">
-                                <button class="text-indigo-600 hover:text-indigo-900 p-1" onclick="populateEditForm(<?php echo htmlspecialchars(json_encode($schedule)); ?>)" title="Edit">
-                                    <i class="fas fa-edit"></i>
+                            <!-- Panel Section -->
+                            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+                                <div class="flex items-start">
+                                    <i class="fas fa-users text-purple-500 mr-3 mt-1 w-4"></i>
+                                    <div class="flex-1">
+                                        <p class="text-xs text-gray-600 font-medium uppercase tracking-wide mb-1">Panel Members</p>
+                                        <p class="text-gray-700 font-medium text-sm">
+                                            <?php echo !empty($schedule['panel_names']) ? $schedule['panel_names'] : '<span class="text-orange-500">No panel assigned</span>'; ?>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex gap-2">
+                                <?php if ($schedule['status'] == 'completed'): ?>
+                                    <button onclick="markFailed(<?php echo $schedule['id']; ?>)" class="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Failed">
+                                        <i class="fas fa-times-circle mr-1"></i>Mark Failed
+                                    </button>
+                                <?php endif; ?>
+                                <?php if ($schedule['status'] == 'failed'): ?>
+                                    <button onclick="scheduleRedefense(<?php echo $schedule['group_id']; ?>, <?php echo $schedule['id']; ?>)" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Redefense">
+                                        <i class="fas fa-redo mr-1"></i>Redefense
+                                    </button>
+                                <?php endif; ?>
+                                <button class="bg-white/80 hover:bg-white border border-blue-200 hover:border-blue-300 text-blue-700 hover:text-blue-800 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-md backdrop-blur-sm" onclick="populateEditForm(<?php echo htmlspecialchars(json_encode($schedule)); ?>)" title="Edit">
+                                    <i class="fas fa-edit mr-1"></i>Edit
                                 </button>
-                                <button onclick="confirmDelete(<?php echo $schedule['id']; ?>, '<?php echo $schedule['group_name']; ?>')" class="text-red-600 hover:text-red-900 p-1" title="Delete">
-                                    <i class="fas fa-trash"></i>
+                                <button onclick="deleteDefense(<?php echo $schedule['id']; ?>)" class="bg-white/80 hover:bg-red-50 border border-red-200 hover:border-red-300 text-red-600 hover:text-red-700 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-md backdrop-blur-sm" title="Delete">
+                                    <i class="fas fa-trash mr-1"></i>Delete
                                 </button>
                             </div>
                         </div>
@@ -938,19 +1393,50 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     $unscheduled_result = mysqli_query($conn, $unscheduled_query);
 
                     while ($group = mysqli_fetch_assoc($unscheduled_result)): ?>
-                    <div class="defense-card bg-gray-50 border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between" data-status="pending">
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900"><?php echo $group['proposal_title']; ?></h3>
-                            <p class="text-sm text-gray-500 mb-3"><?php echo $group['name']; ?></p>
-                            <p class="text-sm text-gray-700 mb-2"><i class="fas fa-calendar-times mr-2 text-gray-400"></i> Not scheduled</p>
-                            <p class="text-sm text-gray-700 mb-2"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> - </p>
-                            <p class="text-sm text-gray-700 mb-3"><i class="fas fa-users mr-2 text-gray-400"></i> Not assigned</p>
-                        </div>
+                    <div class="defense-card bg-gradient-to-br from-white via-yellow-50 to-orange-100 border border-yellow-200 rounded-2xl shadow-lg p-6 flex flex-col justify-between relative overflow-hidden" data-status="pending">
+                        
+                        <!-- Decorative elements -->
+                        <div class="absolute top-0 right-0 w-20 h-20 bg-yellow-400/10 rounded-full -translate-y-10 translate-x-10"></div>
+                        <div class="absolute bottom-0 left-0 w-16 h-16 bg-orange-400/10 rounded-full translate-y-8 -translate-x-8"></div>
+                        
+                        <div class="relative z-10">
+                            <!-- Header -->
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center">
+                                    <div class="bg-gradient-to-r from-yellow-400 to-orange-500 p-3 rounded-xl mr-3 shadow-lg">
+                                        <i class="fas fa-clock text-white text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-bold text-gray-900 leading-tight"><?php echo $group['name']; ?></h3>
+                                        <p class="text-xs text-orange-600 font-medium"><?php echo $group['proposal_title']; ?></p>
+                                    </div>
+                                </div>
+                                <span class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                                    <i class="fas fa-hourglass-half mr-1"></i>Pending
+                                </span>
+                            </div>
 
-                        <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-                            <span class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                            <button onclick="toggleModal()" class="text-primary hover:text-blue-900 mr-3">
-                                <i class="fas fa-calendar-plus"></i>
+                            <!-- Details Section -->
+                            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+                                <div class="grid grid-cols-1 gap-3">
+                                    <div class="flex items-center text-sm">
+                                        <i class="fas fa-calendar-times text-orange-500 mr-3 w-4"></i>
+                                        <span class="text-gray-700 font-medium">Not scheduled</span>
+                                    </div>
+                                    <div class="flex items-center text-sm">
+                                        <i class="fas fa-map-marker-alt text-orange-500 mr-3 w-4"></i>
+                                        <span class="text-gray-700 font-medium">No room assigned</span>
+                                    </div>
+                                    <div class="flex items-center text-sm">
+                                        <i class="fas fa-users text-orange-500 mr-3 w-4"></i>
+                                        <span class="text-gray-700 font-medium">No panel assigned</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action -->
+                            <button onclick="toggleModal()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105">
+                                <i class="fas fa-calendar-plus mr-2"></i>Schedule Defense
                             </button>
                         </div>
                     </div>
@@ -982,35 +1468,69 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-fade-in">
                 <?php 
-                $upcoming_query = "SELECT ds.*, g.name as group_name, p.title as proposal_title, r.room_name, r.building 
+                $upcoming_query = "SELECT ds.*, g.name as group_name, p.title as proposal_title, r.room_name, r.building,
+                                 GROUP_CONCAT(CONCAT(pm.first_name, ' ', pm.last_name) SEPARATOR ', ') as panel_names
                                 FROM defense_schedules ds 
                                 JOIN groups g ON ds.group_id = g.id 
                                 JOIN proposals p ON g.id = p.group_id 
                                 LEFT JOIN rooms r ON ds.room_id = r.id 
+                                LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
+                                LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
                                 WHERE ds.defense_date >= CURDATE() AND ds.status = 'scheduled'
+                                GROUP BY ds.id
                                 ORDER BY ds.defense_date, ds.start_time 
                                 LIMIT 3";
                 $upcoming_result = mysqli_query($conn, $upcoming_query);
                 
                 while ($upcoming = mysqli_fetch_assoc($upcoming_result)): 
                 ?>
-                <div class="schedule-card bg-white rounded-lg shadow p-4 border-l-4 border-primary">
-                    <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-bold text-lg"><?php echo $upcoming['proposal_title']; ?></h3>
-                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">Scheduled</span>
-                    </div>
-                    <p class="text-gray-600 text-sm mb-3"><?php echo $upcoming['group_name']; ?></p>
-                    <div class="flex items-center text-sm text-gray-500 mb-2">
-                        <i class="far fa-calendar-alt mr-2"></i>
-                        <span><?php echo date('M j, Y', strtotime($upcoming['defense_date'])); ?>
-                    </div>
-                    <div class="flex items-center text-sm text-gray-500 mb-2">
-                        <i class="far fa-clock mr-2"></i>
-                        <span><?php echo date('g:i A', strtotime($upcoming['start_time'])); ?> - <?php echo date('g:i A', strtotime($upcoming['end_time'])); ?></span>
-                    </div>
-                    <div class="flex items-center text-sm text-gray-500">
-                        <i class="fas fa-map-marker-alt mr-2"></i>
-                        <span><?php echo $upcoming['building'] . ' ' . $upcoming['room_name']; ?></span>
+                <div class="defense-card bg-gradient-to-br from-white via-green-50 to-emerald-100 border border-green-200 rounded-2xl shadow-lg p-6 relative overflow-hidden">
+                    <!-- Decorative elements -->
+                    <div class="absolute top-0 right-0 w-20 h-20 bg-green-400/10 rounded-full -translate-y-10 translate-x-10"></div>
+                    <div class="absolute bottom-0 left-0 w-16 h-16 bg-emerald-400/10 rounded-full translate-y-8 -translate-x-8"></div>
+                    
+                    <div class="relative z-10">
+                        <!-- Header -->
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center">
+                                <div class="gradient-green p-3 rounded-xl mr-3 shadow-lg">
+                                    <i class="fas fa-calendar-check text-white text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-900 leading-tight"><?php echo $upcoming['group_name']; ?></h3>
+                                    <p class="text-xs text-green-600 font-medium"><?php echo $upcoming['proposal_title']; ?></p>
+                                </div>
+                            </div>
+                            <span class="bg-gradient-to-r from-green-400 to-emerald-600 text-white px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
+                                <i class="fas fa-clock mr-1 text-xs"></i>Upcoming
+                            </span>
+                        </div>
+
+                        <!-- Details Section -->
+                        <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+                            <div class="grid grid-cols-1 gap-3">
+                                <div class="flex items-center text-sm">
+                                    <i class="fas fa-calendar text-green-500 mr-3 w-4"></i>
+                                    <span class="text-gray-700 font-medium"><?php echo date('M j, Y', strtotime($upcoming['defense_date'])); ?></span>
+                                </div>
+                                <div class="flex items-center text-sm">
+                                    <i class="fas fa-clock text-green-500 mr-3 w-4"></i>
+                                    <span class="text-gray-700 font-medium">
+                                        <?php echo date('g:i A', strtotime($upcoming['start_time'])); ?> - 
+                                        <?php echo date('g:i A', strtotime($upcoming['end_time'])); ?>
+                                    </span>
+                                </div>
+                                <div class="flex items-center text-sm">
+                                    <i class="fas fa-map-marker-alt text-green-500 mr-3 w-4"></i>
+                                    <span class="text-gray-700 font-medium"><?php echo $upcoming['building'] . ' ' . $upcoming['room_name']; ?></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action -->
+                        <button onclick="viewUpcomingDefense(<?php echo htmlspecialchars(json_encode($upcoming)); ?>)" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105">
+                            <i class="fas fa-eye mr-2"></i>View Details
+                        </button>
                     </div>
                 </div>
                 <?php endwhile; ?>
@@ -1026,15 +1546,25 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     </div>
 
     <!-- Schedule Defense Modal -->
-    <div id="proposalModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-auto my-auto">
-            <div class="border-b px-6 py-4 flex justify-between items-center">
-                <h3 class="text-lg font-semibold">Schedule Defense</h3>
-                <button onclick="toggleModal()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
-                </button>
+    <div id="proposalModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
-            <form method="POST" action="" class="p-6">
+            <div class="inline-block bg-gradient-to-br from-white via-blue-50 to-indigo-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-2xl w-full modal-content border-0 max-h-[90vh] overflow-y-auto custom-scrollbar-blue">
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 border-0">
+                    <h3 class="text-lg font-bold flex items-center">
+                        <div class="bg-white/20 p-2 rounded-lg mr-3">
+                            <i class="fas fa-calendar-plus text-white text-sm"></i>
+                        </div>
+                        Schedule Defense
+                    </h3>
+                    <p class="text-blue-100 mt-1 text-sm">Schedule a new defense session for the selected group.</p>
+                </div>
+            <form method="POST" action="" class="p-6" onsubmit="return validateDefenseDuration()">
+                <input type="hidden" name="defense_type" id="defense_type" value="initial">
+                <input type="hidden" name="parent_defense_id" id="parent_defense_id">
+                
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-medium mb-2" for="group_id">Select Group</label>
                     <select name="group_id" id="group_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
@@ -1045,14 +1575,19 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </select>
                 </div>
                 
+                <div id="redefense_reason_div" class="mb-4 hidden">
+                    <label class="block text-gray-700 text-sm font-medium mb-2" for="redefense_reason">Redefense Reason</label>
+                    <textarea name="redefense_reason" id="redefense_reason" rows="3" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Reason for redefense..."></textarea>
+                </div>
+                
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2" for="defense_date">Defense Date</label>
-                        <input type="date" name="defense_date" id="defense_date" required min="<?php echo date('Y-m-d'); ?>" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <input type="date" name="defense_date" id="defense_date" required min="<?php echo date('Y-m-d'); ?>" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" onchange="populateTimeSlots()">
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2" for="room_id">Room</label>
-                        <select name="room_id" id="room_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <select name="room_id" id="room_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" onchange="populateTimeSlots()">
                             <option value="">Select a room</option>
                             <?php foreach ($rooms as $room): ?>
                             <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
@@ -1063,12 +1598,16 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
-                        <label class="block text-gray-700 text-sm font-medium mb-2" for="start_time">Start Time</label>
-                        <input type="time" name="start_time" id="start_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="time_slot">Available Time Slots</label>
+                        <select name="time_slot" id="time_slot" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" onchange="updateTimeInputs()">
+                            <option value="">Select date and room first</option>
+                        </select>
+                        <input type="hidden" name="start_time" id="start_time">
+                        <input type="hidden" name="end_time" id="end_time">
                     </div>
                     <div>
-                        <label class="block text-gray-700 text-sm font-medium mb-2" for="end_time">End Time</label>
-                        <input type="time" name="end_time" id="end_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
+                        <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm" id="duration_display">No slot selected</div>
                     </div>
                 </div>
                 
@@ -1144,27 +1683,35 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                 </div>
                 
-                <div class="flex justify-end gap-3 pt-4 border-t">
-                    <button type="button" onclick="toggleModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center">
+                <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
+                    <button type="button" onclick="toggleModal()" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
                         <i class="fas fa-times mr-2"></i>Cancel
                     </button>
-                    <button type="submit" name="schedule_defense" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center">
+                    <button type="submit" name="schedule_defense" class="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
                         <i class="fas fa-calendar-plus mr-2"></i>Schedule Defense
                     </button>
                 </div>
             </form>
+            </div>
         </div>
     </div>
 
     <!-- Edit Defense Modal -->
-    <div id="editDefenseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
-         <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[85vh] flex flex-col mx-auto my-auto">
-            <div class="border-b px-6 py-4 flex justify-between items-center flex-shrink-0">
-                <h3 class="text-lg font-semibold">Edit Defense Schedule</h3>
-                <button onclick="toggleEditModal()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
-                </button>
+    <div id="editDefenseModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
+            <div class="inline-block bg-gradient-to-br from-white via-indigo-50 to-purple-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-4xl w-full modal-content border-0 max-h-[90vh] overflow-y-auto custom-scrollbar-indigo">
+                <div class="bg-gradient-to-r from-indigo-600 to-purple-700 text-white p-4 border-0">
+                    <h3 class="text-lg font-bold flex items-center">
+                        <div class="bg-white/20 p-2 rounded-lg mr-3">
+                            <i class="fas fa-edit text-white text-sm"></i>
+                        </div>
+                        Edit Defense Schedule
+                    </h3>
+                    <p class="text-indigo-100 mt-1 text-sm">Update defense schedule information below.</p>
+                </div>
             <div class="flex-1 overflow-y-auto">
             <form method="POST" action="" class="p-6" id="editForm">
                 <input type="hidden" name="defense_id" id="edit_defense_id">
@@ -1177,11 +1724,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_defense_date">Defense Date</label>
-                        <input type="date" name="defense_date" id="edit_defense_date" required min="<?php echo date('Y-m-d'); ?>" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <input type="date" name="defense_date" id="edit_defense_date" required min="<?php echo date('Y-m-d'); ?>" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" onchange="populateEditTimeSlots()">
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_room_id">Room</label>
-                        <select name="room_id" id="edit_room_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <select name="room_id" id="edit_room_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" onchange="populateEditTimeSlots()">
                             <option value="">Select a room</option>
                             <?php foreach ($rooms as $room): ?>
                             <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
@@ -1192,12 +1739,16 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
-                        <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_start_time">Start Time</label>
-                        <input type="time" name="start_time" id="edit_start_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_time_slot">Available Time Slots</label>
+                        <select name="time_slot" id="edit_time_slot" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" onchange="updateEditTimeInputs()">
+                            <option value="">Select date and room first</option>
+                        </select>
+                        <input type="hidden" name="start_time" id="edit_start_time">
+                        <input type="hidden" name="end_time" id="edit_end_time">
                     </div>
                     <div>
-                        <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_end_time">End Time</label>
-                        <input type="time" name="end_time" id="edit_end_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
+                        <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm" id="edit_duration_display">No slot selected</div>
                     </div>
                 </div>
                 
@@ -1275,11 +1826,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
                 </div>
                 
-                <div class="flex justify-end gap-3 pt-4 border-t mt-6 px-6 pb-6">
-                    <button type="button" onclick="toggleEditModal()" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center">
+                <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
+                    <button type="button" onclick="toggleEditModal()" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
                         <i class="fas fa-times mr-2"></i>Cancel
                     </button>
-                    <button type="submit" name="edit_defense" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center">
+                    <button type="submit" name="edit_defense" class="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
                         <i class="fas fa-save mr-2"></i>Update Schedule
                     </button>
                 </div>
@@ -1289,14 +1840,21 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     </div>
 
     <!-- Defense Details Modal -->
-    <div id="detailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div class="border-b px-6 py-4 flex justify-between items-center">
-                <h3 class="text-lg font-semibold">Defense Details</h3>
-                <button onclick="toggleDetailsModal()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
-                </button>
+    <div id="detailsModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
+            <div class="inline-block bg-gradient-to-br from-white via-green-50 to-emerald-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-2xl w-full modal-content border-0 max-h-[90vh] overflow-y-auto custom-scrollbar-green">
+                <div class="bg-gradient-to-r from-green-600 to-emerald-700 text-white p-4 border-0">
+                    <h3 class="text-lg font-bold flex items-center">
+                        <div class="bg-white/20 p-2 rounded-lg mr-3">
+                            <i class="fas fa-info-circle text-white text-sm"></i>
+                        </div>
+                        Defense Details
+                    </h3>
+                    <p class="text-green-100 mt-1 text-sm">View detailed information about this defense schedule.</p>
+                </div>
             <div class="p-6">
                 <h3 id="detailTitle" class="text-xl font-semibold text-gray-900 mb-2"></h3>
                 <p id="detailGroup" class="text-gray-600 mb-6"></p>
@@ -1333,96 +1891,316 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                 </div>
                 
-                <div class="flex justify-end pt-4 border-t">
-                    <button onclick="toggleDetailsModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">Close</button>
+                <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
+                    <button onclick="toggleDetailsModal()" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
+                        <i class="fas fa-times mr-2"></i>Close
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Delete Form (Hidden) -->
-    <form id="deleteForm" method="POST" action="" class="hidden">
-        <input type="hidden" name="defense_id" id="defense_id">
-        <input type="hidden" name="delete_schedule" value="1">
-    </form>
+   <!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
 
-    <script>
-       // Function to populate edit form with defense data
+        <!-- Modal Content -->
+        <div class="inline-block bg-gradient-to-br from-white via-red-50 to-rose-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-md w-full modal-content border-0 max-h-[90vh] overflow-y-auto custom-scrollbar-red">
+            <div class="bg-gradient-to-r from-red-600 to-rose-700 text-white p-4 border-0">
+                <h3 class="text-lg font-bold flex items-center">
+                    <div class="bg-white/20 p-2 rounded-lg mr-3">
+                        <i class="fas fa-exclamation-triangle text-white text-sm"></i>
+                    </div>
+                    Confirm Deletion
+                </h3>
+                <p class="text-red-100 mt-1 text-sm">This action cannot be undone.</p>
+            </div>
+
+            <div class="p-4">
+                <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-white/40 mb-4">
+                    <p class="text-gray-700 mb-3 font-medium">Are you sure you want to delete this defense schedule?</p>
+                    <div class="space-y-2">
+                        <div class="flex items-center p-2 bg-red-50 rounded-lg">
+                            <i class="fas fa-calendar-times text-red-600 mr-3"></i>
+                            <span class="text-gray-700 text-sm">Defense schedule will be permanently removed</span>
+                        </div>
+                        <div class="flex items-center p-2 bg-red-50 rounded-lg">
+                            <i class="fas fa-users-slash text-red-600 mr-3"></i>
+                            <span class="text-gray-700 text-sm">Panel assignments will be cancelled</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delete Form -->
+                <form id="deleteForm" method="POST" action="">
+                    <input type="hidden" name="defense_id" id="defense_id">
+                    <input type="hidden" name="delete_schedule" value="1">
+
+                    <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
+                        <button type="button" onclick="closeModal('deleteConfirmModal')" 
+                            class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                        <button type="submit" 
+                            class="bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
+                            <i class="fas fa-trash mr-2"></i>Delete Schedule
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ========= MODAL FUNCTIONS ========= */
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    modal.classList.add('modal-active');
+
+    const modalContent = modal.querySelector('.modal-content');
+    if (modalContent) {
+        setTimeout(() => modalContent.classList.add('modal-content-active'), 10);
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+
+    const modalContent = modal.querySelector('.modal-content');
+    if (modalContent) modalContent.classList.remove('modal-content-active');
+
+    setTimeout(() => {
+        modal.classList.remove('modal-active');
+        modal.classList.add('opacity-0', 'pointer-events-none');
+    }, 200);
+}
+
+/* ========= DELETE FUNCTIONS ========= */
+function deleteDefense(defenseId) {
+    // Create animated confirmation dialog
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 z-[60] flex items-center justify-center p-4';
+    overlay.style.background = 'linear-gradient(135deg, rgba(0,0,0,0.7), rgba(239,68,68,0.2))';
+    overlay.style.backdropFilter = 'blur(8px)';
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'all 0.3s ease';
+    
+    overlay.innerHTML = `
+        <div class="bg-gradient-to-br from-white via-red-50 to-rose-100 rounded-2xl shadow-2xl max-w-md w-full transform scale-95 transition-all duration-300 border border-red-200" id="deleteDialog">
+            <div class="bg-gradient-to-r from-red-500 to-rose-600 p-4 rounded-t-2xl">
+                <div class="flex items-center">
+                    <div class="bg-white/20 p-2 rounded-lg mr-3 animate-pulse">
+                        <i class="fas fa-exclamation-triangle text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold text-lg">Delete Defense Schedule</h3>
+                        <p class="text-red-100 text-sm">This action cannot be undone</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-red-200">
+                    <p class="text-gray-800 font-medium mb-3">Are you sure you want to delete this defense schedule?</p>
+                    <div class="space-y-2">
+                        <div class="flex items-center p-2 bg-red-50 rounded-lg">
+                            <i class="fas fa-calendar-times text-red-500 mr-3"></i>
+                            <span class="text-gray-700 text-sm">Schedule will be permanently removed</span>
+                        </div>
+                        <div class="flex items-center p-2 bg-red-50 rounded-lg">
+                            <i class="fas fa-users-slash text-red-500 mr-3"></i>
+                            <span class="text-gray-700 text-sm">Panel assignments will be cancelled</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button onclick="this.closest('.fixed').remove()" class="bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg transform hover:scale-105">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button onclick="confirmDeleteAction(${defenseId}, this)" class="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg transform hover:scale-105">
+                        <i class="fas fa-trash mr-2"></i>Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Animate in
+    setTimeout(() => {
+        overlay.style.opacity = '1';
+        overlay.querySelector('#deleteDialog').style.transform = 'scale(1)';
+    }, 10);
+    
+    // Close on backdrop click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+}
+
+function confirmDeleteAction(defenseId, button) {
+    // Show loading state
+    button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
+    button.disabled = true;
+    
+    // Create and submit form
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.innerHTML = `<input type="hidden" name="defense_id" value="${defenseId}"><input type="hidden" name="delete_schedule" value="1">`;
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function showDeleteModal(defenseId) {
+    console.log('showDeleteModal called with ID:', defenseId);
+    document.getElementById('defense_id').value = defenseId;
+    const modal = document.getElementById('deleteConfirmModal');
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    modal.classList.add('modal-active');
+}
+
+function confirmDelete(defenseId, groupName) {
+    console.log('confirmDelete called:', defenseId, groupName);
+    showDeleteModal(defenseId);
+}
+
+function toggleModal() {
+    const modal = document.getElementById('proposalModal');
+    if (modal.classList.contains('opacity-0')) {
+        openModal('proposalModal');
+    } else {
+        closeModal('proposalModal');
+    }
+}
+
+function toggleEditModal() {
+    const modal = document.getElementById('editDefenseModal');
+    if (modal.classList.contains('opacity-0')) {
+        openModal('editDefenseModal');
+    } else {
+        closeModal('editDefenseModal');
+    }
+}
+
+function toggleDetailsModal() {
+    const modal = document.getElementById('detailsModal');
+    if (modal.classList.contains('opacity-0')) {
+        openModal('detailsModal');
+    } else {
+        closeModal('detailsModal');
+    }
+}
+
+/* ========= EDIT FORM POPULATION ========= */
 function populateEditForm(schedule) {
     try {
-        document.getElementById('edit_defense_id').value = schedule.id;
-        document.getElementById('edit_group_name').textContent = schedule.group_name + ' - ' + (schedule.proposal_title || 'No Title');
-        document.getElementById('edit_defense_date').value = schedule.defense_date;
+        document.getElementById('edit_defense_id').value = schedule.id || '';
+        document.getElementById('edit_group_name').textContent =
+            (schedule.proposal_title || 'No Title') + ' - ' + (schedule.group_name || 'No Group');
+
+        document.getElementById('edit_defense_date').value = schedule.defense_date || '';
         document.getElementById('edit_room_id').value = schedule.room_id || '';
-        document.getElementById('edit_start_time').value = schedule.start_time;
-        document.getElementById('edit_end_time').value = schedule.end_time;
+        document.getElementById('edit_start_time').value = schedule.start_time || '';
+        document.getElementById('edit_end_time').value = schedule.end_time || '';
         
-        // Clear all checkboxes first
-        document.querySelectorAll('.edit-panel-member').forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        
-        // Check the panel members for this defense
-        // The panel members might be stored differently in the schedule object
-        if (schedule.panel_members && schedule.panel_members.length > 0) {
+        // Set current time slot and populate available slots
+        if (schedule.start_time && schedule.end_time) {
+            const currentSlot = `${schedule.start_time}|${schedule.end_time}`;
+            setTimeout(() => {
+                populateEditTimeSlots();
+                setTimeout(() => {
+                    const timeSlotSelect = document.getElementById('edit_time_slot');
+                    const currentOption = document.createElement('option');
+                    currentOption.value = currentSlot;
+                    currentOption.textContent = `${schedule.start_time} - ${schedule.end_time} (Current)`;
+                    currentOption.selected = true;
+                    timeSlotSelect.insertBefore(currentOption, timeSlotSelect.firstChild);
+                    updateEditTimeInputs();
+                }, 500);
+            }, 100);
+        }
+
+        // Reset all panel checkboxes
+        document.querySelectorAll('.edit-panel-member').forEach(cb => cb.checked = false);
+
+        // Apply assigned panel members
+        if (schedule.panel_members && Array.isArray(schedule.panel_members)) {
             schedule.panel_members.forEach(panel => {
-                // Try different possible ID fields
                 const panelId = panel.user_id || panel.id || panel.faculty_id;
                 if (panelId) {
                     const checkbox = document.querySelector(`.edit-panel-member[value="${panelId}"]`);
-                    if (checkbox) {
-                        checkbox.checked = true;
-                    }
+                    if (checkbox) checkbox.checked = true;
                 }
             });
         }
-        
+
         toggleEditModal();
     } catch (error) {
         console.error('Error populating edit form:', error);
         alert('Error loading defense data for editing.');
     }
 }
-        
-        // Function to switch between panel member tabs in edit modal
-        function switchEditPanelTab(tabName) {
-            // Update active tab
-            document.querySelectorAll('.panel-tab').forEach(tab => {
-                if (tab.getAttribute('data-tab') === tabName) {
-                    tab.classList.add('active');
-                } else {
-                    tab.classList.remove('active');
-                }
-            });
-            
-            // Show active content
-            document.querySelectorAll('.panel-content').forEach(content => {
-                if (content.getAttribute('data-tab') === tabName) {
-                    content.classList.add('active');
-                } else {
-                    content.classList.remove('active');
-                }
-            });
-        }
-        
-        // Initialize edit modal tabs on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set default filter to 'all'
-            filterStatus('all');
-            
-            // Set default panel tab to 'chairperson'
-            switchPanelTab('chairperson');
-            
-            // Edit modal default to chairperson tab
-            switchEditPanelTab('edit_chairperson');
-            
-            // Check if we need to refresh room availability
-            <?php if (isset($_SESSION['refresh_availability'])): ?>
-            // Switch to availability tab and refresh
-            switchMainTab('availability');
-            <?php unset($_SESSION['refresh_availability']); ?>
-            <?php endif; ?>
-        });
-    </script>
+
+/* ========= PANEL TABS ========= */
+function switchEditPanelTab(tabName) {
+    document.querySelectorAll('.panel-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === tabName);
+    });
+
+    document.querySelectorAll('.panel-content').forEach(content => {
+        content.classList.toggle('active', content.dataset.tab === tabName);
+    });
+}
+
+/* ========= VIEW UPCOMING DEFENSE ========= */
+function viewUpcomingDefense(defense) {
+    document.getElementById('detailTitle').textContent = defense.group_name;
+    document.getElementById('detailGroup').textContent = defense.proposal_title;
+    document.getElementById('detailDate').textContent = new Date(defense.defense_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    document.getElementById('detailTime').textContent = new Date('1970-01-01T' + defense.start_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + ' - ' + new Date('1970-01-01T' + defense.end_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    document.getElementById('detailLocation').textContent = defense.building + ' ' + defense.room_name;
+    document.getElementById('detailPanel').innerHTML = defense.panel_names ? defense.panel_names : '<span class="text-orange-500">No panel assigned</span>';
+    document.getElementById('detailStatus').textContent = 'Scheduled';
+    document.getElementById('detailStatus').className = 'px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800';
+    toggleDetailsModal();
+}
+
+/* ========= GLOBAL ACCESS ========= */
+window.deleteDefense = deleteDefense;
+window.confirmDeleteAction = confirmDeleteAction;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.showDeleteModal = showDeleteModal;
+window.confirmDelete = confirmDelete;
+window.toggleModal = toggleModal;
+window.toggleEditModal = toggleEditModal;
+window.toggleDetailsModal = toggleDetailsModal;
+window.populateEditForm = populateEditForm;
+window.switchEditPanelTab = switchEditPanelTab;
+window.viewUpcomingDefense = viewUpcomingDefense;
+
+/* ========= INIT ========= */
+document.addEventListener('DOMContentLoaded', () => {
+    // Default filters/tabs
+    if (typeof filterStatus === 'function') filterStatus('all');
+    if (typeof switchPanelTab === 'function') switchPanelTab('chairperson');
+    switchEditPanelTab('edit_chairperson');
+
+    // Refresh availability tab if needed
+    <?php if (isset($_SESSION['refresh_availability'])): ?>
+        if (typeof switchMainTab === 'function') switchMainTab('availability');
+        <?php unset($_SESSION['refresh_availability']); ?>
+    <?php endif; ?>
+});
+</script>
 </body>
 </html>

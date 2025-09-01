@@ -59,22 +59,55 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Get defense type
         $defense_type = mysqli_real_escape_string($conn, $_POST['defense_type']);
         
-        // Insert defense schedule
-        $schedule_query = "INSERT INTO defense_schedules 
-                          (group_id, defense_date, start_time, end_time, room_id, status, defense_type) 
-                          VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status', '$defense_type')";
+        // Check if defense already exists for this group and type
+        $existing_query = "SELECT id FROM defense_schedules 
+                          WHERE group_id = '$group_id' AND defense_type = '$defense_type' 
+                          AND status IN ('scheduled', 're_defense', 'proceeding_final', 'awaiting_result')";
+        $existing_result = mysqli_query($conn, $existing_query);
+        
+        if (mysqli_num_rows($existing_result) > 0) {
+            // Update existing defense instead of creating new
+            $existing_defense = mysqli_fetch_assoc($existing_result);
+            $defense_id = $existing_defense['id'];
+            
+            $update_query = "UPDATE defense_schedules 
+                            SET defense_date = '$defense_date', start_time = '$start_time', 
+                                end_time = '$end_time', room_id = '$room_id', status = '$status'
+                            WHERE id = '$defense_id'";
+            
+            if (mysqli_query($conn, $update_query)) {
+                // Delete existing panel members
+                mysqli_query($conn, "DELETE FROM defense_panel WHERE defense_id = '$defense_id'");
+                
+                // Insert new panel members
+                foreach ($panel_members as $index => $faculty_id) {
+                    $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
+                    $role = ($index === 0) ? 'chairperson' : 'member';
+                    $panel_query = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
+                                   VALUES ('$defense_id', '$faculty_id', '$role')";
+                    mysqli_query($conn, $panel_query);
+                }
+        } else {
+            // Insert new defense schedule
+            $schedule_query = "INSERT INTO defense_schedules 
+                              (group_id, defense_date, start_time, end_time, room_id, status, defense_type) 
+                              VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status', '$defense_type')";
 
-        if (mysqli_query($conn, $schedule_query)) {
-            $defense_id = mysqli_insert_id($conn);
+            if (mysqli_query($conn, $schedule_query)) {
+                $defense_id = mysqli_insert_id($conn);
 
-            // Insert panel members (first one as chairperson, rest as members)
-            foreach ($panel_members as $index => $faculty_id) {
-                $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
-                $role = ($index === 0) ? 'chairperson' : 'member';
-                $panel_query = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
-                               VALUES ('$defense_id', '$faculty_id', '$role')";
-                mysqli_query($conn, $panel_query);
+                // Insert panel members (first one as chairperson, rest as members)
+                foreach ($panel_members as $index => $faculty_id) {
+                    $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
+                    $role = ($index === 0) ? 'chairperson' : 'member';
+                    $panel_query = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
+                                   VALUES ('$defense_id', '$faculty_id', '$role')";
+                    mysqli_query($conn, $panel_query);
+                }
+            } else {
+                $error_message = "Error scheduling defense: " . mysqli_error($conn);
             }
+        }
 
             // Get group name for notification
             $group_query = "SELECT name FROM groups WHERE id = '$group_id'";
@@ -87,12 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $notification_message = "A defense has been scheduled for group: $group_name on $defense_date at $start_time";
             notifyAllUsers($conn, $notification_title, $notification_message, 'info');
 
+        }
+        
+        if (!isset($error_message)) {
             $_SESSION['success_message'] = "Defense scheduled successfully!";
             $_SESSION['refresh_availability'] = true;
             header("Location: admin-defense.php");
             exit();
-        } else {
-            $error_message = "Error scheduling defense: " . mysqli_error($conn);
         }
             }
         }

@@ -993,7 +993,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                     <?php endforeach; ?>
 
-                    <!-- Pending / Unscheduled Groups -->
+                    <!-- Pending / Unscheduled Groups by Cluster -->
                     <?php 
                     $unscheduled_query = "SELECT g.*, p.title as proposal_title, c.cluster
                                         FROM groups g 
@@ -1001,27 +1001,54 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                         LEFT JOIN clusters c ON g.cluster_id = c.id
                                         WHERE g.id NOT IN (SELECT group_id FROM defense_schedules) 
                                         AND p.status IN ('Completed', 'Approved')
-                                        ORDER BY g.name";
+                                        ORDER BY g.program, c.cluster, g.name";
                     $unscheduled_result = mysqli_query($conn, $unscheduled_query);
-
-                    while ($group = mysqli_fetch_assoc($unscheduled_result)): ?>
-                    <div class="defense-card bg-gray-50 border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between" data-status="pending">
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900"><?php echo $group['proposal_title']; ?></h3>
-                            <p class="text-sm text-gray-500 mb-3"><?php echo $group['program'] . ($group['cluster'] ? ' - Cluster ' . $group['cluster'] : '') . ' - ' . $group['name']; ?></p>
-                            <p class="text-sm text-gray-700 mb-2"><i class="fas fa-calendar-times mr-2 text-gray-400"></i> Not scheduled</p>
-                            <p class="text-sm text-gray-700 mb-2"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> - </p>
-                            <p class="text-sm text-gray-700 mb-3"><i class="fas fa-users mr-2 text-gray-400"></i> Not assigned</p>
+                    $unscheduled_groups = [];
+                    
+                    while ($group = mysqli_fetch_assoc($unscheduled_result)) {
+                        $cluster_key = $group['program'] . ' - Cluster ' . ($group['cluster'] ?? 'Unassigned');
+                        $unscheduled_groups[$cluster_key][] = $group;
+                    }
+                    
+                    foreach ($unscheduled_groups as $cluster_name => $cluster_groups): ?>
+                    <div class="col-span-full mb-6">
+                        <div class="cluster-header cursor-pointer bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4 mb-4 hover:shadow-md transition-all" onclick="toggleDefenseCluster('<?php echo md5($cluster_name); ?>')">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fas fa-layer-group text-yellow-600 text-xl mr-3"></i>
+                                    <h3 class="text-xl font-bold text-gray-800"><?php echo htmlspecialchars($cluster_name); ?></h3>
+                                    <span class="ml-4 bg-yellow-500 text-white text-sm font-bold px-3 py-2 rounded-xl shadow-lg">
+                                        <?php echo count($cluster_groups); ?> pending
+                                    </span>
+                                </div>
+                                <i class="fas fa-chevron-down text-yellow-600 transition-transform" id="defense-chevron-<?php echo md5($cluster_name); ?>"></i>
+                            </div>
                         </div>
+                        
+                        <div class="cluster-content hidden ml-8" id="defense-cluster-<?php echo md5($cluster_name); ?>">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <?php foreach ($cluster_groups as $group): ?>
+                                <div class="defense-card bg-gray-50 border border-gray-200 rounded-xl shadow-md p-5 flex flex-col justify-between" data-status="pending">
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-gray-900"><?php echo $group['proposal_title']; ?></h3>
+                                        <p class="text-sm text-gray-500 mb-3"><?php echo $group['name']; ?></p>
+                                        <p class="text-sm text-gray-700 mb-2"><i class="fas fa-calendar-times mr-2 text-gray-400"></i> Not scheduled</p>
+                                        <p class="text-sm text-gray-700 mb-2"><i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> - </p>
+                                        <p class="text-sm text-gray-700 mb-3"><i class="fas fa-users mr-2 text-gray-400"></i> Not assigned</p>
+                                    </div>
 
-                        <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-                            <span class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                            <button onclick="toggleModal(<?php echo $group['id']; ?>, '<?php echo addslashes($group['name']); ?>', '<?php echo $group['program']; ?>', '<?php echo $group['cluster'] ?? ''; ?>')" class="text-primary hover:text-blue-900 mr-3">
-                                <i class="fas fa-calendar-plus"></i>
-                            </button>
+                                    <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                                        <span class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                                        <button onclick="toggleModal(<?php echo $group['id']; ?>, '<?php echo addslashes($group['name']); ?>', '<?php echo $group['program']; ?>', '<?php echo $group['cluster'] ?? ''; ?>')" class="text-primary hover:text-blue-900 mr-3">
+                                            <i class="fas fa-calendar-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     </div>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 </div>
             </div>
             
@@ -1536,6 +1563,20 @@ function populateEditForm(schedule) {
         // Enable schedule button when modal opens with group selected
         function enableScheduleButton() {
             validatePanelSelection();
+        }
+        
+        // Toggle defense cluster visibility
+        function toggleDefenseCluster(clusterId) {
+            const content = document.getElementById('defense-cluster-' + clusterId);
+            const chevron = document.getElementById('defense-chevron-' + clusterId);
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
         }
         
         // Initialize page on load

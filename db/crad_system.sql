@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3308
--- Generation Time: Sep 01, 2025 at 05:59 PM
+-- Generation Time: Sep 01, 2025 at 06:29 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -75,7 +75,7 @@ INSERT INTO `clusters` (`id`, `program`, `cluster`, `school_year`, `faculty_id`,
 (199, 'BSED', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-01 15:51:10'),
 (200, 'BSED', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-01 15:51:10'),
 (201, 'BSED', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-01 15:51:10'),
-(202, 'BSIT', '41001', '2025-2026', NULL, NULL, 2, 25, 'unassigned', '2025-09-01 15:51:18'),
+(202, 'BSIT', '41001', '2025-2026', 7, '2025-09-02', 2, 25, 'assigned', '2025-09-01 16:10:45'),
 (203, 'BSIT', '41002', '2025-2026', NULL, NULL, 5, 25, 'unassigned', '2025-09-01 15:51:25'),
 (204, 'BSIT', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-01 15:51:10'),
 (205, 'BSIT', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-01 15:51:10'),
@@ -116,7 +116,13 @@ CREATE TABLE `defense_panel` (
 
 INSERT INTO `defense_panel` (`id`, `defense_id`, `faculty_id`, `role`, `created_at`) VALUES
 (14, 7, 8, 'member', '2025-08-28 18:36:47'),
-(15, 7, 9, 'member', '2025-08-28 18:36:47');
+(15, 7, 9, 'member', '2025-08-28 18:36:47'),
+(45, 0, 8, '', '2025-09-01 16:06:24'),
+(46, 0, 11, 'member', '2025-09-01 16:06:24'),
+(47, 0, 10, 'member', '2025-09-01 16:06:24'),
+(48, 2, 8, '', '2025-09-01 16:26:27'),
+(49, 2, 11, 'member', '2025-09-01 16:26:27'),
+(50, 2, 10, 'member', '2025-09-01 16:26:27');
 
 -- --------------------------------------------------------
 
@@ -134,6 +140,13 @@ CREATE TABLE `defense_schedules` (
   `status` enum('scheduled','completed','cancelled') DEFAULT 'scheduled',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `defense_schedules`
+--
+
+INSERT INTO `defense_schedules` (`id`, `group_id`, `defense_date`, `start_time`, `end_time`, `room_id`, `status`, `created_at`) VALUES
+(2, 16, '2025-09-02', '00:25:00', '00:55:00', 5, 'scheduled', '2025-09-01 16:26:27');
 
 -- --------------------------------------------------------
 
@@ -459,7 +472,33 @@ INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_re
 (207, 9, 'Adviser Assigned', 'Prof. Prof. Emily Williams has been assigned as your thesis adviser for BSIT - Cluster 41001.', 'success', 0, '2025-09-01 15:48:08', '2025-09-01 15:48:08'),
 (208, 12, 'Proposal Submitted Successfully', 'Your research proposal \'The Impact of Social Media on Adolescent Mental Health: A Case Study Approach\' has been submitted and is under review.', 'success', 0, '2025-09-01 15:49:14', '2025-09-01 15:49:14'),
 (209, 5, 'New Proposal Submitted', 'Angelito Pampanga submitted a new research proposal \'The Impact of Social Media on Adolescent Mental Health: A Case Study Approach\' for review.', 'info', 0, '2025-09-01 15:49:14', '2025-09-01 15:49:14'),
-(210, 6, 'New Proposal Submitted', 'Angelito Pampanga submitted a new research proposal \'The Impact of Social Media on Adolescent Mental Health: A Case Study Approach\' for review.', 'info', 0, '2025-09-01 15:49:14', '2025-09-01 15:49:14');
+(210, 6, 'New Proposal Submitted', 'Angelito Pampanga submitted a new research proposal \'The Impact of Social Media on Adolescent Mental Health: A Case Study Approach\' for review.', 'info', 0, '2025-09-01 15:49:14', '2025-09-01 15:49:14'),
+(211, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 0, '2025-09-01 16:06:24', '2025-09-01 16:06:24'),
+(212, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 0, '2025-09-01 16:06:24', '2025-09-01 16:06:24'),
+(213, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 0, '2025-09-01 16:06:24', '2025-09-01 16:06:24'),
+(214, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 1, '2025-09-01 16:06:24', '2025-09-01 16:19:02'),
+(215, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 0, '2025-09-01 16:06:24', '2025-09-01 16:06:24'),
+(216, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 0, '2025-09-01 16:06:24', '2025-09-01 16:06:24'),
+(217, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 0, '2025-09-01 16:06:24', '2025-09-01 16:06:24'),
+(218, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 0, '2025-09-01 16:06:24', '2025-09-01 16:06:24'),
+(219, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 0, '2025-09-01 16:06:24', '2025-09-01 16:06:24'),
+(220, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 0, '2025-09-01 16:06:24', '2025-09-01 16:06:24'),
+(221, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 0, '2025-09-01 16:06:24', '2025-09-01 16:06:24'),
+(222, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:00', 'info', 0, '2025-09-01 16:06:24', '2025-09-01 16:06:24'),
+(223, 7, 'Adviser Assigned', 'Prof. Prof. Emily Williams has been assigned as your thesis adviser for BSIT - Cluster 41001.', 'success', 0, '2025-09-01 16:10:45', '2025-09-01 16:10:45'),
+(224, 9, 'Adviser Assigned', 'Prof. Prof. Emily Williams has been assigned as your thesis adviser for BSIT - Cluster 41001.', 'success', 0, '2025-09-01 16:10:45', '2025-09-01 16:10:45'),
+(225, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(226, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(227, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(228, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(229, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(230, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(231, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(232, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(233, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(234, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(235, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(236, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27');
 
 -- --------------------------------------------------------
 
@@ -548,7 +587,9 @@ INSERT INTO `payments` (`id`, `student_id`, `payment_type`, `amount`, `pdf_recei
 (37, 2, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02'),
 (38, 12, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02'),
 (39, 13, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02'),
-(40, 14, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02');
+(40, 14, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02'),
+(41, 7, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 16:14:35'),
+(42, 9, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 16:14:35');
 
 -- --------------------------------------------------------
 
@@ -572,7 +613,7 @@ CREATE TABLE `proposals` (
 --
 
 INSERT INTO `proposals` (`id`, `group_id`, `title`, `description`, `file_path`, `submitted_at`, `status`, `reviewed_at`) VALUES
-(18, 16, 'Smart Campus Navigator: An Indoor Positioning System Using QR Codes and Cloud Integration', 'This study aims to design and develop a campus navigation system that uses QR codes placed at key locations inside school buildings. The system will be integrated with a cloud database to provide real-time directions and facility information accessible through a mobile application. The project addresses the challenges of new students and visitors in locating rooms, offices, and facilities within the campus, thereby improving efficiency and user experience.', '../assets/uploads/proposals/Cap101-reviewer-Prelim.pdf', '2025-09-01 15:21:40', 'Completed', '2025-09-01 15:37:29'),
+(18, 16, 'Smart Campus Navigator: An Indoor Positioning System Using QR Codes and Cloud Integration', 'This study aims to design and develop a campus navigation system that uses QR codes placed at key locations inside school buildings. The system will be integrated with a cloud database to provide real-time directions and facility information accessible through a mobile application. The project addresses the challenges of new students and visitors in locating rooms, offices, and facilities within the campus, thereby improving efficiency and user experience.', '../assets/uploads/proposals/Cap101-reviewer-Prelim.pdf', '2025-09-01 15:21:40', 'Completed', '2025-09-01 16:25:47'),
 (19, 15, 'The Impact of Social Media on Adolescent Mental Health: A Case Study Approach', 'This thesis investigates the relationship between social media usage and mental health outcomes in adolescents. Through qualitative interviews and quantitative surveys, it aims to identify patterns of social media behavior that correlate with anxiety, depression, and self-esteem levels. The study offers recommendations for healthier online habits and policy suggestions for social media platforms.', '../assets/uploads/proposals/Sample-Interview-Questions (1).pdf', '2025-09-01 15:49:14', 'Pending', NULL);
 
 -- --------------------------------------------------------
@@ -647,8 +688,8 @@ INSERT INTO `student_profiles` (`id`, `user_id`, `school_id`, `full_name`, `prog
 (17, 13, '22107890', 'Geo Caranza', 'BSIT', '41002', NULL, '2025-2026', '2025-08-28 05:29:36', '2025-09-01 15:51:25'),
 (18, 14, '22010987', 'Erico Golay', 'BSIT', '41002', NULL, '2025-2026', '2025-08-28 05:31:02', '2025-09-01 15:51:25'),
 (19, 2, '12345678', 'Coby Bryant Giray', 'BSIT', '41002', NULL, '2025-2026', '2025-08-29 05:15:18', '2025-09-01 15:51:25'),
-(20, 7, '22011941', 'Hanni Pham', 'BSIT', '41001', NULL, '2025-2026', '2025-09-01 10:05:10', '2025-09-01 15:51:18'),
-(21, 9, '22014823', 'Kang Haerin', 'BSIT', '41001', NULL, '2025-2026', '2025-09-01 10:12:00', '2025-09-01 15:51:18');
+(20, 7, '22011941', 'Hanni Pham', 'BSIT', '41001', 7, '2025-2026', '2025-09-01 10:05:10', '2025-09-01 16:10:45'),
+(21, 9, '22014823', 'Kang Haerin', 'BSIT', '41001', 7, '2025-2026', '2025-09-01 10:12:00', '2025-09-01 16:10:45');
 
 -- --------------------------------------------------------
 
@@ -763,6 +804,12 @@ ALTER TABLE `defense_panel`
   ADD PRIMARY KEY (`id`),
   ADD KEY `defense_id` (`defense_id`),
   ADD KEY `faculty_id` (`faculty_id`);
+
+--
+-- Indexes for table `defense_schedules`
+--
+ALTER TABLE `defense_schedules`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `document_submissions`
@@ -888,7 +935,13 @@ ALTER TABLE `clusters`
 -- AUTO_INCREMENT for table `defense_panel`
 --
 ALTER TABLE `defense_panel`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
+
+--
+-- AUTO_INCREMENT for table `defense_schedules`
+--
+ALTER TABLE `defense_schedules`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `document_submissions`
@@ -918,7 +971,7 @@ ALTER TABLE `group_members`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=211;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=237;
 
 --
 -- AUTO_INCREMENT for table `panel_members`
@@ -930,7 +983,7 @@ ALTER TABLE `panel_members`
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 --
 -- AUTO_INCREMENT for table `proposals`

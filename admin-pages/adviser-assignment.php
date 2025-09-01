@@ -1373,6 +1373,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                         <th class="px-4 py-3">Student ID</th>
                                         <th class="px-4 py-3">Name</th>
                                         <th class="px-4 py-3">Program</th>
+                                        <th class="px-4 py-3">Group</th>
                                     </tr>
                                 </thead>
                                 <tbody id="modal-students-table">
@@ -1749,12 +1750,13 @@ document.addEventListener('click', function(e) {
                         <td class="px-4 py-3">${student.school_id}</td>
                         <td class="px-4 py-3">${student.full_name}</td>
                         <td class="px-4 py-3">${student.program}</td>
+                        <td class="px-4 py-3">${student.group_name || 'No Group'}</td>
                     </tr>
                 `;
                 studentsTable.innerHTML += row;
             });
         } else {
-            studentsTable.innerHTML = '<tr><td colspan="3" class="px-4 py-3 text-center text-gray-500">No students assigned</td></tr>';
+            studentsTable.innerHTML = '<tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">No students assigned</td></tr>';
         }
     }
     

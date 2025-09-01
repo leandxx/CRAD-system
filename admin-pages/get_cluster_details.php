@@ -27,8 +27,10 @@ $cluster = mysqli_fetch_assoc($cluster_result);
 
 // Get students in this cluster
 $cluster_name = $cluster['cluster'];
-$students_query = "SELECT sp.id, sp.school_id, sp.full_name, sp.program
+$students_query = "SELECT sp.id, sp.school_id, sp.full_name, sp.program, g.name as group_name
                    FROM student_profiles sp
+                   LEFT JOIN group_members gm ON sp.user_id = gm.student_id
+                   LEFT JOIN groups g ON gm.group_id = g.id
                    WHERE sp.cluster = '$cluster_name'
                    ORDER BY sp.full_name ASC";
 $students_result = mysqli_query($conn, $students_query);

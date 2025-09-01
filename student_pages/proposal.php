@@ -201,6 +201,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Add user to group
                     $join_query = "INSERT INTO group_members (group_id, student_id) VALUES ('$group_id_to_join', '$user_id')";
                     if (mysqli_query($conn, $join_query)) {
+                        // Get group's cluster assignment
+                        $group_cluster_query = "SELECT cluster_id FROM groups WHERE id = '$group_id_to_join'";
+                        $group_cluster_result = mysqli_query($conn, $group_cluster_query);
+                        $group_cluster_data = mysqli_fetch_assoc($group_cluster_result);
+                        
+                        if ($group_cluster_data && $group_cluster_data['cluster_id']) {
+                            // Assign new member to same cluster and adviser as group
+                            $assign_query = "UPDATE student_profiles 
+                                            SET cluster = (SELECT cluster FROM clusters WHERE id = '{$group_cluster_data['cluster_id']}'),
+                                                faculty_id = (SELECT faculty_id FROM clusters WHERE id = '{$group_cluster_data['cluster_id']}'),
+                                                updated_at = NOW() 
+                                            WHERE user_id = '$user_id'";
+                            mysqli_query($conn, $assign_query);
+                            
+                            // Update cluster student count
+                            $update_count_query = "UPDATE clusters SET student_count = student_count + 1 WHERE id = '{$group_cluster_data['cluster_id']}'";
+                            mysqli_query($conn, $update_count_query);
+                        }
+                        
                         $success_message = "Joined program group successfully!";
                         header("Location: ../student_pages/proposal.php");
                         exit();
@@ -223,20 +242,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             mkdir($target_dir, 0777, true);
         }
         
-        $file_name = "receipt_" . $user_id . "_" . $payment_type . "_" . time() . ".pdf";
+        $file_name = "receipt_" . $group_id . "_" . $payment_type . "_" . time() . ".pdf";
         $target_file = $target_dir . $file_name;
         
         if (move_uploaded_file($_FILES["payment_receipt"]["tmp_name"], $target_file)) {
-            $payment_query = "INSERT INTO payments (student_id, payment_type, amount, pdf_receipt, status, payment_date) 
-                             VALUES ('$user_id', '$payment_type', '$payment_amount', '$target_file', 'approved', NOW())";
+            // Get all group members
+            $members_query = "SELECT student_id FROM group_members WHERE group_id = '$group_id'";
+            $members_result = mysqli_query($conn, $members_query);
             
-            if (mysqli_query($conn, $payment_query)) {
-                $success_message = "Payment receipt uploaded successfully!";
-                header("Location: ../student_pages/proposal.php");
-                exit();
-            } else {
-                $error_message = "Error uploading payment: " . mysqli_error($conn);
+            // Insert payment for each group member
+            while ($member = mysqli_fetch_assoc($members_result)) {
+                $member_id = $member['student_id'];
+                $payment_query = "INSERT INTO payments (student_id, payment_type, amount, pdf_receipt, status, payment_date) 
+                                 VALUES ('$member_id', '$payment_type', '$payment_amount', '$target_file', 'approved', NOW())";
+                mysqli_query($conn, $payment_query);
             }
+            
+            $success_message = "Group payment receipt uploaded successfully!";
+            header("Location: ../student_pages/proposal.php");
+            exit();
         } else {
             $error_message = "Sorry, there was an error uploading your receipt.";
         }
@@ -257,6 +281,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             exit();
         } else {
             $error_message = "Error removing member: " . mysqli_error($conn);
+        }
+    }
+    
+    if (isset($_POST['leave_group'])) {
+        $leave_query = "DELETE FROM group_members WHERE group_id = '$group_id' AND student_id = '$user_id'";
+        if (mysqli_query($conn, $leave_query)) {
+            // Get current cluster_id before resetting
+            $current_cluster_query = "SELECT cluster_id FROM groups WHERE id = '$group_id'";
+            $current_cluster_result = mysqli_query($conn, $current_cluster_query);
+            $current_cluster_data = mysqli_fetch_assoc($current_cluster_result);
+            
+            // Reset user's cluster
+            $reset_cluster_query = "UPDATE student_profiles 
+                                    SET cluster = NULL, faculty_id = NULL, updated_at = NOW() 
+                                    WHERE user_id = '$user_id'";
+            mysqli_query($conn, $reset_cluster_query);
+            
+            // Update cluster student count
+            if ($current_cluster_data && $current_cluster_data['cluster_id']) {
+                $update_count_query = "UPDATE clusters SET student_count = student_count - 1 WHERE id = '{$current_cluster_data['cluster_id']}'";
+                mysqli_query($conn, $update_count_query);
+            }
+            
+            $success_message = "Left group successfully!";
+            header("Location: ../student_pages/proposal.php");
+            exit();
+        } else {
+            $error_message = "Error leaving group: " . mysqli_error($conn);
         }
     }
 }
@@ -754,6 +806,15 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             </div>
                         </div>
 
+                        <!-- Leave Group -->
+                        <div class="mb-8">
+                            <form method="POST" onsubmit="return confirm('Are you sure you want to leave this group? This action cannot be undone.')">
+                                <button type="submit" name="leave_group" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                                    <i class="fas fa-sign-out-alt mr-2"></i> Leave Group
+                                </button>
+                            </form>
+                        </div>
+
                     <?php else: ?>
                         <!-- Empty State -->
                         <div class="text-center py-10">
@@ -879,7 +940,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                     <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-3"></i>
                                     <div>
                                         <h3 class="font-semibold text-yellow-800">Research Forum Payment Required</h3>
-                                        <p class="text-yellow-700">You need to upload your Research Forum payment receipt before you can submit a proposal.</p>
+                                        <p class="text-yellow-700">Team leader needs to upload the group's Research Forum payment receipt before you can submit a proposal.</p>
                                         <button onclick="toggleModal('paymentModal')" class="mt-3 bg-primary-600 text-white px-4 py-2 rounded-lg">
                                             <i class="fas fa-upload mr-2"></i> Upload Receipt
                                         </button>
@@ -949,7 +1010,12 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
             <form method="POST" class="px-6 py-4">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
-                    <input type="text" name="group_name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    <select name="group_name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select Group Name</option>
+                        <?php for($i = 1; $i <= 100; $i++): ?>
+                            <option value="GRP <?php echo $i; ?>">GRP <?php echo $i; ?></option>
+                        <?php endfor; ?>
+                    </select>
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Program</label>
@@ -993,7 +1059,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
     <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
         <div class="enhanced-modal rounded-lg shadow-xl w-full max-w-md">
             <div class="border-b px-6 py-4 flex justify-between items-center">
-                <h3 class="text-xl font-semibold text-gray-800">Upload Payment Receipt</h3>
+                <h3 class="text-xl font-semibold text-gray-800">Upload Group Payment Receipt</h3>
                 <button onclick="toggleModal('paymentModal')" class="text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times"></i>
                 </button>
@@ -1023,7 +1089,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             <input type="file" name="payment_receipt" accept=".pdf" required class="hidden">
                         </label>
                     </div>
-                    <p class="text-sm text-gray-500 mt-1">Upload your payment receipt in PDF format.</p>
+                    <p class="text-sm text-gray-500 mt-1">Upload the group's collective payment receipt in PDF format. This will apply to all group members.</p>
                 </div>
                 <div class="flex justify-end space-x-3 pt-4">
                     <button type="button" onclick="toggleModal('paymentModal')" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancel</button>

@@ -96,18 +96,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $description = mysqli_real_escape_string($conn, $_POST['description']);
         
         // File upload handling
-        $target_dir = "assets/uploads";
+        $target_dir = "../assets/uploads/proposals/";
         if (!file_exists($target_dir)) {
             mkdir($target_dir, 0777, true);
         }
-        $file_name = "proposal_" . $group_id . "_" . time() . ".pdf";
-        $target_file = $target_dir . $file_name;
         
-        if (move_uploaded_file($_FILES["proposal_file"]["tmp_name"], $target_file)) {
+        // Validate file upload
+        if (!isset($_FILES['proposal_file']) || $_FILES['proposal_file']['error'] !== UPLOAD_ERR_OK) {
+            $error_message = "Please select a valid PDF file to upload.";
+        } else {
+            $file_info = $_FILES['proposal_file'];
+            $file_extension = strtolower(pathinfo($file_info['name'], PATHINFO_EXTENSION));
+            
+            // Validate file type
+            if ($file_extension !== 'pdf') {
+                $error_message = "Only PDF files are allowed.";
+            } elseif ($file_info['size'] > 10 * 1024 * 1024) { // 10MB limit
+                $error_message = "File size must be less than 10MB.";
+            } else {
+                $original_name = $file_info['name'];
+                $target_file = $target_dir . $original_name;
+                
+                if (move_uploaded_file($file_info['tmp_name'], $target_file)) {
             $insert_query = "INSERT INTO proposals (group_id, title, description, file_path) 
                             VALUES ('$group_id', '$title', '$description', '$target_file')";
             
-            if (mysqli_query($conn, $insert_query)) {
+                if (mysqli_query($conn, $insert_query)) {
                 // Include notification helper
                 include('../includes/notification-helper.php');
                 
@@ -131,15 +145,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     "info"
                 );
                 
-                $success_message = "Proposal submitted successfully!";
-                $has_proposal = true;
-                header("Location: ../student_pages/proposal.php");
-                exit();
-            } else {
-                $error_message = "Error submitting proposal: " . mysqli_error($conn);
+                    $success_message = "Proposal submitted successfully!";
+                    $has_proposal = true;
+                    header("Location: ../student_pages/proposal.php");
+                    exit();
+                } else {
+                    $error_message = "Error submitting proposal: " . mysqli_error($conn);
+                }
+                } else {
+                    $error_message = "Error uploading file. Please try again.";
+                }
             }
-        } else {
-            $error_message = "Sorry, there was an error uploading your file.";
         }
     }
     
@@ -237,32 +253,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $payment_type = mysqli_real_escape_string($conn, $_POST['payment_type']);
         $payment_amount = 100.00;
         
-        $target_dir = "assets/receipts/";
+        $target_dir = "../assets/uploads/receipts/";
         if (!file_exists($target_dir)) {
             mkdir($target_dir, 0777, true);
         }
         
-        $file_name = "receipt_" . $group_id . "_" . $payment_type . "_" . time() . ".pdf";
-        $target_file = $target_dir . $file_name;
-        
-        if (move_uploaded_file($_FILES["payment_receipt"]["tmp_name"], $target_file)) {
-            // Get all group members
-            $members_query = "SELECT student_id FROM group_members WHERE group_id = '$group_id'";
-            $members_result = mysqli_query($conn, $members_query);
-            
-            // Insert payment for each group member
-            while ($member = mysqli_fetch_assoc($members_result)) {
-                $member_id = $member['student_id'];
-                $payment_query = "INSERT INTO payments (student_id, payment_type, amount, pdf_receipt, status, payment_date) 
-                                 VALUES ('$member_id', '$payment_type', '$payment_amount', '$target_file', 'approved', NOW())";
-                mysqli_query($conn, $payment_query);
-            }
-            
-            $success_message = "Group payment receipt uploaded successfully!";
-            header("Location: ../student_pages/proposal.php");
-            exit();
+        // Validate file upload
+        if (!isset($_FILES['payment_receipt']) || $_FILES['payment_receipt']['error'] !== UPLOAD_ERR_OK) {
+            $error_message = "Please select a valid PDF receipt to upload.";
         } else {
-            $error_message = "Sorry, there was an error uploading your receipt.";
+            $file_info = $_FILES['payment_receipt'];
+            $file_extension = strtolower(pathinfo($file_info['name'], PATHINFO_EXTENSION));
+            
+            // Validate file type
+            if ($file_extension !== 'pdf') {
+                $error_message = "Only PDF files are allowed for receipts.";
+            } elseif ($file_info['size'] > 5 * 1024 * 1024) { // 5MB limit
+                $error_message = "Receipt file size must be less than 5MB.";
+            } else {
+                $original_name = $file_info['name'];
+                $target_file = $target_dir . $original_name;
+                
+                if (move_uploaded_file($file_info['tmp_name'], $target_file)) {
+                    // Get all group members
+                    $members_query = "SELECT student_id FROM group_members WHERE group_id = '$group_id'";
+                    $members_result = mysqli_query($conn, $members_query);
+                    
+                    // Insert payment for each group member
+                    while ($member = mysqli_fetch_assoc($members_result)) {
+                        $member_id = $member['student_id'];
+                        $payment_query = "INSERT INTO payments (student_id, payment_type, amount, pdf_receipt, status, payment_date) 
+                                         VALUES ('$member_id', '$payment_type', '$payment_amount', '$target_file', 'approved', NOW())";
+                        mysqli_query($conn, $payment_query);
+                    }
+                    
+                    $success_message = "Group payment receipt uploaded successfully!";
+                    header("Location: ../student_pages/proposal.php");
+                    exit();
+                } else {
+                    $error_message = "Error uploading receipt file. Please try again.";
+                }
+            }
         }
     }
     
@@ -972,10 +1003,10 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                     <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center hover:bg-gray-50 transition 
                                         <?php echo ($has_proposal || !$has_research_forum_payment) ? 'opacity-50 cursor-not-allowed' : ''; ?>">
                                         <i class="fas fa-file-pdf text-red-500 mr-2"></i>
-                                        <span class="text-sm font-medium">Choose File</span>
+                                        <span class="text-sm font-medium" id="file-label">Choose PDF File</span>
                                         <input type="file" name="proposal_file" accept=".pdf" required 
                                             <?php echo ($has_proposal || !$has_research_forum_payment) ? 'disabled' : ''; ?>
-                                            class="hidden">
+                                            class="hidden" onchange="updateFileName(this)">
                                     </label>
                                     <span class="ml-3 text-sm text-gray-500" id="file-name">
                                         <?php echo $has_proposal ? basename($proposal['file_path']) : 'No file chosen'; ?>
@@ -1102,11 +1133,23 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
     </div>
 
     <script>
-        // Display selected file name
-        document.querySelector('input[name="proposal_file"]')?.addEventListener('change', function(e) {
-            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
-            document.getElementById('file-name').textContent = fileName;
-        });
+        function updateFileName(input) {
+            const fileName = input.files[0] ? input.files[0].name : 'No file chosen';
+            const fileLabel = document.getElementById('file-label');
+            const fileNameSpan = document.getElementById('file-name');
+            
+            if (input.files[0]) {
+                fileLabel.textContent = 'PDF Selected';
+                fileNameSpan.textContent = fileName;
+                fileNameSpan.classList.remove('text-gray-500');
+                fileNameSpan.classList.add('text-green-600', 'font-medium');
+            } else {
+                fileLabel.textContent = 'Choose PDF File';
+                fileNameSpan.textContent = 'No file chosen';
+                fileNameSpan.classList.remove('text-green-600', 'font-medium');
+                fileNameSpan.classList.add('text-gray-500');
+            }
+        }
     </script>
 </body>
 </html>

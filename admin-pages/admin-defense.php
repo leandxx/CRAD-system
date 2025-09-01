@@ -27,6 +27,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } elseif (strtotime($start_time) >= strtotime($end_time)) {
             $error_message = "End time must be after start time.";
         } else {
+            // Check room availability
+            $availability_query = "SELECT COUNT(*) as conflict_count 
+                                  FROM defense_schedules 
+                                  WHERE room_id = '$room_id' 
+                                  AND defense_date = '$defense_date' 
+                                  AND status = 'scheduled'
+                                  AND (
+                                      (start_time <= '$start_time' AND end_time > '$start_time') OR
+                                      (start_time < '$end_time' AND end_time >= '$end_time') OR
+                                      (start_time >= '$start_time' AND end_time <= '$end_time')
+                                  )";
+            $availability_result = mysqli_query($conn, $availability_query);
+            $availability_data = mysqli_fetch_assoc($availability_result);
+            
+            if ($availability_data['conflict_count'] > 0) {
+                $error_message = "Room is not available during the selected time slot. Please choose a different time or room.";
+            } else {
 
         // Default status = scheduled
         $status = 'scheduled';
@@ -59,11 +76,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             notifyAllUsers($conn, $notification_title, $notification_message, 'info');
 
             $_SESSION['success_message'] = "Defense scheduled successfully!";
+            $_SESSION['refresh_availability'] = true;
             header("Location: admin-defense.php");
             exit();
         } else {
             $error_message = "Error scheduling defense: " . mysqli_error($conn);
         }
+            }
         }
     }
 
@@ -102,6 +121,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } elseif (strtotime($start_time) >= strtotime($end_time)) {
             $error_message = "End time must be after start time.";
         } else {
+            // Check room availability (exclude current defense from check)
+            $availability_query = "SELECT COUNT(*) as conflict_count 
+                                  FROM defense_schedules 
+                                  WHERE room_id = '$room_id' 
+                                  AND defense_date = '$defense_date' 
+                                  AND status = 'scheduled'
+                                  AND id != '$defense_id'
+                                  AND (
+                                      (start_time <= '$start_time' AND end_time > '$start_time') OR
+                                      (start_time < '$end_time' AND end_time >= '$end_time') OR
+                                      (start_time >= '$start_time' AND end_time <= '$end_time')
+                                  )";
+            $availability_result = mysqli_query($conn, $availability_query);
+            $availability_data = mysqli_fetch_assoc($availability_result);
+            
+            if ($availability_data['conflict_count'] > 0) {
+                $error_message = "Room is not available during the selected time slot. Please choose a different time or room.";
+            } else {
 
         // Update defense schedule (don't update group_id as it shouldn't change)
         $update_query = "UPDATE defense_schedules 
@@ -139,6 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } else {
             $error_message = "Error updating defense schedule: " . mysqli_error($conn);
         }
+            }
         }
     }
 }
@@ -188,11 +226,11 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
     $defense_schedules[] = $schedule;
 }
 
-// Get all groups with completed proposals
+// Get all groups with completed/approved proposals
 $groups_query = "SELECT g.*, p.title as proposal_title 
                 FROM groups g 
                 JOIN proposals p ON g.id = p.group_id 
-                WHERE p.status = 'Completed'
+                WHERE p.status IN ('Completed', 'Approved')
                 ORDER BY g.name";
 $groups_result = mysqli_query($conn, $groups_query);
 $groups = [];
@@ -243,7 +281,7 @@ while ($room = mysqli_fetch_assoc($rooms_result)) {
 }
 
 // Get stats for dashboard
-$total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE status = 'Completed'"));
+$total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE status IN ('Completed', 'Approved')"));
 $scheduled_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'scheduled'"));
 $pending_defenses = $total_proposals - $scheduled_defenses;
 $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'completed'"));
@@ -401,6 +439,15 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         .panel-content.active {
             display: block;
         }
+        .main-tab {
+            transition: all 0.3s ease;
+        }
+        .main-tab:hover {
+            color: #3b82f6;
+        }
+        .main-tab-content {
+            transition: all 0.3s ease;
+        }
     </style>
     <script>
         tailwind.config = {
@@ -548,6 +595,151 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             });
         }
         
+        // Function to switch between main tabs
+        function switchMainTab(tabName) {
+            // Update active tab
+            document.querySelectorAll('.main-tab').forEach(tab => {
+                if (tab.id === tabName + 'Tab') {
+                    tab.classList.add('text-primary', 'border-primary');
+                    tab.classList.remove('text-gray-500', 'border-transparent');
+                } else {
+                    tab.classList.remove('text-primary', 'border-primary');
+                    tab.classList.add('text-gray-500', 'border-transparent');
+                }
+            });
+            
+            // Show active content
+            if (tabName === 'schedules') {
+                document.getElementById('schedulesContent').classList.remove('hidden');
+                document.getElementById('availabilityContent').classList.add('hidden');
+                document.getElementById('scheduleCards').classList.remove('hidden');
+                document.getElementById('availabilityCards').classList.add('hidden');
+            } else if (tabName === 'availability') {
+                document.getElementById('schedulesContent').classList.add('hidden');
+                document.getElementById('availabilityContent').classList.remove('hidden');
+                document.getElementById('scheduleCards').classList.add('hidden');
+                document.getElementById('availabilityCards').classList.remove('hidden');
+                // Load room availability immediately when tab is clicked
+                checkRoomAvailability();
+            }
+        }
+        
+        // Function to check room availability
+        function checkRoomAvailability() {
+            const selectedDate = document.getElementById('availabilityDate').value;
+            if (!selectedDate) return;
+            
+            // Update selected date display
+            const dateObj = new Date(selectedDate);
+            const formattedDate = dateObj.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+            document.getElementById('selectedDate').textContent = formattedDate;
+            
+            // Show loading state
+            document.getElementById('roomAvailabilityGrid').innerHTML = 
+                '<div class="col-span-3 text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i><p class="text-gray-500">Loading room availability...</p></div>';
+            
+            // Fetch room availability via AJAX
+            fetch('admin-pages/get_room_availability.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'date=' + encodeURIComponent(selectedDate)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                displayRoomAvailability(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('roomAvailabilityGrid').innerHTML = 
+                    '<div class="col-span-3 text-center py-8"><p class="text-red-500">Error: ' + error.message + '</p></div>';
+            });
+        }
+        
+        // Function to display room availability
+        function displayRoomAvailability(rooms) {
+            const grid = document.getElementById('roomAvailabilityGrid');
+            
+            if (!rooms || rooms.length === 0) {
+                grid.innerHTML = '<div class="col-span-3 text-center py-8"><p class="text-gray-500">No rooms found</p></div>';
+                return;
+            }
+            
+            let html = '';
+            rooms.forEach(room => {
+                const hasSchedules = room.schedules && room.schedules.length > 0;
+                const statusClass = hasSchedules ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
+                
+                let statusText = 'Available all day';
+                if (hasSchedules) {
+                    const firstSchedule = room.schedules[0];
+                    const lastSchedule = room.schedules[room.schedules.length - 1];
+                    statusText = `Available before ${firstSchedule.start_time} and after ${lastSchedule.end_time}`;
+                }
+                
+                const statusIcon = hasSchedules ? 'fa-times-circle' : 'fa-check-circle';
+                
+                html += `
+                    <div class="bg-white border border-gray-200 rounded-xl shadow-md p-5 hover:shadow-lg transition-shadow">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex-1">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-door-open text-gray-400 mr-2"></i>
+                                    <h3 class="text-lg font-semibold text-gray-900">${room.room_name}</h3>
+                                </div>
+                                <div class="flex items-center text-sm text-gray-500 mb-1">
+                                    <i class="fas fa-building text-gray-400 mr-2"></i>
+                                    <span>${room.building}</span>
+                                </div>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <i class="fas fa-users text-gray-400 mr-2"></i>
+                                    <span>Capacity: ${room.capacity || 'N/A'}</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <span class="px-3 py-1 text-xs font-medium rounded-full ${statusClass} flex items-center">
+                                    <i class="fas ${statusIcon} mr-1"></i>
+                                    ${statusText}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t pt-3">
+                            ${hasSchedules ? `
+                                <div class="space-y-1">
+                                    ${room.schedules.map(schedule => `
+                                        <div class="text-xs bg-red-50 rounded p-2">
+                                            <span class="text-red-600">Occupied ${schedule.start_time} - ${schedule.end_time} (${schedule.group_name})</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : `
+                                <div class="flex items-center text-sm text-green-600">
+                                    <i class="fas fa-calendar-check text-green-500 mr-2"></i>
+                                    <span>Available all day</span>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            grid.innerHTML = html;
+        }
+        
 
     </script>
 </head>
@@ -624,29 +816,58 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
             </div>
 
-            <!-- Filters and Actions -->
+            <!-- Main Tabs -->
             <div class="stats-card rounded-2xl mb-8 p-6 animate-fade-in">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div class="flex flex-wrap gap-3">
-                        <button onclick="filterStatus('all')" data-filter="all" class="filter-btn px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold transition-all hover:scale-105">All</button>
-                        <button onclick="filterStatus('scheduled')" data-filter="scheduled" class="filter-btn px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold transition-all hover:scale-105 hover:bg-gray-200">Scheduled</button>
-                        <button onclick="filterStatus('pending')" data-filter="pending" class="filter-btn px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold transition-all hover:scale-105 hover:bg-gray-200">Pending</button>
-                        <button onclick="filterStatus('completed')" data-filter="completed" class="filter-btn px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold transition-all hover:scale-105 hover:bg-gray-200">Completed</button>
+                <div class="flex flex-col gap-6">
+                    <!-- Tab Navigation -->
+                    <div class="flex border-b border-gray-200">
+                        <button onclick="switchMainTab('schedules')" id="schedulesTab" class="main-tab px-6 py-3 font-semibold text-primary border-b-2 border-primary">Defense Schedules</button>
+                        <button onclick="switchMainTab('availability')" id="availabilityTab" class="main-tab px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-primary">Room Availability</button>
                     </div>
-                    <div class="flex gap-3">
-                        <div class="relative">
-                            <input type="text" id="searchInput" placeholder="Search proposals..." onkeyup="handleSearch()" class="pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
-                            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    
+                    <!-- Schedules Tab Content -->
+                    <div id="schedulesContent" class="main-tab-content">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                            <div class="flex flex-wrap gap-3">
+                                <button onclick="filterStatus('all')" data-filter="all" class="filter-btn px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold transition-all hover:scale-105">All</button>
+                                <button onclick="filterStatus('scheduled')" data-filter="scheduled" class="filter-btn px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold transition-all hover:scale-105 hover:bg-gray-200">Scheduled</button>
+                                <button onclick="filterStatus('pending')" data-filter="pending" class="filter-btn px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold transition-all hover:scale-105 hover:bg-gray-200">Pending</button>
+                                <button onclick="filterStatus('completed')" data-filter="completed" class="filter-btn px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold transition-all hover:scale-105 hover:bg-gray-200">Completed</button>
+                            </div>
+                            <div class="flex gap-3">
+                                <div class="relative">
+                                    <input type="text" id="searchInput" placeholder="Search proposals..." onkeyup="handleSearch()" class="pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                                    <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                </div>
+                                <button onclick="toggleModal()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
+                                    <i class="fas fa-plus mr-2"></i> Schedule Defense
+                                </button>
+                            </div>
                         </div>
-                        <button onclick="toggleModal()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
-                            <i class="fas fa-plus mr-2"></i> Schedule Defense
-                        </button>
+                    </div>
+                    
+                    <!-- Room Availability Tab Content -->
+                    <div id="availabilityContent" class="main-tab-content hidden">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                            <div class="flex items-center gap-4">
+                                <div class="gradient-green p-3 rounded-xl">
+                                    <i class="fas fa-door-open text-white text-xl"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-gray-800">Room Availability</h3>
+                            </div>
+                            <div class="flex gap-3">
+                                <input type="date" id="availabilityDate" value="<?php echo date('Y-m-d'); ?>" onchange="checkRoomAvailability()" class="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                                <button onclick="checkRoomAvailability()" class="gradient-green text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
+                                    <i class="fas fa-search mr-2"></i> Check Availability
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Defense Schedule Cards -->
-            <div class="stats-card rounded-2xl p-8 animate-scale-in">
+            <div id="scheduleCards" class="stats-card rounded-2xl p-8 animate-scale-in">
                 <div class="flex items-center mb-8">
                     <div class="gradient-blue p-3 rounded-xl mr-4">
                         <i class="fas fa-calendar-alt text-white text-xl"></i>
@@ -712,7 +933,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                         FROM groups g 
                                         JOIN proposals p ON g.id = p.group_id 
                                         WHERE g.id NOT IN (SELECT group_id FROM defense_schedules) 
-                                        AND p.status = 'Completed'
+                                        AND p.status IN ('Completed', 'Approved')
                                         ORDER BY g.name";
                     $unscheduled_result = mysqli_query($conn, $unscheduled_query);
 
@@ -734,6 +955,21 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         </div>
                     </div>
                     <?php endwhile; ?>
+                </div>
+            </div>
+            
+            <!-- Room Availability Cards -->
+            <div id="availabilityCards" class="stats-card rounded-2xl p-8 animate-scale-in hidden">
+                <div class="flex items-center mb-8">
+                    <div class="gradient-green p-3 rounded-xl mr-4">
+                        <i class="fas fa-door-open text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">Room Availability</h2>
+                    <span id="selectedDate" class="ml-4 px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full"><?php echo date('M j, Y'); ?></span>
+                </div>
+                
+                <div id="roomAvailabilityGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Room availability cards will be populated here -->
                 </div>
             </div>
 
@@ -1179,6 +1415,13 @@ function populateEditForm(schedule) {
             
             // Edit modal default to chairperson tab
             switchEditPanelTab('edit_chairperson');
+            
+            // Check if we need to refresh room availability
+            <?php if (isset($_SESSION['refresh_availability'])): ?>
+            // Switch to availability tab and refresh
+            switchMainTab('availability');
+            <?php unset($_SESSION['refresh_availability']); ?>
+            <?php endif; ?>
         });
     </script>
 </body>

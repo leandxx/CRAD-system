@@ -162,11 +162,11 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
     $defense_schedules[] = $schedule;
 }
 
-// Get all groups with approved proposals
+// Get all groups with approved/completed proposals
 $groups_query = "SELECT g.*, p.title as proposal_title 
                 FROM groups g 
                 JOIN proposals p ON g.id = p.group_id 
-                WHERE p.status = 'Approved'
+                WHERE p.status IN ('Approved', 'Completed')
                 ORDER BY g.name";
 $groups_result = mysqli_query($conn, $groups_query);
 $groups = [];
@@ -208,7 +208,7 @@ while ($room = mysqli_fetch_assoc($rooms_result)) {
 }
 
 // Get stats for dashboard
-$total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE status = 'Approved'"));
+$total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE status IN ('Approved', 'Completed')"));
 $scheduled_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'scheduled'"));
 $pending_defenses = $total_proposals - $scheduled_defenses;
 $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'completed'"));
@@ -580,7 +580,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                         FROM groups g 
                                         JOIN proposals p ON g.id = p.group_id 
                                         WHERE g.id NOT IN (SELECT group_id FROM defense_schedules) 
-                                        AND p.status = 'Approved'
+                                        AND p.status IN ('Approved', 'Completed')
                                         ORDER BY g.name";
                     $unscheduled_result = mysqli_query($conn, $unscheduled_query);
 

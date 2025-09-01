@@ -33,17 +33,17 @@ if ($has_group) {
     $group = mysqli_fetch_assoc($group_result);
     $group_id = $group['id'];
     
-    // Check defense schedule - only show if payments are approved
-    $defense_query = "SELECT ds.*, r.room_name, r.building,
-                     pm.first_name, pm.last_name, dp.role
+    // Check defense schedule - get latest active defense for the group (scheduled or re_defense)
+    $defense_query = "SELECT ds.*, r.room_name, r.building
                      FROM defense_schedules ds 
                      LEFT JOIN rooms r ON ds.room_id = r.id 
-                     LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
-                     LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
-                     WHERE ds.group_id = '$group_id'";
+                     WHERE ds.group_id = '$group_id' AND ds.status IN ('scheduled', 're_defense')
+                     ORDER BY ds.defense_date DESC, ds.id DESC
+                     LIMIT 1";
     $defense_result = mysqli_query($conn, $defense_query);
     
     if (mysqli_num_rows($defense_result) > 0) {
+        // Get the most recent defense (first result since we ordered by date DESC)
         $temp_schedule = mysqli_fetch_assoc($defense_result);
         
         // Get payment status first
@@ -61,8 +61,9 @@ if ($has_group) {
         
         // Only show schedule if student has required payments
         $show_schedule = false;
-        // Assume pre-oral defense if before current date + 30 days, otherwise final defense
-        $is_pre_oral = strtotime($temp_schedule['defense_date']) < strtotime('+30 days');
+        // Check defense type from database  
+        $defense_type = isset($temp_schedule['defense_type']) ? $temp_schedule['defense_type'] : 'pre_oral';
+        $is_pre_oral = ($defense_type === 'pre_oral');
         
         if ($is_pre_oral) {
             // Pre-oral defense - need research forum and pre-oral payments
@@ -75,9 +76,14 @@ if ($has_group) {
         if ($show_schedule) {
             $defense_schedule = $temp_schedule;
             
-            // Reset and fetch all panel members with names
-            mysqli_data_seek($defense_result, 0);
-            while ($row = mysqli_fetch_assoc($defense_result)) {
+            // Fetch panel members for this specific defense only
+            $panel_query = "SELECT pm.first_name, pm.last_name, dp.role
+                           FROM defense_panel dp
+                           JOIN panel_members pm ON dp.faculty_id = pm.id
+                           WHERE dp.defense_id = '{$defense_schedule['id']}'";
+            $panel_result = mysqli_query($conn, $panel_query);
+            
+            while ($row = mysqli_fetch_assoc($panel_result)) {
                 if (!empty($row['first_name']) && !empty($row['last_name'])) {
                     $panel_members[] = [
                         'name' => $row['first_name'] . ' ' . $row['last_name'],
@@ -86,6 +92,13 @@ if ($has_group) {
                     ];
                 }
             }
+            
+            // Debug: Check what defense we're showing
+            // echo '<pre>Current Defense: '; print_r($defense_schedule); echo '</pre>';
+            
+            // Debug: Check what roles are actually in the data
+            // echo '<pre>Panel Members Debug: '; print_r($panel_members); echo '</pre>';
+            // echo '<pre>Defense Schedule Debug: '; print_r($defense_schedule); echo '</pre>';
         }
     }
     
@@ -353,8 +366,8 @@ if ($has_group) {
                 </div>
             <?php endif; ?>
 
-            <!-- Countdown Banner (only show if defense is scheduled) -->
-            <?php if ($defense_schedule): ?>
+            <!-- Countdown Banner (only show if defense is scheduled and not completed) -->
+            <?php if ($defense_schedule && $defense_schedule['status'] == 'scheduled'): ?>
             <div class="floating-panel text-white rounded-2xl p-6 mb-8 relative overflow-hidden">
                 <div class="absolute inset-0 bg-black opacity-10"></div>
                 <div class="absolute -right-6 -bottom-6 w-40 h-40 rounded-full bg-white opacity-10"></div>
@@ -363,7 +376,7 @@ if ($has_group) {
                 <div class="flex flex-col md:flex-row items-center justify-between relative z-10">
                     <div class="mb-4 md:mb-0">
                         <h2 class="text-2xl font-bold mb-2">Your Defense Countdown</h2>
-                        <p class="text-blue-100 opacity-90">Final defense presentation on <?php echo date('F j, Y', strtotime($defense_schedule['defense_date'])); ?></p>
+                        <p class="text-blue-100 opacity-90"><?php echo $is_pre_oral ? 'Pre-oral' : 'Final'; ?> defense presentation on <?php echo date('F j, Y', strtotime($defense_schedule['defense_date'])); ?></p>
                     </div>
                     <div class="countdown-timer text-4xl font-bold bg-white bg-opacity-10 px-6 py-4 rounded-xl">
                         <span id="days" class="text-white">00</span>d 
@@ -475,8 +488,23 @@ if ($has_group) {
                             <i class="fas fa-calendar-day text-primary mr-3"></i>
                             Defense Schedule
                         </h2>
-                        <div class="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">
-                            CONFIRMED
+                        <?php 
+                        $status_class = 'bg-gray-100 text-gray-700';
+                        $status_text = 'PENDING';
+                        
+                        if ($defense_schedule['status'] == 'completed') {
+                            $status_class = 'bg-green-100 text-green-700';
+                            $status_text = 'COMPLETED';
+                        } elseif ($defense_schedule['status'] == 're_defense') {
+                            $status_class = 'bg-red-100 text-red-700';
+                            $status_text = 'RE-DEFENSE';
+                        } elseif ($defense_schedule['status'] == 'scheduled') {
+                            $status_class = 'bg-blue-100 text-blue-700';
+                            $status_text = 'SCHEDULED';
+                        }
+                        ?>
+                        <div class="<?php echo $status_class; ?> text-xs font-semibold px-3 py-1 rounded-full">
+                            <?php echo $status_text; ?>
                         </div>
                     </div>
                     
@@ -486,9 +514,10 @@ if ($has_group) {
                                 <i class="fas fa-calendar-day"></i>
                             </div>
                             <div>
-                                <h3 class="font-medium text-gray-600 text-sm">Date & Time</h3>
-                                <p class="text-gray-900 font-medium"><?php echo date('F j, Y', strtotime($defense_schedule['defense_date'])); ?></p>
-                                <p class="text-gray-700"><?php echo date('g:i A', strtotime($defense_schedule['start_time'])); ?> – <?php echo date('g:i A', strtotime($defense_schedule['end_time'])); ?></p>
+                                <h3 class="font-medium text-gray-600 text-sm">Defense Type & Date</h3>
+                                <p class="text-gray-900 font-medium"><?php echo ucfirst(str_replace('_', ' ', $defense_schedule['defense_type'])); ?> Defense</p>
+                                <p class="text-gray-700"><?php echo date('F j, Y', strtotime($defense_schedule['defense_date'])); ?></p>
+                                <p class="text-gray-600 text-sm"><?php echo date('g:i A', strtotime($defense_schedule['start_time'])); ?> – <?php echo date('g:i A', strtotime($defense_schedule['end_time'])); ?></p>
                             </div>
                         </div>
                         
@@ -515,10 +544,10 @@ if ($has_group) {
                                     <?php 
                                     // Separate chairpersons and members
                                     $chairpersons = array_filter($panel_members, function($panel) {
-                                        return $panel['role'] === 'chairperson';
+                                        return strtolower(trim($panel['role'])) === 'chairperson';
                                     });
                                     $members = array_filter($panel_members, function($panel) {
-                                        return $panel['role'] === 'member';
+                                        return strtolower(trim($panel['role'])) === 'member';
                                     });
                                     
                                     // Display chairpersons first
@@ -552,6 +581,34 @@ if ($has_group) {
                                     </div>
                                     <?php endforeach; ?>
                                 </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if ($defense_schedule['status'] == 'completed'): ?>
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 p-2 bg-green-100 text-green-600 rounded-lg mr-4">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-gray-600 text-sm">Status</h3>
+                                <p class="text-green-700 font-medium">Defense Completed Successfully</p>
+                                <?php if ($defense_schedule['defense_type'] == 'pre_oral'): ?>
+                                <p class="text-gray-600 text-sm mt-1">Awaiting final defense schedule</p>
+                                <?php else: ?>
+                                <p class="text-green-600 text-sm mt-1 font-medium">🎉 All defense requirements completed! Congratulations!</p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php elseif ($defense_schedule['status'] == 're_defense'): ?>
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 p-2 bg-red-100 text-red-600 rounded-lg mr-4">
+                                <i class="fas fa-redo"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-gray-600 text-sm">Status</h3>
+                                <p class="text-red-700 font-medium">Re-defense Required</p>
+                                <p class="text-gray-600 text-sm mt-1">Please prepare for your re-defense presentation</p>
                             </div>
                         </div>
                         <?php endif; ?>
@@ -645,19 +702,127 @@ if ($has_group) {
                                 </div>
                             </div>
                             
-                            <!-- Item 5 - Final Defense -->
+                            <!-- Item 5 - Current Defense (Pre-oral or Final) -->
                             <div class="relative">
-                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo ($defense_schedule && strtotime($defense_schedule['defense_date']) < time()) ? 'bg-green-500 shadow-md' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
-                                    <i class="fas <?php echo ($defense_schedule && strtotime($defense_schedule['defense_date']) < time()) ? 'fa-check' : 'fa-clock'; ?> text-white text-xs"></i>
+                                <?php 
+                                $defense_completed = ($defense_schedule && $defense_schedule['status'] == 'completed');
+                                $defense_scheduled = ($defense_schedule && $defense_schedule['status'] == 'scheduled');
+                                $defense_redefense = ($defense_schedule && $defense_schedule['status'] == 're_defense');
+                                $is_current_final = ($defense_schedule && $defense_schedule['defense_type'] == 'final');
+                                ?>
+                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo $defense_completed ? 'bg-green-500 shadow-md' : ($defense_redefense ? 'bg-red-500 shadow-md' : ($defense_scheduled ? 'bg-blue-500 shadow-md' : 'bg-gray-300')); ?> border-4 border-white flex items-center justify-center">
+                                    <i class="fas <?php echo $defense_completed ? 'fa-check' : ($defense_redefense ? 'fa-redo' : ($defense_scheduled ? 'fa-calendar' : 'fa-clock')); ?> text-white text-xs"></i>
                                 </div>
                                 <div class="pl-2">
-                                    <h3 class="font-medium text-gray-800">Final Defense</h3>
-                                    <p class="text-sm text-gray-600 mt-1">Presentation and evaluation</p>
-                                    <p class="text-xs font-medium <?php echo ($defense_schedule && strtotime($defense_schedule['defense_date']) < time()) ? 'text-green-600' : 'text-gray-500'; ?> mt-2">
-                                        <?php echo ($defense_schedule) ? date('F j, Y', strtotime($defense_schedule['defense_date'])) : 'Not Scheduled'; ?>
+                                    <h3 class="font-medium text-gray-800"><?php echo ($defense_schedule) ? ucfirst(str_replace('_', ' ', $defense_schedule['defense_type'])) . ' Defense' : 'Defense Presentation'; ?></h3>
+                                    <p class="text-sm text-gray-600 mt-1">
+                                        <?php 
+                                        if ($defense_completed) {
+                                            if ($is_current_final) {
+                                                echo '🎉 Completed successfully - All requirements fulfilled!';
+                                            } else {
+                                                echo 'Completed successfully';
+                                            }
+                                        } elseif ($defense_redefense) {
+                                            echo 'Re-defense required';
+                                        } elseif ($defense_scheduled) {
+                                            echo 'Scheduled for presentation';
+                                        } else {
+                                            echo 'Presentation and evaluation';
+                                        }
+                                        ?>
+                                    </p>
+                                    <p class="text-xs font-medium <?php echo $defense_completed ? 'text-green-600' : ($defense_redefense ? 'text-red-600' : ($defense_scheduled ? 'text-blue-600' : 'text-gray-500')); ?> mt-2">
+                                        <?php 
+                                        if ($defense_schedule) {
+                                            echo date('F j, Y', strtotime($defense_schedule['defense_date']));
+                                            if ($defense_completed) {
+                                                if ($is_current_final) {
+                                                    echo ' - 🏆 CONGRATULATIONS!';
+                                                } else {
+                                                    echo ' - Completed';
+                                                }
+                                            } elseif ($defense_redefense) {
+                                                echo ' - Re-defense';
+                                            }
+                                        } else {
+                                            echo 'Not Scheduled';
+                                        }
+                                        ?>
                                     </p>
                                 </div>
                             </div>
+                            
+                            <!-- Item 6 - Final Defense (show if pre-oral exists and is completed) -->
+                            <?php 
+                            // Check if there's a completed pre-oral defense
+                            $preoral_completed_query = "SELECT * FROM defense_schedules WHERE group_id = '$group_id' AND defense_type = 'pre_oral' AND status = 'completed' LIMIT 1";
+                            $preoral_completed_result = mysqli_query($conn, $preoral_completed_query);
+                            $has_completed_preoral = mysqli_num_rows($preoral_completed_result) > 0;
+                            
+                            if ($has_completed_preoral): 
+                                // Check for final defense
+                                $final_defense_query = "SELECT * FROM defense_schedules WHERE group_id = '$group_id' AND defense_type = 'final' ORDER BY defense_date DESC LIMIT 1";
+                                $final_defense_result = mysqli_query($conn, $final_defense_query);
+                                $final_defense = mysqli_fetch_assoc($final_defense_result);
+                                
+                                $final_completed = ($final_defense && $final_defense['status'] == 'completed');
+                                $final_scheduled = ($final_defense && $final_defense['status'] == 'scheduled');
+                                $final_redefense = ($final_defense && $final_defense['status'] == 're_defense');
+                            ?>
+                            <div class="relative">
+                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo $final_completed ? 'bg-green-500 shadow-md' : ($final_redefense ? 'bg-red-500 shadow-md' : ($final_scheduled ? 'bg-blue-500 shadow-md' : 'bg-yellow-500 shadow-md')); ?> border-4 border-white flex items-center justify-center">
+                                    <i class="fas <?php echo $final_completed ? 'fa-check' : ($final_redefense ? 'fa-redo' : ($final_scheduled ? 'fa-calendar' : 'fa-hourglass-half')); ?> text-white text-xs"></i>
+                                </div>
+                                <div class="pl-2">
+                                    <h3 class="font-medium text-gray-800">Final Defense</h3>
+                                    <p class="text-sm text-gray-600 mt-1">
+                                        <?php 
+                                        if ($final_completed) {
+                                            echo '🎉 Completed successfully - All requirements fulfilled!';
+                                        } elseif ($final_redefense) {
+                                            echo 'Re-defense required';
+                                        } elseif ($final_scheduled) {
+                                            echo 'Scheduled for presentation';
+                                        } else {
+                                            echo 'Awaiting schedule assignment';
+                                        }
+                                        ?>
+                                    </p>
+                                    <p class="text-xs font-medium <?php echo $final_completed ? 'text-green-600' : ($final_redefense ? 'text-red-600' : ($final_scheduled ? 'text-blue-600' : 'text-yellow-600')); ?> mt-2">
+                                        <?php 
+                                        if ($final_defense) {
+                                            echo date('F j, Y', strtotime($final_defense['defense_date']));
+                                            if ($final_completed) echo ' - 🏆 CONGRATULATIONS!';
+                                            elseif ($final_redefense) echo ' - Re-defense';
+                                        } else {
+                                            echo 'Pending Assignment';
+                                        }
+                                        ?>
+                                    </p>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <!-- Item 7 - Graduation Ready (if any final defense completed) -->
+                            <?php 
+                            // Check if any final defense is completed
+                            $any_final_completed_query = "SELECT * FROM defense_schedules WHERE group_id = '$group_id' AND defense_type = 'final' AND status = 'completed' LIMIT 1";
+                            $any_final_completed_result = mysqli_query($conn, $any_final_completed_query);
+                            $any_final_completed = mysqli_num_rows($any_final_completed_result) > 0;
+                            
+                            if ($any_final_completed): ?>
+                            <div class="relative">
+                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-lg border-4 border-white flex items-center justify-center">
+                                    <i class="fas fa-graduation-cap text-white text-xs"></i>
+                                </div>
+                                <div class="pl-2">
+                                    <h3 class="font-medium text-gray-800">Ready for Graduation</h3>
+                                    <p class="text-sm text-gray-600 mt-1">All defense requirements completed successfully</p>
+                                    <p class="text-xs font-medium text-yellow-600 mt-2">🎓 Eligible for graduation ceremony</p>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -728,19 +893,37 @@ if ($has_group) {
     </div>
 
     <script>
-        // Countdown Timer (only if defense is scheduled)
-        <?php if ($defense_schedule): ?>
+        // Countdown Timer (only if defense is scheduled and not completed)
+        <?php if ($defense_schedule && $defense_schedule['status'] == 'scheduled'): ?>
         function updateCountdown() {
-            const defenseDate = new Date('<?php echo $defense_schedule['defense_date'] . ' ' . $defense_schedule['start_time']; ?>').getTime();
+            // Try different date format approaches
+            const dateStr1 = '<?php echo date('Y-m-d', strtotime($defense_schedule['defense_date'])); ?>T<?php echo $defense_schedule['start_time']; ?>';
+            const dateStr2 = '<?php echo date('Y/m/d H:i:s', strtotime($defense_schedule['defense_date'] . ' ' . $defense_schedule['start_time'])); ?>';
+            
+            console.log('Date string 1:', dateStr1);
+            console.log('Date string 2:', dateStr2);
+            
+            const defenseDate = new Date(dateStr2).getTime();
             const now = new Date().getTime();
             const distance = defenseDate - now;
             
-            // If defense date has passed
-            if (distance < 0) {
+            console.log('Defense Date Timestamp:', defenseDate);
+            console.log('Current Time:', now);
+            console.log('Distance:', distance);
+            console.log('Is NaN?', isNaN(defenseDate));
+            
+            // If defense date has passed or is invalid
+            if (distance < 0 || isNaN(defenseDate)) {
                 document.getElementById('days').textContent = '00';
                 document.getElementById('hours').textContent = '00';
                 document.getElementById('minutes').textContent = '00';
                 document.getElementById('seconds').textContent = '00';
+                
+                // Show defense completed message
+                const countdownContainer = document.querySelector('.countdown-timer');
+                if (countdownContainer && distance < 0) {
+                    countdownContainer.innerHTML = '<div class="text-center"><i class="fas fa-check-circle text-green-400 text-3xl mb-2"></i><br><span class="text-lg font-semibold">Defense Completed</span></div>';
+                }
                 return;
             }
             

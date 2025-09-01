@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3308
--- Generation Time: Sep 01, 2025 at 06:29 PM
+-- Generation Time: Sep 01, 2025 at 08:17 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -115,14 +115,15 @@ CREATE TABLE `defense_panel` (
 --
 
 INSERT INTO `defense_panel` (`id`, `defense_id`, `faculty_id`, `role`, `created_at`) VALUES
-(14, 7, 8, 'member', '2025-08-28 18:36:47'),
-(15, 7, 9, 'member', '2025-08-28 18:36:47'),
-(45, 0, 8, '', '2025-09-01 16:06:24'),
+(45, 0, 8, 'chair', '2025-09-01 16:06:24'),
 (46, 0, 11, 'member', '2025-09-01 16:06:24'),
 (47, 0, 10, 'member', '2025-09-01 16:06:24'),
-(48, 2, 8, '', '2025-09-01 16:26:27'),
-(49, 2, 11, 'member', '2025-09-01 16:26:27'),
-(50, 2, 10, 'member', '2025-09-01 16:26:27');
+(51, 3, 8, 'chair', '2025-09-01 16:37:40'),
+(52, 3, 11, 'member', '2025-09-01 16:37:40'),
+(53, 3, 10, 'member', '2025-09-01 16:37:40'),
+(66, 7, 8, '', '2025-09-01 18:16:56'),
+(67, 7, 11, 'member', '2025-09-01 18:16:56'),
+(68, 7, 10, 'member', '2025-09-01 18:16:56');
 
 -- --------------------------------------------------------
 
@@ -138,15 +139,16 @@ CREATE TABLE `defense_schedules` (
   `end_time` time DEFAULT NULL,
   `room_id` int(11) DEFAULT NULL,
   `status` enum('scheduled','completed','cancelled') DEFAULT 'scheduled',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `defense_type` enum('pre_oral','final') DEFAULT 'pre_oral'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Dumping data for table `defense_schedules`
 --
 
-INSERT INTO `defense_schedules` (`id`, `group_id`, `defense_date`, `start_time`, `end_time`, `room_id`, `status`, `created_at`) VALUES
-(2, 16, '2025-09-02', '00:25:00', '00:55:00', 5, 'scheduled', '2025-09-01 16:26:27');
+INSERT INTO `defense_schedules` (`id`, `group_id`, `defense_date`, `start_time`, `end_time`, `room_id`, `status`, `created_at`, `defense_type`) VALUES
+(7, 16, '2025-09-03', '12:00:00', '12:30:00', 5, 'scheduled', '2025-09-01 17:57:01', 'pre_oral');
 
 -- --------------------------------------------------------
 
@@ -498,7 +500,92 @@ INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_re
 (233, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
 (234, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
 (235, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
-(236, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27');
+(236, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:25', 'info', 0, '2025-09-01 16:26:27', '2025-09-01 16:26:27'),
+(237, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(238, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(239, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(240, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(241, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(242, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(243, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(244, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(245, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(246, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(247, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(248, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 00:23', 'info', 0, '2025-09-01 16:37:40', '2025-09-01 16:37:40'),
+(249, 1, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 0, '2025-09-01 16:52:34', '2025-09-01 16:52:34'),
+(250, 2, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 0, '2025-09-01 16:52:34', '2025-09-01 16:52:34'),
+(251, 5, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 0, '2025-09-01 16:52:34', '2025-09-01 16:52:34'),
+(252, 6, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 1, '2025-09-01 16:52:34', '2025-09-01 16:57:46'),
+(253, 7, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 0, '2025-09-01 16:52:34', '2025-09-01 16:52:34'),
+(254, 8, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 0, '2025-09-01 16:52:34', '2025-09-01 16:52:34'),
+(255, 9, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 0, '2025-09-01 16:52:34', '2025-09-01 16:52:34'),
+(256, 10, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 0, '2025-09-01 16:52:34', '2025-09-01 16:52:34'),
+(257, 11, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 0, '2025-09-01 16:52:34', '2025-09-01 16:52:34'),
+(258, 12, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 0, '2025-09-01 16:52:34', '2025-09-01 16:52:34'),
+(259, 13, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 0, '2025-09-01 16:52:34', '2025-09-01 16:52:34'),
+(260, 14, 'New Panel Member Added', 'A new panel member has been added: John Cruz (Data Privacy & Cybersecurity)', 'info', 0, '2025-09-01 16:52:34', '2025-09-01 16:52:34'),
+(261, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(262, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(263, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(264, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(265, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(266, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(267, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(268, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(269, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(270, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(271, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(272, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-02 at 01:27', 'info', 0, '2025-09-01 17:28:06', '2025-09-01 17:28:06'),
+(273, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(274, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(275, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(276, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(277, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(278, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(279, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(280, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(281, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(282, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(283, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(284, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:39:46', '2025-09-01 17:39:46'),
+(285, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20'),
+(286, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20'),
+(287, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20'),
+(288, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20'),
+(289, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20'),
+(290, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20'),
+(291, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20'),
+(292, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20'),
+(293, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20'),
+(294, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20'),
+(295, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20');
+INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_read`, `created_at`, `updated_at`) VALUES
+(296, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:53:20', '2025-09-01 17:53:20'),
+(297, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(298, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(299, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(300, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(301, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(302, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(303, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(304, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(305, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(306, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(307, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(308, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-03 at 12:00', 'info', 0, '2025-09-01 17:57:01', '2025-09-01 17:57:01'),
+(309, 1, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56'),
+(310, 2, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56'),
+(311, 5, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56'),
+(312, 6, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56'),
+(313, 7, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56'),
+(314, 8, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56'),
+(315, 9, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56'),
+(316, 10, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56'),
+(317, 11, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56'),
+(318, 12, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56'),
+(319, 13, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56'),
+(320, 14, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-03 at 12:00:00', 'info', 0, '2025-09-01 18:16:56', '2025-09-01 18:16:56');
 
 -- --------------------------------------------------------
 
@@ -552,7 +639,8 @@ INSERT INTO `panel_members` (`id`, `first_name`, `last_name`, `email`, `speciali
 (8, 'John Marvic', 'Giray', 'girayjohnmarvic09@gmail.com', 'Information Technology', 'bsit', 'active', 'chairperson', '2025-08-25 14:31:40', '2025-08-25 14:31:40'),
 (9, 'Justene Jean', 'Siarez', 'justenesiarez@gmail.com', 'Medical Office Admin', 'general', 'active', 'chairperson', '2025-08-27 10:47:12', '2025-08-27 10:47:12'),
 (10, 'Prof. John Dela', 'Santos', 'leanlojero23@gmail.com', 'AI Expert', 'bsit', 'active', 'member', '2025-09-01 08:26:53', '2025-09-01 08:26:53'),
-(11, 'John', 'HOOD', 'Haeri12n@gmail.com', 'Data Privacy & Cybersecurity', 'bsit', 'active', 'member', '2025-09-01 08:27:20', '2025-09-01 08:27:38');
+(11, 'John', 'HOOD', 'Haeri12n@gmail.com', 'Data Privacy & Cybersecurity', 'bsit', 'active', 'member', '2025-09-01 08:27:20', '2025-09-01 08:27:38'),
+(12, 'John', 'Cruz', 'Haerin@gmail.com', 'Data Privacy & Cybersecurity', 'bsit', 'active', 'chairperson', '2025-09-01 16:52:34', '2025-09-01 16:52:34');
 
 -- --------------------------------------------------------
 
@@ -589,7 +677,9 @@ INSERT INTO `payments` (`id`, `student_id`, `payment_type`, `amount`, `pdf_recei
 (39, 13, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02'),
 (40, 14, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02'),
 (41, 7, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 16:14:35'),
-(42, 9, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 16:14:35');
+(42, 9, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 16:14:35'),
+(43, 7, 'final_defense', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 17:33:24'),
+(44, 9, 'final_defense', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 17:33:24');
 
 -- --------------------------------------------------------
 
@@ -613,7 +703,7 @@ CREATE TABLE `proposals` (
 --
 
 INSERT INTO `proposals` (`id`, `group_id`, `title`, `description`, `file_path`, `submitted_at`, `status`, `reviewed_at`) VALUES
-(18, 16, 'Smart Campus Navigator: An Indoor Positioning System Using QR Codes and Cloud Integration', 'This study aims to design and develop a campus navigation system that uses QR codes placed at key locations inside school buildings. The system will be integrated with a cloud database to provide real-time directions and facility information accessible through a mobile application. The project addresses the challenges of new students and visitors in locating rooms, offices, and facilities within the campus, thereby improving efficiency and user experience.', '../assets/uploads/proposals/Cap101-reviewer-Prelim.pdf', '2025-09-01 15:21:40', 'Completed', '2025-09-01 16:25:47'),
+(18, 16, 'Smart Campus Navigator: An Indoor Positioning System Using QR Codes and Cloud Integration', 'This study aims to design and develop a campus navigation system that uses QR codes placed at key locations inside school buildings. The system will be integrated with a cloud database to provide real-time directions and facility information accessible through a mobile application. The project addresses the challenges of new students and visitors in locating rooms, offices, and facilities within the campus, thereby improving efficiency and user experience.', '../assets/uploads/proposals/Cap101-reviewer-Prelim.pdf', '2025-09-01 15:21:40', 'Completed', '2025-09-01 17:49:23'),
 (19, 15, 'The Impact of Social Media on Adolescent Mental Health: A Case Study Approach', 'This thesis investigates the relationship between social media usage and mental health outcomes in adolescents. Through qualitative interviews and quantitative surveys, it aims to identify patterns of social media behavior that correlate with anxiety, depression, and self-esteem levels. The study offers recommendations for healthier online habits and policy suggestions for social media platforms.', '../assets/uploads/proposals/Sample-Interview-Questions (1).pdf', '2025-09-01 15:49:14', 'Pending', NULL);
 
 -- --------------------------------------------------------
@@ -935,13 +1025,13 @@ ALTER TABLE `clusters`
 -- AUTO_INCREMENT for table `defense_panel`
 --
 ALTER TABLE `defense_panel`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
 
 --
 -- AUTO_INCREMENT for table `defense_schedules`
 --
 ALTER TABLE `defense_schedules`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `document_submissions`
@@ -971,19 +1061,19 @@ ALTER TABLE `group_members`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=237;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=321;
 
 --
 -- AUTO_INCREMENT for table `panel_members`
 --
 ALTER TABLE `panel_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
 
 --
 -- AUTO_INCREMENT for table `proposals`

@@ -226,8 +226,18 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
     $defense_schedules[] = $schedule;
 }
 
-// Get all groups with completed/approved proposals
-$groups_query = "SELECT g.*, p.title as proposal_title 
+// Get all groups with completed/approved proposals and check payment status
+$groups_query = "SELECT g.*, p.title as proposal_title,
+                (SELECT COUNT(*) FROM payments pay 
+                 JOIN group_members gm ON pay.student_id = gm.student_id 
+                 WHERE gm.group_id = g.id AND pay.payment_type = 'research_forum' AND pay.status = 'approved') as research_forum_payments,
+                (SELECT COUNT(*) FROM payments pay 
+                 JOIN group_members gm ON pay.student_id = gm.student_id 
+                 WHERE gm.group_id = g.id AND pay.payment_type = 'pre_oral_defense' AND pay.status = 'approved') as pre_oral_payments,
+                (SELECT COUNT(*) FROM payments pay 
+                 JOIN group_members gm ON pay.student_id = gm.student_id 
+                 WHERE gm.group_id = g.id AND pay.payment_type = 'final_defense' AND pay.status = 'approved') as final_defense_payments,
+                (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count
                 FROM groups g 
                 JOIN proposals p ON g.id = p.group_id 
                 WHERE p.status IN ('Completed', 'Approved')
@@ -1037,10 +1047,33 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             <form method="POST" action="" class="p-6">
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-medium mb-2" for="group_id">Select Group</label>
+                    <div class="mb-2">
+                        <label class="block text-gray-700 text-xs font-medium mb-1">Defense Type</label>
+                        <select id="defense_type" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+                            <option value="pre_oral">Pre-Oral Defense</option>
+                            <option value="final">Final Defense</option>
+                        </select>
+                    </div>
                     <select name="group_id" id="group_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
                         <option value="">Select a group</option>
                         <?php foreach ($groups as $group): ?>
-                        <option value="<?php echo $group['id']; ?>"><?php echo $group['name'] . ' - ' . $group['proposal_title']; ?></option>
+                            <?php 
+                            $can_schedule_pre_oral = ($group['research_forum_payments'] == $group['member_count'] && $group['pre_oral_payments'] == $group['member_count']);
+                            $can_schedule_final = ($can_schedule_pre_oral && $group['final_defense_payments'] == $group['member_count']);
+                            $payment_status = '';
+                            if ($group['research_forum_payments'] < $group['member_count']) {
+                                $payment_status = ' (Missing Research Forum payments)';
+                            } elseif ($group['pre_oral_payments'] < $group['member_count']) {
+                                $payment_status = ' (Can schedule Pre-Oral Defense)';
+                            } elseif ($group['final_defense_payments'] < $group['member_count']) {
+                                $payment_status = ' (Can schedule Final Defense)';
+                            } else {
+                                $payment_status = ' (All payments complete)';
+                            }
+                            ?>
+                        <option value="<?php echo $group['id']; ?>" data-research="<?php echo $group['research_forum_payments']; ?>" data-preoral="<?php echo $group['pre_oral_payments']; ?>" data-final="<?php echo $group['final_defense_payments']; ?>" data-members="<?php echo $group['member_count']; ?>">
+                            <?php echo $group['name'] . ' - ' . $group['proposal_title'] . $payment_status; ?>
+                        </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -1148,9 +1181,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <button type="button" onclick="toggleModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center">
                         <i class="fas fa-times mr-2"></i>Cancel
                     </button>
-                    <button type="submit" name="schedule_defense" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center">
+                    <button type="submit" name="schedule_defense" id="schedule_btn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center opacity-50 cursor-not-allowed" disabled>
                         <i class="fas fa-calendar-plus mr-2"></i>Schedule Defense
                     </button>
+                </div>
+                <div id="payment_warning" class="mt-3 p-3 bg-yellow-100 border border-yellow-300 rounded-lg text-yellow-800 text-sm hidden">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <span id="warning_text"></span>
                 </div>
             </form>
         </div>
@@ -1405,6 +1442,58 @@ function populateEditForm(schedule) {
             });
         }
         
+        // Check payment status when group or defense type changes
+        function checkPaymentStatus() {
+            const groupSelect = document.getElementById('group_id');
+            const defenseType = document.getElementById('defense_type');
+            const scheduleBtn = document.getElementById('schedule_btn');
+            const warning = document.getElementById('payment_warning');
+            const warningText = document.getElementById('warning_text');
+            
+            if (!groupSelect.value) {
+                scheduleBtn.disabled = true;
+                warning.classList.add('hidden');
+                return;
+            }
+            
+            const selectedOption = groupSelect.options[groupSelect.selectedIndex];
+            const researchPayments = parseInt(selectedOption.dataset.research);
+            const preoralPayments = parseInt(selectedOption.dataset.preoral);
+            const finalPayments = parseInt(selectedOption.dataset.final);
+            const memberCount = parseInt(selectedOption.dataset.members);
+            
+            let canSchedule = false;
+            let warningMessage = '';
+            
+            if (defenseType.value === 'pre_oral') {
+                if (researchPayments < memberCount) {
+                    warningMessage = 'All group members must complete Research Forum payment before scheduling Pre-Oral Defense.';
+                } else if (preoralPayments < memberCount) {
+                    warningMessage = 'All group members must complete Pre-Oral Defense payment before scheduling.';
+                } else {
+                    canSchedule = true;
+                }
+            } else if (defenseType.value === 'final') {
+                if (researchPayments < memberCount || preoralPayments < memberCount) {
+                    warningMessage = 'All group members must complete Research Forum and Pre-Oral Defense payments first.';
+                } else if (finalPayments < memberCount) {
+                    warningMessage = 'All group members must complete Final Defense payment before scheduling.';
+                } else {
+                    canSchedule = true;
+                }
+            }
+            
+            scheduleBtn.disabled = !canSchedule;
+            if (canSchedule) {
+                warning.classList.add('hidden');
+                scheduleBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                warning.classList.remove('hidden');
+                warningText.textContent = warningMessage;
+                scheduleBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+        
         // Initialize edit modal tabs on page load
         document.addEventListener('DOMContentLoaded', function() {
             // Set default filter to 'all'
@@ -1415,6 +1504,10 @@ function populateEditForm(schedule) {
             
             // Edit modal default to chairperson tab
             switchEditPanelTab('edit_chairperson');
+            
+            // Add event listeners for payment validation
+            document.getElementById('group_id').addEventListener('change', checkPaymentStatus);
+            document.getElementById('defense_type').addEventListener('change', checkPaymentStatus);
             
             // Check if we need to refresh room availability
             <?php if (isset($_SESSION['refresh_availability'])): ?>

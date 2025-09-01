@@ -46,10 +46,21 @@ if ($has_group) {
         $proposal = mysqli_fetch_assoc($proposal_result);
     }
     
-    // Check if user has paid
-    $payment_query = "SELECT * FROM payments WHERE student_id = '$user_id' AND status = 'completed'";
-    $payment_result = mysqli_query($conn, $payment_query);
-    $has_paid = mysqli_num_rows($payment_result) > 0;
+    // Check payment status for each type
+    $research_forum_query = "SELECT * FROM payments WHERE student_id = '$user_id' AND payment_type = 'research_forum' AND status = 'approved'";
+    $research_forum_result = mysqli_query($conn, $research_forum_query);
+    $has_research_forum_payment = mysqli_num_rows($research_forum_result) > 0;
+    
+    $pre_oral_query = "SELECT * FROM payments WHERE student_id = '$user_id' AND payment_type = 'pre_oral_defense' AND status = 'approved'";
+    $pre_oral_result = mysqli_query($conn, $pre_oral_query);
+    $has_pre_oral_payment = mysqli_num_rows($pre_oral_result) > 0;
+    
+    $final_defense_query = "SELECT * FROM payments WHERE student_id = '$user_id' AND payment_type = 'final_defense' AND status = 'approved'";
+    $final_defense_result = mysqli_query($conn, $final_defense_query);
+    $has_final_defense_payment = mysqli_num_rows($final_defense_result) > 0;
+    
+    // For proposal submission, only research forum payment is required
+    $has_paid = $has_research_forum_payment;
     
     // Handle join code generation
     if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_join_code'])) {
@@ -203,18 +214,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
     
-    if (isset($_POST['make_payment'])) {
-        // Simulate payment processing
+    if (isset($_POST['upload_payment'])) {
+        $payment_type = mysqli_real_escape_string($conn, $_POST['payment_type']);
         $payment_amount = 100.00;
-        $payment_query = "INSERT INTO payments (student_id, amount, status, payment_date) 
-                         VALUES ('$user_id', '$payment_amount', 'completed', NOW())";
-        if (mysqli_query($conn, $payment_query)) {
-            $success_message = "Payment processed successfully!";
-            $has_paid = true;
-            header("Location: ../student_pages/proposal.php");
-            exit();
+        
+        $target_dir = "assets/receipts/";
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+        
+        $file_name = "receipt_" . $user_id . "_" . $payment_type . "_" . time() . ".pdf";
+        $target_file = $target_dir . $file_name;
+        
+        if (move_uploaded_file($_FILES["payment_receipt"]["tmp_name"], $target_file)) {
+            $payment_query = "INSERT INTO payments (student_id, payment_type, amount, pdf_receipt, status, payment_date) 
+                             VALUES ('$user_id', '$payment_type', '$payment_amount', '$target_file', 'approved', NOW())";
+            
+            if (mysqli_query($conn, $payment_query)) {
+                $success_message = "Payment receipt uploaded successfully!";
+                header("Location: ../student_pages/proposal.php");
+                exit();
+            } else {
+                $error_message = "Error uploading payment: " . mysqli_error($conn);
+            }
         } else {
-            $error_message = "Error processing payment: " . mysqli_error($conn);
+            $error_message = "Sorry, there was an error uploading your receipt.";
         }
     }
     
@@ -622,29 +646,37 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             </div>
 
                             <!-- Payment Status Card -->
-                            <div class="stats-card bg-gradient-to-br from-<?php echo $has_paid ? 'green' : 'yellow'; ?>-50 to-<?php echo $has_paid ? 'green' : 'yellow'; ?>-100 rounded-xl p-5 border border-<?php echo $has_paid ? 'green' : 'yellow'; ?>-200">
-                                <h3 class="font-semibold text-<?php echo $has_paid ? 'green' : 'yellow'; ?>-800 text-sm uppercase tracking-wide">Payment Status</h3>
-                                <p class="text-lg font-bold text-gray-900 mt-1 flex items-center">
-                                    <?php if ($has_paid): ?>
-                                        <span class="bg-green-500 text-white p-1 rounded-full mr-2">
-                                            <i class="fas fa-check text-xs"></i>
-                                        </span>
-                                        Completed
-                                    <?php else: ?>
-                                        <span class="bg-yellow-500 text-white p-1 rounded-full mr-2">
-                                            <i class="fas fa-clock text-xs"></i>
-                                        </span>
-                                        Pending
-                                    <?php endif; ?>
-                                </p>
-                                <?php if (!$has_paid): ?>
-                                    <form method="POST" class="mt-3">
-                                        <button type="submit" name="make_payment" 
-                                            class="enhanced-button bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center shadow-sm transition-all w-full justify-center">
-                                            <i class="fas fa-credit-card mr-2"></i> Pay Now
-                                        </button>
-                                    </form>
-                                <?php endif; ?>
+                            <div class="stats-card bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
+                                <h3 class="font-semibold text-blue-800 text-sm uppercase tracking-wide">Payment Status</h3>
+                                <div class="mt-2 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-600">Research Forum:</span>
+                                        <?php if ($has_research_forum_payment): ?>
+                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>
+                                        <?php else: ?>
+                                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-600">Pre-Oral Defense:</span>
+                                        <?php if ($has_pre_oral_payment): ?>
+                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>
+                                        <?php else: ?>
+                                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-600">Final Defense:</span>
+                                        <?php if ($has_final_defense_payment): ?>
+                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>
+                                        <?php else: ?>
+                                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <button onclick="toggleModal('paymentModal')" class="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center justify-center">
+                                    <i class="fas fa-upload mr-2"></i> Upload Receipt
+                                </button>
                             </div>
                         </div>
 
@@ -841,29 +873,27 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             </div>
                         <?php endif; ?>
                         
-                        <?php if (!$has_paid): ?>
+                        <?php if (!$has_research_forum_payment): ?>
                             <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-6 backdrop-filter backdrop-blur-sm">
                                 <div class="flex items-start">
                                     <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-3"></i>
                                     <div>
-                                        <h3 class="font-semibold text-yellow-800">Payment Required</h3>
-                                        <p class="text-yellow-700">You need to complete the payment before you can submit a proposal.</p>
-                                        <form method="POST" class="mt-3">
-                                            <button type="submit" name="make_payment" class="bg-primary-600 text-white px-4 py-2 rounded-lg">
-                                                <i class="fas fa-credit-card mr-2"></i> Make Payment
-                                            </button>
-                                        </form>
+                                        <h3 class="font-semibold text-yellow-800">Research Forum Payment Required</h3>
+                                        <p class="text-yellow-700">You need to upload your Research Forum payment receipt before you can submit a proposal.</p>
+                                        <button onclick="toggleModal('paymentModal')" class="mt-3 bg-primary-600 text-white px-4 py-2 rounded-lg">
+                                            <i class="fas fa-upload mr-2"></i> Upload Receipt
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         <?php endif; ?>
                         
-                        <form action="/CRAD-system/student_pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo ($has_proposal || !$has_paid) ? 'onsubmit="return false;"' : ''; ?>>
+                        <form action="/CRAD-system/student_pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo ($has_proposal || !$has_research_forum_payment) ? 'onsubmit="return false;"' : ''; ?>>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Title</label>
                                 <input type="text" name="title" required 
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                                    <?php echo ($has_proposal || !$has_paid) ? 'disabled' : ''; ?>
+                                    <?php echo ($has_proposal || !$has_research_forum_payment) ? 'disabled' : ''; ?>
                                     value="<?php echo $has_proposal ? $proposal['title'] : ''; ?>">
                             </div>
                             
@@ -871,7 +901,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <textarea name="description" rows="3" 
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                                    <?php echo ($has_proposal || !$has_paid) ? 'disabled' : ''; ?>
+                                    <?php echo ($has_proposal || !$has_research_forum_payment) ? 'disabled' : ''; ?>
                                 ><?php echo $has_proposal ? $proposal['description'] : ''; ?></textarea>
                             </div>
                             
@@ -879,11 +909,11 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Upload Signed Proposal (PDF only)</label>
                                 <div class="mt-1 flex items-center">
                                     <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center hover:bg-gray-50 transition 
-                                        <?php echo ($has_proposal || !$has_paid) ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                                        <?php echo ($has_proposal || !$has_research_forum_payment) ? 'opacity-50 cursor-not-allowed' : ''; ?>">
                                         <i class="fas fa-file-pdf text-red-500 mr-2"></i>
                                         <span class="text-sm font-medium">Choose File</span>
                                         <input type="file" name="proposal_file" accept=".pdf" required 
-                                            <?php echo ($has_proposal || !$has_paid) ? 'disabled' : ''; ?>
+                                            <?php echo ($has_proposal || !$has_research_forum_payment) ? 'disabled' : ''; ?>
                                             class="hidden">
                                     </label>
                                     <span class="ml-3 text-sm text-gray-500" id="file-name">
@@ -895,7 +925,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             <div class="pt-4">
                                 <button type="submit" name="submit_proposal" 
                                     class="enhanced-button bg-gradient-to-r from-primary-600 to-secondary-600 text-white px-6 py-3 rounded-lg hover:shadow-md transition flex items-center justify-center font-medium
-                                    <?php echo ($has_proposal || !$has_paid) ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'; ?>">
+                                    <?php echo ($has_proposal || !$has_research_forum_payment) ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'; ?>">
                                     <i class="fas fa-paper-plane mr-2"></i> 
                                     <?php echo $has_proposal ? 'Proposal Already Submitted' : 'Submit Proposal'; ?>
                                 </button>
@@ -954,6 +984,52 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                 <div class="flex justify-end space-x-3 pt-4">
                     <button type="button" onclick="toggleModal('joinGroupModal')" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancel</button>
                     <button type="submit" name="join_group" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">Join Program Group</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Payment Upload Modal -->
+    <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="enhanced-modal rounded-lg shadow-xl w-full max-w-md">
+            <div class="border-b px-6 py-4 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-gray-800">Upload Payment Receipt</h3>
+                <button onclick="toggleModal('paymentModal')" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form method="POST" enctype="multipart/form-data" class="px-6 py-4">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
+                    <select name="payment_type" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select payment type</option>
+                        <?php if (!$has_research_forum_payment): ?>
+                            <option value="research_forum">Research Forum</option>
+                        <?php endif; ?>
+                        <?php if (!$has_pre_oral_payment): ?>
+                            <option value="pre_oral_defense">Pre-Oral Defense</option>
+                        <?php endif; ?>
+                        <?php if (!$has_final_defense_payment): ?>
+                            <option value="final_defense">Final Defense</option>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Receipt (PDF only)</label>
+                    <div class="mt-1 flex items-center">
+                        <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center hover:bg-gray-50 transition w-full">
+                            <i class="fas fa-file-pdf text-red-500 mr-2"></i>
+                            <span class="text-sm font-medium">Choose PDF File</span>
+                            <input type="file" name="payment_receipt" accept=".pdf" required class="hidden">
+                        </label>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">Upload your payment receipt in PDF format.</p>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="toggleModal('paymentModal')" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancel</button>
+                    <button type="submit" name="upload_payment" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
+                        <i class="fas fa-upload mr-2"></i>Upload Receipt
+                    </button>
                 </div>
             </form>
         </div>

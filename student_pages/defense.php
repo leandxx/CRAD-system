@@ -33,7 +33,7 @@ if ($has_group) {
     $group = mysqli_fetch_assoc($group_result);
     $group_id = $group['id'];
     
-    // Check defense schedule - updated query to include panel member names
+    // Check defense schedule - only show if payments are approved
     $defense_query = "SELECT ds.*, r.room_name, r.building,
                      pm.first_name, pm.last_name, dp.role
                      FROM defense_schedules ds 
@@ -44,17 +44,34 @@ if ($has_group) {
     $defense_result = mysqli_query($conn, $defense_query);
     
     if (mysqli_num_rows($defense_result) > 0) {
-        $defense_schedule = mysqli_fetch_assoc($defense_result);
+        $temp_schedule = mysqli_fetch_assoc($defense_result);
         
-        // Reset and fetch all panel members with names
-        mysqli_data_seek($defense_result, 0);
-        while ($row = mysqli_fetch_assoc($defense_result)) {
-            if (!empty($row['first_name']) && !empty($row['last_name'])) {
-                $panel_members[] = [
-                    'name' => $row['first_name'] . ' ' . $row['last_name'],
-                    'role' => $row['role'],
-                    'initials' => substr($row['first_name'], 0, 1) . substr($row['last_name'], 0, 1)
-                ];
+        // Only show schedule if student has required payments
+        $show_schedule = false;
+        // Assume pre-oral defense if before current date + 30 days, otherwise final defense
+        $is_pre_oral = strtotime($temp_schedule['defense_date']) < strtotime('+30 days');
+        
+        if ($is_pre_oral) {
+            // Pre-oral defense - need research forum and pre-oral payments
+            $show_schedule = $has_research_forum_payment && $has_pre_oral_payment;
+        } else {
+            // Final defense - need all payments
+            $show_schedule = $has_research_forum_payment && $has_pre_oral_payment && $has_final_defense_payment;
+        }
+        
+        if ($show_schedule) {
+            $defense_schedule = $temp_schedule;
+            
+            // Reset and fetch all panel members with names
+            mysqli_data_seek($defense_result, 0);
+            while ($row = mysqli_fetch_assoc($defense_result)) {
+                if (!empty($row['first_name']) && !empty($row['last_name'])) {
+                    $panel_members[] = [
+                        'name' => $row['first_name'] . ' ' . $row['last_name'],
+                        'role' => $row['role'],
+                        'initials' => substr($row['first_name'], 0, 1) . substr($row['last_name'], 0, 1)
+                    ];
+                }
             }
         }
     }
@@ -68,13 +85,21 @@ if ($has_group) {
         $requirements_status['proposal_submitted'] = $proposal_data['count'];
     }
     
-    // 2. Check if payment is completed
-    $payment_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND status = 'completed'";
-    $payment_result = mysqli_query($conn, $payment_query);
-    if ($payment_result) {
-        $payment_data = mysqli_fetch_assoc($payment_result);
-        $requirements_status['payment_completed'] = $payment_data['count'];
-    }
+    // 2. Check payment status for each type
+    $research_forum_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'research_forum' AND status = 'approved'";
+    $research_forum_result = mysqli_query($conn, $research_forum_query);
+    $has_research_forum_payment = mysqli_fetch_assoc($research_forum_result)['count'] > 0;
+    
+    $pre_oral_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'pre_oral_defense' AND status = 'approved'";
+    $pre_oral_result = mysqli_query($conn, $pre_oral_query);
+    $has_pre_oral_payment = mysqli_fetch_assoc($pre_oral_result)['count'] > 0;
+    
+    $final_defense_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'final_defense' AND status = 'approved'";
+    $final_defense_result = mysqli_query($conn, $final_defense_query);
+    $has_final_defense_payment = mysqli_fetch_assoc($final_defense_result)['count'] > 0;
+    
+    // For backward compatibility, set payment_completed if any payment is approved
+    $requirements_status['payment_completed'] = ($has_research_forum_payment || $has_pre_oral_payment || $has_final_defense_payment) ? 1 : 0;
     
     // 3. Check required documents (if the documents table exists)
     $docs_query = "SELECT COUNT(*) as count FROM required_documents WHERE required_for_defense = 1";
@@ -399,15 +424,26 @@ if ($has_group) {
                     </div>
                 </div>
                 
-                <?php if (!$all_requirements_met): ?>
-                <div class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl backdrop-filter backdrop-blur-sm">
+                <?php if (!$has_research_forum_payment || !$has_pre_oral_payment || !$has_final_defense_payment): ?>
+                <div class="mt-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl backdrop-filter backdrop-blur-sm">
                     <div class="flex items-start">
-                        <div class="flex-shrink-0 bg-blue-100 p-2 rounded-lg mr-4">
-                            <i class="fas fa-info-circle text-blue-500 text-lg"></i>
+                        <div class="flex-shrink-0 bg-yellow-100 p-2 rounded-lg mr-4">
+                            <i class="fas fa-exclamation-triangle text-yellow-500 text-lg"></i>
                         </div>
                         <div>
-                            <h3 class="font-semibold text-blue-800">Defense Scheduling</h3>
-                            <p class="text-blue-700 mt-1">Your defense schedule will be assigned once all requirements are completed. Please complete the pending requirements above.</p>
+                            <h3 class="font-semibold text-yellow-800">Payment Required for Schedule Visibility</h3>
+                            <p class="text-yellow-700 mt-1">Defense schedules will only be visible after completing the required payments:</p>
+                            <ul class="text-yellow-700 text-sm mt-2 space-y-1">
+                                <?php if (!$has_research_forum_payment): ?>
+                                    <li>• Research Forum payment required</li>
+                                <?php endif; ?>
+                                <?php if (!$has_pre_oral_payment): ?>
+                                    <li>• Pre-Oral Defense payment required for pre-oral schedules</li>
+                                <?php endif; ?>
+                                <?php if (!$has_final_defense_payment): ?>
+                                    <li>• Final Defense payment required for final defense schedules</li>
+                                <?php endif; ?>
+                            </ul>
                         </div>
                     </div>
                 </div>

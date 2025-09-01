@@ -742,9 +742,10 @@ $isoDeadline = $current_milestone
   <div class="mb-8 flex flex-col md:flex-row gap-4">
     <div class="flex-1">
       <div class="relative">
-        <input type="text" id="searchInput" placeholder="Search by title, group name, or student name..." 
+        <input type="text" id="searchInput" placeholder="Search by cluster, program, or group name..." 
                value="<?php echo htmlspecialchars($search_term); ?>"
-               class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+               class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+               oninput="searchProposals()">
         <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
       </div>
     </div>
@@ -1542,6 +1543,75 @@ $isoDeadline = $current_milestone
         content.classList.add('hidden');
         chevron.style.transform = 'rotate(0deg)';
       }
+    }
+    
+    // Real-time search function
+    function searchProposals() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const clusterHeaders = document.querySelectorAll('.cluster-header');
+      const proposalCards = document.querySelectorAll('.proposal-card');
+      
+      if (searchTerm === '') {
+        // Show all clusters and cards
+        clusterHeaders.forEach(header => header.parentElement.style.display = 'block');
+        proposalCards.forEach(card => card.style.display = 'flex');
+        return;
+      }
+      
+      // Hide all clusters initially
+      clusterHeaders.forEach(header => header.parentElement.style.display = 'none');
+      
+      // Also check cluster headers directly
+      clusterHeaders.forEach(header => {
+        const clusterName = header.querySelector('h3').textContent.toLowerCase();
+        if (clusterName.includes(searchTerm)) {
+          header.parentElement.style.display = 'block';
+          // Auto-expand cluster
+          const clusterId = header.querySelector('[id^="chevron-"]').id.replace('chevron-', '');
+          const clusterContent = document.getElementById('cluster-' + clusterId);
+          clusterContent.classList.remove('hidden');
+          document.getElementById('chevron-' + clusterId).style.transform = 'rotate(180deg)';
+          // Show all cards in this cluster
+          clusterContent.querySelectorAll('.proposal-card').forEach(card => {
+            card.style.display = 'flex';
+          });
+        }
+      });
+      
+      // Search through proposal cards and cluster headers
+      proposalCards.forEach(card => {
+        const group = card.querySelector('.text-gray-700').textContent.toLowerCase();
+        const program = card.querySelectorAll('.text-gray-700')[1].textContent.toLowerCase();
+        
+        // Get cluster name from parent cluster header
+        const clusterContent = card.closest('.cluster-content');
+        let clusterName = '';
+        if (clusterContent) {
+          const clusterId = clusterContent.id.replace('cluster-', '');
+          const clusterHeader = document.getElementById('chevron-' + clusterId).closest('.cluster-header');
+          clusterName = clusterHeader.querySelector('h3').textContent.toLowerCase();
+        }
+        
+        const matches = group.includes(searchTerm) || 
+                       program.includes(searchTerm) || 
+                       clusterName.includes(searchTerm);
+        
+        if (matches) {
+          card.style.display = 'flex';
+          // Show parent cluster
+          const clusterContent = card.closest('.cluster-content');
+          if (clusterContent) {
+            const clusterId = clusterContent.id.replace('cluster-', '');
+            const clusterHeader = document.getElementById('chevron-' + clusterId).closest('.cluster-header').parentElement;
+            clusterHeader.style.display = 'block';
+            // Auto-expand cluster
+            clusterContent.classList.remove('hidden');
+            document.getElementById('chevron-' + clusterId).style.transform = 'rotate(180deg)';
+          }
+        } else {
+          card.style.display = 'none';
+        }
+      });
     }
 
     // Init on load

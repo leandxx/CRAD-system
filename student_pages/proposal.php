@@ -78,13 +78,22 @@ if ($has_group) {
     // Handle group name update
     if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_group_name'])) {
         $new_group_name = mysqli_real_escape_string($conn, $_POST['new_group_name']);
-        $update_name_query = "UPDATE groups SET name = '$new_group_name' WHERE id = '$group_id'";
-        if (mysqli_query($conn, $update_name_query)) {
-            $_SESSION['success_message'] = "Group name updated successfully!";
-            header("Location: ../student_pages/proposal.php");
-            exit();
+        
+        // Check if the group name is already taken
+        $check_name_query = "SELECT id FROM groups WHERE name = '$new_group_name' AND id != '$group_id'";
+        $check_result = mysqli_query($conn, $check_name_query);
+        
+        if (mysqli_num_rows($check_result) > 0) {
+            $error_message = "Group name '$new_group_name' is already taken. Please choose another name.";
         } else {
-            $error_message = "Error updating group name: " . mysqli_error($conn);
+            $update_name_query = "UPDATE groups SET name = '$new_group_name' WHERE id = '$group_id'";
+            if (mysqli_query($conn, $update_name_query)) {
+                $_SESSION['success_message'] = "Group name updated successfully!";
+                header("Location: ../student_pages/proposal.php");
+                exit();
+            } else {
+                $error_message = "Error updating group name: " . mysqli_error($conn);
+            }
         }
     }
 }
@@ -735,8 +744,28 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                 <form method="POST" id="edit-group-name-form" class="hidden mt-3">
                                     <input type="hidden" name="update_group_name" value="1">
                                     <div class="flex gap-2">
-                                        <input type="text" name="new_group_name" value="<?php echo $group['name']; ?>" 
-                                               class="flex-1 px-2 py-1 border border-blue-300 rounded text-sm">
+                                        <select name="new_group_name" class="flex-1 px-2 py-1 border border-blue-300 rounded text-sm">
+                                            <?php 
+                                            // Get taken group names
+                                            $taken_names_query = "SELECT name FROM groups WHERE id != '$group_id'";
+                                            $taken_names_result = mysqli_query($conn, $taken_names_query);
+                                            $taken_names = [];
+                                            while ($row = mysqli_fetch_assoc($taken_names_result)) {
+                                                $taken_names[] = $row['name'];
+                                            }
+                                            
+                                            for($i = 1; $i <= 100; $i++): 
+                                                $group_name = "GRP $i";
+                                                $is_taken = in_array($group_name, $taken_names);
+                                                $is_current = ($group['name'] === $group_name);
+                                            ?>
+                                                <option value="<?php echo $group_name; ?>" 
+                                                    <?php echo $is_current ? 'selected' : ''; ?>
+                                                    <?php echo ($is_taken && !$is_current) ? 'disabled' : ''; ?>>
+                                                    <?php echo $group_name; ?><?php echo ($is_taken && !$is_current) ? ' (Taken)' : ''; ?>
+                                                </option>
+                                            <?php endfor; ?>
+                                        </select>
                                         <button type="submit" class="bg-blue-600 text-white px-2 py-1 rounded text-sm hover:bg-blue-700">
                                             <i class="fas fa-check"></i>
                                         </button>

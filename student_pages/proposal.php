@@ -92,8 +92,12 @@ if ($has_group) {
 // Handle other form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['submit_proposal'])) {
-        $title = mysqli_real_escape_string($conn, $_POST['title']);
-        $description = mysqli_real_escape_string($conn, $_POST['description']);
+        // Check if proposal already exists to prevent duplicates
+        if ($has_proposal) {
+            $error_message = "Proposal already submitted for this group.";
+        } else {
+            $title = mysqli_real_escape_string($conn, $_POST['title']);
+            $description = mysqli_real_escape_string($conn, $_POST['description']);
         
         // File upload handling
         $target_dir = "../assets/uploads/proposals/";
@@ -156,6 +160,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $error_message = "Error uploading file. Please try again.";
                 }
             }
+        }
+        }
+    }
+    
+    if (isset($_POST['update_proposal'])) {
+        $title = mysqli_real_escape_string($conn, $_POST['title']);
+        $description = mysqli_real_escape_string($conn, $_POST['description']);
+        
+        // Check if new file is uploaded
+        if (isset($_FILES['proposal_file']) && $_FILES['proposal_file']['error'] === UPLOAD_ERR_OK) {
+            $target_dir = "../assets/uploads/proposals/";
+            $file_info = $_FILES['proposal_file'];
+            $file_extension = strtolower(pathinfo($file_info['name'], PATHINFO_EXTENSION));
+            
+            if ($file_extension !== 'pdf') {
+                $error_message = "Only PDF files are allowed.";
+            } elseif ($file_info['size'] > 10 * 1024 * 1024) {
+                $error_message = "File size must be less than 10MB.";
+            } else {
+                $original_name = $file_info['name'];
+                $target_file = $target_dir . $original_name;
+                
+                if (move_uploaded_file($file_info['tmp_name'], $target_file)) {
+                    $update_query = "UPDATE proposals SET title = '$title', description = '$description', file_path = '$target_file' WHERE group_id = '$group_id'";
+                } else {
+                    $error_message = "Error uploading file. Please try again.";
+                }
+            }
+        } else {
+            // Update without changing file
+            $update_query = "UPDATE proposals SET title = '$title', description = '$description' WHERE group_id = '$group_id'";
+        }
+        
+        if (isset($update_query) && mysqli_query($conn, $update_query)) {
+            $success_message = "Proposal updated successfully!";
+            header("Location: ../student_pages/proposal.php");
+            exit();
+        } elseif (!isset($error_message)) {
+            $error_message = "Error updating proposal: " . mysqli_error($conn);
         }
     }
     
@@ -980,12 +1023,12 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             </div>
                         <?php endif; ?>
                         
-                        <form action="/CRAD-system/student_pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo ($has_proposal || !$has_research_forum_payment) ? 'onsubmit="return false;"' : ''; ?>>
+                        <form action="/CRAD-system/student_pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo !$has_research_forum_payment ? 'onsubmit="return false;"' : ''; ?>>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Title</label>
                                 <input type="text" name="title" required 
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                                    <?php echo ($has_proposal || !$has_research_forum_payment) ? 'disabled' : ''; ?>
+                                    <?php echo !$has_research_forum_payment ? 'disabled' : ''; ?>
                                     value="<?php echo $has_proposal ? $proposal['title'] : ''; ?>">
                             </div>
                             
@@ -993,33 +1036,38 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <textarea name="description" rows="3" 
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                                    <?php echo ($has_proposal || !$has_research_forum_payment) ? 'disabled' : ''; ?>
+                                    <?php echo !$has_research_forum_payment ? 'disabled' : ''; ?>
                                 ><?php echo $has_proposal ? $proposal['description'] : ''; ?></textarea>
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Upload Signed Proposal (PDF only)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    <?php echo $has_proposal ? 'Update Proposal File (PDF only) - Optional' : 'Upload Signed Proposal (PDF only)'; ?>
+                                </label>
                                 <div class="mt-1 flex items-center">
                                     <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center hover:bg-gray-50 transition 
-                                        <?php echo ($has_proposal || !$has_research_forum_payment) ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                                        <?php echo !$has_research_forum_payment ? 'opacity-50 cursor-not-allowed' : ''; ?>">
                                         <i class="fas fa-file-pdf text-red-500 mr-2"></i>
                                         <span class="text-sm font-medium" id="file-label">Choose PDF File</span>
-                                        <input type="file" name="proposal_file" accept=".pdf" required 
-                                            <?php echo ($has_proposal || !$has_research_forum_payment) ? 'disabled' : ''; ?>
+                                        <input type="file" name="proposal_file" accept=".pdf" <?php echo !$has_proposal ? 'required' : ''; ?> 
+                                            <?php echo !$has_research_forum_payment ? 'disabled' : ''; ?>
                                             class="hidden" onchange="updateFileName(this)">
                                     </label>
                                     <span class="ml-3 text-sm text-gray-500" id="file-name">
                                         <?php echo $has_proposal ? basename($proposal['file_path']) : 'No file chosen'; ?>
                                     </span>
                                 </div>
+                                <?php if ($has_proposal): ?>
+                                    <p class="text-sm text-gray-500 mt-1">Leave empty to keep current file</p>
+                                <?php endif; ?>
                             </div>
                             
                             <div class="pt-4">
-                                <button type="submit" name="submit_proposal" 
+                                <button type="submit" name="<?php echo $has_proposal ? 'update_proposal' : 'submit_proposal'; ?>" 
                                     class="enhanced-button bg-gradient-to-r from-primary-600 to-secondary-600 text-white px-6 py-3 rounded-lg hover:shadow-md transition flex items-center justify-center font-medium
-                                    <?php echo ($has_proposal || !$has_research_forum_payment) ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'; ?>">
-                                    <i class="fas fa-paper-plane mr-2"></i> 
-                                    <?php echo $has_proposal ? 'Proposal Already Submitted' : 'Submit Proposal'; ?>
+                                    <?php echo !$has_research_forum_payment ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'; ?>">
+                                    <i class="fas fa-<?php echo $has_proposal ? 'edit' : 'paper-plane'; ?> mr-2"></i> 
+                                    <?php echo $has_proposal ? 'Update Proposal' : 'Submit Proposal'; ?>
                                 </button>
                             </div>
                         </form>

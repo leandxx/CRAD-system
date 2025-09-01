@@ -18,54 +18,109 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $end_time = mysqli_real_escape_string($conn, $_POST['end_time']);
         $room_id = mysqli_real_escape_string($conn, $_POST['room_id']);
         $panel_members = isset($_POST['panel_members']) ? $_POST['panel_members'] : [];
+<<<<<<< HEAD
         $defense_type = mysqli_real_escape_string($conn, $_POST['defense_type'] ?? 'initial');
         $parent_defense_id = !empty($_POST['parent_defense_id']) ? mysqli_real_escape_string($conn, $_POST['parent_defense_id']) : 'NULL';
         $redefense_reason = !empty($_POST['redefense_reason']) ? mysqli_real_escape_string($conn, $_POST['redefense_reason']) : 'NULL';
+=======
+        $chairperson = isset($_POST['chairperson']) ? $_POST['chairperson'] : '';
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
         
         // Validate required fields
         if (empty($group_id) || empty($defense_date) || empty($start_time) || empty($end_time) || empty($room_id)) {
             $error_message = "All fields are required for scheduling a defense.";
+        } elseif (count($panel_members) != 3) {
+            $error_message = "Please select exactly 3 panel members (1 chairperson + 2 members).";
         } elseif (strtotime($defense_date) < strtotime(date('Y-m-d'))) {
             $error_message = "Defense date cannot be in the past.";
         } elseif (strtotime($start_time) >= strtotime($end_time)) {
             $error_message = "End time must be after start time.";
         } else {
-            // Check room availability
-            $availability_query = "SELECT COUNT(*) as conflict_count 
-                                  FROM defense_schedules 
-                                  WHERE room_id = '$room_id' 
-                                  AND defense_date = '$defense_date' 
-                                  AND status = 'scheduled'
+            // Auto-calculate end time (30 minutes after start time)
+            $start_timestamp = strtotime($start_time);
+            $end_timestamp = $start_timestamp + (30 * 60); // Add 30 minutes
+            $end_time = date('H:i:s', $end_timestamp);
+            
+            // Check for exact time conflicts (same room, date, and overlapping times)
+            $availability_query = "SELECT ds.*, g.name as group_name 
+                                  FROM defense_schedules ds
+                                  LEFT JOIN groups g ON ds.group_id = g.id
+                                  WHERE ds.room_id = '$room_id' 
+                                  AND ds.defense_date = '$defense_date' 
+                                  AND ds.status = 'scheduled'
                                   AND (
-                                      (start_time <= '$start_time' AND end_time > '$start_time') OR
-                                      (start_time < '$end_time' AND end_time >= '$end_time') OR
-                                      (start_time >= '$start_time' AND end_time <= '$end_time')
+                                      (ds.start_time < '$end_time' AND ds.end_time > '$start_time')
                                   )";
             $availability_result = mysqli_query($conn, $availability_query);
-            $availability_data = mysqli_fetch_assoc($availability_result);
             
-            if ($availability_data['conflict_count'] > 0) {
-                $error_message = "Room is not available during the selected time slot. Please choose a different time or room.";
+            if (mysqli_num_rows($availability_result) > 0) {
+                $conflict = mysqli_fetch_assoc($availability_result);
+                $conflict_time = date('g:i A', strtotime($conflict['start_time'])) . ' - ' . date('g:i A', strtotime($conflict['end_time']));
+                $error_message = "Room conflict detected! The room is already booked by '{$conflict['group_name']}' from {$conflict_time} on this date. Please choose a different time or room.";
             } else {
 
         // Default status = scheduled
         $status = 'scheduled';
 
+<<<<<<< HEAD
         // Insert defense schedule
         $schedule_query = "INSERT INTO defense_schedules 
                           (group_id, defense_date, start_time, end_time, room_id, status, defense_type, parent_defense_id, redefense_reason) 
                           VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status', '$defense_type', $parent_defense_id, '$redefense_reason')";
+=======
+        // Get defense type
+        $defense_type = mysqli_real_escape_string($conn, $_POST['defense_type']);
+        
+        // Check if defense already exists for this group and type
+        $existing_query = "SELECT id FROM defense_schedules 
+                          WHERE group_id = '$group_id' AND defense_type = '$defense_type' 
+                          AND status IN ('scheduled', 're_defense', 'proceeding_final', 'awaiting_result')";
+        $existing_result = mysqli_query($conn, $existing_query);
+        
+        if (mysqli_num_rows($existing_result) > 0) {
+            // Update existing defense instead of creating new
+            $existing_defense = mysqli_fetch_assoc($existing_result);
+            $defense_id = $existing_defense['id'];
+            
+            $update_query = "UPDATE defense_schedules 
+                            SET defense_date = '$defense_date', start_time = '$start_time', 
+                                end_time = '$end_time', room_id = '$room_id', status = '$status'
+                            WHERE id = '$defense_id'";
+            
+            if (mysqli_query($conn, $update_query)) {
+                // Delete existing panel members
+                mysqli_query($conn, "DELETE FROM defense_panel WHERE defense_id = '$defense_id'");
+                
+                // Insert new panel members
+                foreach ($panel_members as $index => $faculty_id) {
+                    $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
+                    $role = ($index === 0) ? 'chairperson' : 'member';
+                    $panel_query = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
+                                   VALUES ('$defense_id', '$faculty_id', '$role')";
+                    mysqli_query($conn, $panel_query);
+                }
+        } else {
+            // Insert new defense schedule
+            $schedule_query = "INSERT INTO defense_schedules 
+                              (group_id, defense_date, start_time, end_time, room_id, status, defense_type) 
+                              VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status', '$defense_type')";
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
 
-        if (mysqli_query($conn, $schedule_query)) {
-            $defense_id = mysqli_insert_id($conn);
+            if (mysqli_query($conn, $schedule_query)) {
+                $defense_id = mysqli_insert_id($conn);
 
-            // Insert panel members
-            foreach ($panel_members as $faculty_id) {
-                $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
-                $panel_query = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
-                               VALUES ('$defense_id', '$faculty_id', 'member')";
-                mysqli_query($conn, $panel_query);
+                // Insert panel members (first one as chairperson, rest as members)
+                foreach ($panel_members as $index => $faculty_id) {
+                    $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
+                    $role = ($index === 0) ? 'chairperson' : 'member';
+                    $panel_query = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
+                                   VALUES ('$defense_id', '$faculty_id', '$role')";
+                    mysqli_query($conn, $panel_query);
+                }
+            } else {
+                $error_message = "Error scheduling defense: " . mysqli_error($conn);
             }
+        }
 
             // Get group name for notification
             $group_query = "SELECT name FROM groups WHERE id = '$group_id'";
@@ -78,12 +133,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $notification_message = "A defense has been scheduled for group: $group_name on $defense_date at $start_time";
             notifyAllUsers($conn, $notification_title, $notification_message, 'info');
 
+        }
+        
+        if (!isset($error_message)) {
             $_SESSION['success_message'] = "Defense scheduled successfully!";
             $_SESSION['refresh_availability'] = true;
             header("Location: admin-defense.php");
             exit();
-        } else {
-            $error_message = "Error scheduling defense: " . mysqli_error($conn);
         }
             }
         }
@@ -120,6 +176,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
+    if (isset($_POST['complete_defense'])) {
+        $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
+        $result = mysqli_real_escape_string($conn, $_POST['result']); // 'pass' or 'fail'
+        
+        // Get defense info
+        $defense_info_query = "SELECT ds.*, g.name as group_name FROM defense_schedules ds 
+                              JOIN groups g ON ds.group_id = g.id WHERE ds.id = '$defense_id'";
+        $defense_info = mysqli_fetch_assoc(mysqli_query($conn, $defense_info_query));
+        
+        if ($result === 'pass') {
+            if ($defense_info['defense_type'] === 'pre_oral') {
+                // Update status to ready for final defense
+                $update_query = "UPDATE defense_schedules SET status = 'completed' WHERE id = '$defense_id'";
+                mysqli_query($conn, $update_query);
+                $_SESSION['success_message'] = "Pre-oral defense completed. Group is now ready for final defense.";
+            } else {
+                // Final defense passed - mark as completed
+                $update_query = "UPDATE defense_schedules SET status = 'completed' WHERE id = '$defense_id'";
+                mysqli_query($conn, $update_query);
+                $_SESSION['success_message'] = "Final defense completed successfully!";
+            }
+        } else {
+            // Failed - mark for re-defense
+            $update_query = "UPDATE defense_schedules SET status = 're_defense' WHERE id = '$defense_id'";
+            mysqli_query($conn, $update_query);
+            $_SESSION['success_message'] = "Defense marked for re-defense.";
+        }
+        
+        header("Location: admin-defense.php");
+        exit();
+    }
+
     if (isset($_POST['edit_defense'])) {
         $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
         $defense_date = mysqli_real_escape_string($conn, $_POST['defense_date']);
@@ -134,41 +222,58 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } elseif (strtotime($start_time) >= strtotime($end_time)) {
             $error_message = "End time must be after start time.";
         } else {
+            // Auto-calculate end time (30 minutes after start time)
+            $start_timestamp = strtotime($start_time);
+            $end_timestamp = $start_timestamp + (30 * 60); // Add 30 minutes
+            $end_time = date('H:i:s', $end_timestamp);
+            
             // Check room availability (exclude current defense from check)
-            $availability_query = "SELECT COUNT(*) as conflict_count 
-                                  FROM defense_schedules 
-                                  WHERE room_id = '$room_id' 
-                                  AND defense_date = '$defense_date' 
-                                  AND status = 'scheduled'
-                                  AND id != '$defense_id'
+            $availability_query = "SELECT ds.*, g.name as group_name 
+                                  FROM defense_schedules ds
+                                  LEFT JOIN groups g ON ds.group_id = g.id
+                                  WHERE ds.room_id = '$room_id' 
+                                  AND ds.defense_date = '$defense_date' 
+                                  AND ds.status = 'scheduled'
+                                  AND ds.id != '$defense_id'
                                   AND (
-                                      (start_time <= '$start_time' AND end_time > '$start_time') OR
-                                      (start_time < '$end_time' AND end_time >= '$end_time') OR
-                                      (start_time >= '$start_time' AND end_time <= '$end_time')
+                                      (ds.start_time < '$end_time' AND ds.end_time > '$start_time')
                                   )";
             $availability_result = mysqli_query($conn, $availability_query);
-            $availability_data = mysqli_fetch_assoc($availability_result);
             
-            if ($availability_data['conflict_count'] > 0) {
-                $error_message = "Room is not available during the selected time slot. Please choose a different time or room.";
+            if (mysqli_num_rows($availability_result) > 0) {
+                $conflict = mysqli_fetch_assoc($availability_result);
+                $conflict_time = date('g:i A', strtotime($conflict['start_time'])) . ' - ' . date('g:i A', strtotime($conflict['end_time']));
+                $error_message = "Room conflict detected! The room is already booked by '{$conflict['group_name']}' from {$conflict_time} on this date. Please choose a different time or room.";
             } else {
 
-        // Update defense schedule (don't update group_id as it shouldn't change)
-        $update_query = "UPDATE defense_schedules 
-                         SET defense_date = '$defense_date', 
-                             start_time = '$start_time', end_time = '$end_time', 
-                             room_id = '$room_id'
-                         WHERE id = '$defense_id'";
+        // Get group_id from form if provided, otherwise keep existing
+        $group_id = isset($_POST['group_id']) ? mysqli_real_escape_string($conn, $_POST['group_id']) : null;
+        
+        // Update defense schedule (include group_id if provided)
+        if ($group_id) {
+            $update_query = "UPDATE defense_schedules 
+                             SET group_id = '$group_id', defense_date = '$defense_date', 
+                                 start_time = '$start_time', end_time = '$end_time', 
+                                 room_id = '$room_id'
+                             WHERE id = '$defense_id'";
+        } else {
+            $update_query = "UPDATE defense_schedules 
+                             SET defense_date = '$defense_date', 
+                                 start_time = '$start_time', end_time = '$end_time', 
+                                 room_id = '$room_id'
+                             WHERE id = '$defense_id'";
+        }
 
         if (mysqli_query($conn, $update_query)) {
             // Update panel members
             $delete_panel_query = "DELETE FROM defense_panel WHERE defense_id = '$defense_id'";
             mysqli_query($conn, $delete_panel_query);
 
-            foreach ($panel_members as $faculty_id) {
+            foreach ($panel_members as $index => $faculty_id) {
                 $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
+                $role = ($index === 0) ? 'chairperson' : 'member';
                 $panel_query = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
-                               VALUES ('$defense_id', '$faculty_id', 'member')";
+                               VALUES ('$defense_id', '$faculty_id', '$role')";
                 mysqli_query($conn, $panel_query);
             }
 
@@ -194,15 +299,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// Get all defense schedules
-$defense_query = "SELECT ds.*, g.name as group_name, r.room_name, r.building, p.title as proposal_title,
+// Auto-update finished defenses based on defense type
+mysqli_query($conn, "UPDATE defense_schedules SET status = 'proceeding_final' WHERE status = 'scheduled' AND defense_type = 'pre_oral' AND (defense_date < CURDATE() OR (defense_date = CURDATE() AND end_time < CURTIME()))");
+mysqli_query($conn, "UPDATE defense_schedules SET status = 'awaiting_result' WHERE status = 'scheduled' AND defense_type = 'final' AND (defense_date < CURDATE() OR (defense_date = CURDATE() AND end_time < CURTIME()))");
+
+// Get upcoming defense schedules
+$defense_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, r.room_name, r.building, p.title as proposal_title,
                  GROUP_CONCAT(CONCAT(pm.first_name, ' ', pm.last_name) SEPARATOR ', ') as panel_names
                  FROM defense_schedules ds 
                  LEFT JOIN groups g ON ds.group_id = g.id 
+                 LEFT JOIN clusters c ON g.cluster_id = c.id
                  LEFT JOIN rooms r ON ds.room_id = r.id 
                  LEFT JOIN proposals p ON g.id = p.group_id
                  LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
                  LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
+                 WHERE ds.status IN ('scheduled', 're_defense', 'proceeding_final', 'awaiting_result')
                  GROUP BY ds.id
                  ORDER BY ds.defense_date, ds.start_time";
 $defense_result = mysqli_query($conn, $defense_query);
@@ -222,28 +333,42 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
         $panel_members[] = $panel;
     }
 
-    // If defense_date < today → mark as completed
+    // Auto-update finished defenses based on type
     $current_date = date('Y-m-d');
     $current_time = date('H:i:s');
-    if ($schedule['defense_date'] < $current_date || 
-        ($schedule['defense_date'] == $current_date && $schedule['end_time'] < $current_time)) {
-        // Update status in database if not already completed
-        if ($schedule['status'] != 'completed') {
-            $update_query = "UPDATE defense_schedules SET status = 'completed' WHERE id = '{$schedule['id']}'";
-            mysqli_query($conn, $update_query);
-            $schedule['status'] = 'completed';
+    if ($schedule['status'] == 'scheduled' && 
+        ($schedule['defense_date'] < $current_date || 
+        ($schedule['defense_date'] == $current_date && $schedule['end_time'] < $current_time))) {
+        if ($schedule['defense_type'] == 'pre_oral') {
+            $update_query = "UPDATE defense_schedules SET status = 'proceeding_final' WHERE id = '{$schedule['id']}'";
+            $schedule['status'] = 'proceeding_final';
+        } else {
+            $update_query = "UPDATE defense_schedules SET status = 'awaiting_result' WHERE id = '{$schedule['id']}'";
+            $schedule['status'] = 'awaiting_result';
         }
+        mysqli_query($conn, $update_query);
     }
 
    $schedule['panel_members'] = $panel_members;
     $defense_schedules[] = $schedule;
 }
 
-// Get all groups with completed/approved proposals
-$groups_query = "SELECT g.*, p.title as proposal_title 
+// Get all groups with completed/approved proposals and check payment status
+$groups_query = "SELECT g.*, p.title as proposal_title, c.cluster,
+                (SELECT COUNT(*) FROM payments pay 
+                 JOIN group_members gm ON pay.student_id = gm.student_id 
+                 WHERE gm.group_id = g.id AND pay.payment_type = 'research_forum' AND pay.status = 'approved') as research_forum_payments,
+                (SELECT COUNT(*) FROM payments pay 
+                 JOIN group_members gm ON pay.student_id = gm.student_id 
+                 WHERE gm.group_id = g.id AND pay.payment_type = 'pre_oral_defense' AND pay.status = 'approved') as pre_oral_payments,
+                (SELECT COUNT(*) FROM payments pay 
+                 JOIN group_members gm ON pay.student_id = gm.student_id 
+                 WHERE gm.group_id = g.id AND pay.payment_type = 'final_defense' AND pay.status = 'approved') as final_defense_payments,
+                (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count
                 FROM groups g 
                 JOIN proposals p ON g.id = p.group_id 
-                WHERE p.status IN ('Completed', 'Approved')
+                LEFT JOIN clusters c ON g.cluster_id = c.id
+                WHERE p.status IN ('Completed', 'Approved', 'approved', 'completed')
                 ORDER BY g.name";
 $groups_result = mysqli_query($conn, $groups_query);
 $groups = [];
@@ -294,7 +419,7 @@ while ($room = mysqli_fetch_assoc($rooms_result)) {
 }
 
 // Get stats for dashboard
-$total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE status IN ('Completed', 'Approved')"));
+$total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE status IN ('Completed', 'Approved', 'approved', 'completed')"));
 $scheduled_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'scheduled'"));
 $pending_defenses = $total_proposals - $scheduled_defenses;
 $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'completed'"));
@@ -541,6 +666,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             }
         }
 
+<<<<<<< HEAD
         // ===== MODAL FUNCTIONS =====
         function openModal(modalId) {
             const modal = document.getElementById(modalId);
@@ -578,6 +704,20 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 openModal('proposalModal');
             } else {
                 closeModal('proposalModal');
+=======
+        function toggleModal(groupId = null, groupName = null, program = null, cluster = null, defenseType = 'pre_oral') {
+            const modal = document.getElementById('proposalModal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+            
+            if (groupId) {
+                document.getElementById('selected_group_id').value = groupId;
+                const displayText = `${groupName} - ${program} ${cluster ? '(Cluster ' + cluster + ')' : ''}`;
+                document.getElementById('selected_group_name').textContent = displayText;
+                
+                // Set defense type
+                document.getElementById('defense_type').value = defenseType;
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
             }
         }
 
@@ -787,6 +927,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             }
         }
         
+<<<<<<< HEAD
         // Function to validate defense duration (minimum 30 minutes)
         function validateDefenseDuration() {
             const startTime = document.getElementById('start_time').value;
@@ -996,6 +1137,30 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             }
         }
 
+=======
+        // Function to automatically set end time to 30 minutes after start time
+        function setEndTime() {
+            const startTime = document.getElementById('start_time').value;
+            if (startTime) {
+                const startDate = new Date('1970-01-01T' + startTime + ':00');
+                const endDate = new Date(startDate.getTime() + 30 * 60000); // Add 30 minutes
+                const endTime = endDate.toTimeString().slice(0, 5);
+                document.getElementById('end_time').value = endTime;
+            }
+        }
+        
+        // Function to automatically set end time for edit modal
+        function setEditEndTime() {
+            const startTime = document.getElementById('edit_start_time').value;
+            if (startTime) {
+                const startDate = new Date('1970-01-01T' + startTime + ':00');
+                const endDate = new Date(startDate.getTime() + 30 * 60000); // Add 30 minutes
+                const endTime = endDate.toTimeString().slice(0, 5);
+                document.getElementById('edit_end_time').value = endTime;
+            }
+        }
+        
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
         // Function to check room availability
         function checkRoomAvailability() {
             const selectedDate = document.getElementById('availabilityDate').value;
@@ -1273,15 +1438,16 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
             </div>
 
-            <!-- Defense Schedule Cards -->
+            <!-- Groups Ready for Defense -->
             <div id="scheduleCards" class="stats-card rounded-2xl p-8 animate-scale-in">
                 <div class="flex items-center mb-8">
-                    <div class="gradient-blue p-3 rounded-xl mr-4">
-                        <i class="fas fa-calendar-alt text-white text-xl"></i>
+                    <div class="gradient-yellow p-3 rounded-xl mr-4">
+                        <i class="fas fa-calendar-plus text-white text-xl"></i>
                     </div>
-                    <h2 class="text-2xl font-bold text-gray-800">Defense Schedule</h2>
+                    <h2 class="text-2xl font-bold text-gray-800">Groups Ready for Defense</h2>
                 </div>
 
+<<<<<<< HEAD
                 <!-- Cards Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <?php foreach ($defense_schedules as $schedule): ?>
@@ -1377,9 +1543,108 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <button onclick="deleteDefense(<?php echo $schedule['id']; ?>)" class="bg-white/80 hover:bg-red-50 border border-red-200 hover:border-red-300 text-red-600 hover:text-red-700 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-md backdrop-blur-sm" title="Delete">
                                     <i class="fas fa-trash mr-1"></i>Delete
                                 </button>
+=======
+                <?php 
+                // Get groups ready for defense (unscheduled)
+                $unscheduled_query = "SELECT g.*, p.title as proposal_title, c.cluster, 'pre_oral' as next_defense
+                                    FROM groups g 
+                                    JOIN proposals p ON g.id = p.group_id 
+                                    LEFT JOIN clusters c ON g.cluster_id = c.id
+                                    WHERE g.id NOT IN (SELECT group_id FROM defense_schedules WHERE status IN ('scheduled', 're_defense')) 
+                                    AND p.status IN ('Completed', 'Approved', 'approved', 'completed')
+                                    
+                                    UNION
+                                    
+                                    SELECT g.*, p.title as proposal_title, c.cluster, 'final' as next_defense
+                                    FROM groups g 
+                                    JOIN proposals p ON g.id = p.group_id 
+                                    LEFT JOIN clusters c ON g.cluster_id = c.id
+                                    WHERE g.id IN (SELECT group_id FROM defense_schedules WHERE defense_type = 'pre_oral' AND status = 'completed')
+                                    AND g.id NOT IN (SELECT group_id FROM defense_schedules WHERE defense_type = 'final' AND status IN ('scheduled', 'completed', 're_defense'))
+                                    
+                                    ORDER BY program, cluster, name";
+                $unscheduled_result = mysqli_query($conn, $unscheduled_query);
+                $unscheduled_groups = [];
+                
+                while ($group = mysqli_fetch_assoc($unscheduled_result)) {
+                    $program = $group['program'];
+                    $cluster = $group['cluster'] ?? 'Unassigned';
+                    $defense_type = $group['next_defense'];
+                    $unscheduled_groups[$program][$cluster][$defense_type][] = $group;
+                }
+                
+                if (empty($unscheduled_groups)): ?>
+                <div class="text-center py-8">
+                    <i class="fas fa-calendar-plus text-4xl text-gray-400 mb-3"></i>
+                    <p class="text-gray-500">No groups ready for defense scheduling</p>
+                </div>
+                <?php else: ?>
+                
+                <?php foreach ($unscheduled_groups as $program => $clusters): ?>
+                <div class="mb-6">
+                    <div class="program-header cursor-pointer bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4 mb-4 hover:shadow-md transition-all" onclick="toggleUnscheduledProgram('<?php echo md5($program . '_unscheduled'); ?>')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas fa-clock text-yellow-600 text-xl mr-3"></i>
+                                <h3 class="text-xl font-bold text-gray-800"><?php echo htmlspecialchars($program); ?> - Pending Defenses</h3>
+                                <span class="ml-4 bg-yellow-500 text-white text-sm font-bold px-3 py-2 rounded-xl shadow-lg">
+                                    <?php echo array_sum(array_map(function($cluster) { return array_sum(array_map('count', $cluster)); }, $clusters)); ?> pending
+                                </span>
                             </div>
+                            <i class="fas fa-chevron-down text-yellow-600 transition-transform" id="unscheduled-program-chevron-<?php echo md5($program . '_unscheduled'); ?>"></i>
                         </div>
                     </div>
+                    
+                    <div class="program-content hidden ml-4" id="unscheduled-program-<?php echo md5($program . '_unscheduled'); ?>">
+                        <?php foreach ($clusters as $cluster_name => $defense_types): ?>
+                        <div class="cluster-section mb-4">
+                            <div class="cluster-header cursor-pointer bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200 rounded-xl p-3 mb-3 hover:shadow-md transition-all" onclick="toggleUnscheduledCluster('<?php echo md5($program . $cluster_name . '_unscheduled'); ?>')">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-layer-group text-gray-600 text-lg mr-3"></i>
+                                        <h4 class="text-lg font-semibold text-gray-800">Cluster <?php echo htmlspecialchars($cluster_name); ?></h4>
+                                        <span class="ml-3 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-lg">
+                                            <?php echo array_sum(array_map('count', $defense_types)); ?> groups
+                                        </span>
+                                    </div>
+                                    <i class="fas fa-chevron-down text-gray-600 transition-transform" id="unscheduled-cluster-chevron-<?php echo md5($program . $cluster_name . '_unscheduled'); ?>"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="cluster-content hidden ml-4" id="unscheduled-cluster-<?php echo md5($program . $cluster_name . '_unscheduled'); ?>">
+                                <?php foreach ($defense_types as $defense_type => $groups): ?>
+                                <div class="mb-3">
+                                    <h5 class="text-md font-medium text-gray-700 mb-2">
+                                        <?php echo $defense_type === 'final' ? 'Ready for Final Defense' : 'Ready for Pre-Oral Defense'; ?>
+                                    </h5>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <?php foreach ($groups as $group): ?>
+                                        <div class="defense-card bg-gray-50 border border-gray-200 rounded-xl shadow-md p-4 flex flex-col justify-between" data-status="pending">
+                                            <div>
+                                                <h5 class="text-md font-semibold text-gray-900"><?php echo $group['proposal_title']; ?></h5>
+                                                <p class="text-sm text-gray-500 mb-2"><?php echo $group['name']; ?></p>
+                                                <p class="text-xs text-gray-600 mb-1"><i class="fas fa-calendar-times mr-1"></i> Not scheduled</p>
+                                            </div>
+                                            
+                                            <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full <?php echo $defense_type === 'final' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'; ?>">
+                                                    <?php echo $defense_type === 'final' ? 'Ready for Final' : 'Ready for Pre-Oral'; ?>
+                                                </span>
+                                                <button onclick="toggleModal(<?php echo $group['id']; ?>, '<?php echo addslashes($group['name']); ?>', '<?php echo addslashes($group['program']); ?>', '<?php echo addslashes($group['cluster'] ?? ''); ?>', '<?php echo $defense_type; ?>')" class="text-primary hover:text-blue-900 p-1" title="Schedule Defense">
+                                                    <i class="fas fa-calendar-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+<<<<<<< HEAD
                     <?php endforeach; ?>
 
                     <!-- Pending / Unscheduled Groups -->
@@ -1441,7 +1706,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         </div>
                     </div>
                     <?php endwhile; ?>
+=======
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
                 </div>
+                <?php endforeach; ?>
+                <?php endif; ?>
             </div>
             
             <!-- Room Availability Cards -->
@@ -1459,15 +1728,17 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
             </div>
 
-            <!-- Upcoming Defenses Section -->
-            <div class="flex items-center mt-10 mb-6">
-                <div class="gradient-green p-3 rounded-xl mr-4">
-                    <i class="fas fa-clock text-white text-xl"></i>
+            <!-- Upcoming Defenses Section (Organized Hierarchically) -->
+            <div class="stats-card rounded-2xl p-8 animate-scale-in mb-8">
+                <div class="flex items-center mb-8">
+                    <div class="gradient-green p-3 rounded-xl mr-4">
+                        <i class="fas fa-clock text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">Upcoming Defenses</h2>
                 </div>
-                <h2 class="text-2xl font-bold text-gray-800">Upcoming Defenses</h2>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-fade-in">
+                
                 <?php 
+<<<<<<< HEAD
                 $upcoming_query = "SELECT ds.*, g.name as group_name, p.title as proposal_title, r.room_name, r.building,
                                  GROUP_CONCAT(CONCAT(pm.first_name, ' ', pm.last_name) SEPARATOR ', ') as panel_names
                                 FROM defense_schedules ds 
@@ -1537,9 +1808,226 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 
                 <?php if (mysqli_num_rows($upcoming_result) === 0): ?>
                 <div class="schedule-card bg-white rounded-lg shadow p-4 border-l-4 border-gray-300 col-span-3 text-center py-8">
+=======
+                // Organize upcoming defenses by program -> cluster -> group
+                $organized_upcoming = [];
+                foreach ($defense_schedules as $schedule) {
+                    $program = $schedule['program'];
+                    $cluster = $schedule['cluster'] ?? 'Unassigned';
+                    $organized_upcoming[$program][$cluster][] = $schedule;
+                }
+                
+                if (empty($organized_upcoming)): ?>
+                <div class="text-center py-8">
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
                     <i class="far fa-calendar-alt text-4xl text-gray-400 mb-3"></i>
                     <p class="text-gray-500">No upcoming defenses scheduled</p>
                 </div>
+                <?php else: ?>
+                
+                <?php foreach ($organized_upcoming as $program => $clusters): ?>
+                <div class="mb-6">
+                    <div class="program-header cursor-pointer bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-4 hover:shadow-md transition-all" onclick="toggleUpcomingProgram('<?php echo md5($program); ?>')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas fa-graduation-cap text-blue-600 text-xl mr-3"></i>
+                                <h3 class="text-xl font-bold text-gray-800"><?php echo htmlspecialchars($program); ?></h3>
+                                <span class="ml-4 bg-blue-500 text-white text-sm font-bold px-3 py-2 rounded-xl shadow-lg">
+                                    <?php echo array_sum(array_map('count', $clusters)); ?> defenses
+                                </span>
+                            </div>
+                            <i class="fas fa-chevron-down text-blue-600 transition-transform" id="upcoming-program-chevron-<?php echo md5($program); ?>"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="program-content hidden ml-4" id="upcoming-program-<?php echo md5($program); ?>">
+                        <?php foreach ($clusters as $cluster_name => $cluster_schedules): ?>
+                        <div class="cluster-section mb-4">
+                            <div class="cluster-header cursor-pointer bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-3 mb-3 hover:shadow-md transition-all" onclick="toggleUpcomingCluster('<?php echo md5($program . $cluster_name); ?>')">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-layer-group text-green-600 text-lg mr-3"></i>
+                                        <h4 class="text-lg font-semibold text-gray-800">Cluster <?php echo htmlspecialchars($cluster_name); ?></h4>
+                                        <span class="ml-3 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-lg">
+                                            <?php echo count($cluster_schedules); ?> groups
+                                        </span>
+                                    </div>
+                                    <i class="fas fa-chevron-down text-green-600 transition-transform" id="upcoming-cluster-chevron-<?php echo md5($program . $cluster_name); ?>"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="cluster-content hidden ml-4" id="upcoming-cluster-<?php echo md5($program . $cluster_name); ?>">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <?php foreach ($cluster_schedules as $schedule): ?>
+                                    <div class="defense-card bg-white border border-gray-200 rounded-xl shadow-md p-4 flex flex-col justify-between">
+                                        <div>
+                                            <div class="flex justify-between items-start mb-2">
+                                                <h5 class="text-md font-semibold text-gray-900"><?php echo $schedule['proposal_title'] ?? 'No Title'; ?></h5>
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full <?php echo $schedule['defense_type'] === 'final' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'; ?>">
+                                                    <?php echo ucfirst(str_replace('_', ' ', $schedule['defense_type'])); ?>
+                                                </span>
+                                            </div>
+                                            <p class="text-sm text-gray-500 mb-2"><?php echo $schedule['group_name']; ?></p>
+                                            <p class="text-xs text-gray-600 mb-1">
+                                                <i class="fas fa-calendar mr-1"></i>
+                                                <?php echo date('M j, Y', strtotime($schedule['defense_date'])); ?>
+                                            </p>
+                                            <p class="text-xs text-gray-600 mb-1">
+                                                <i class="fas fa-clock mr-1"></i>
+                                                <?php echo date('g:i A', strtotime($schedule['start_time'])); ?> - 
+                                                <?php echo date('g:i A', strtotime($schedule['end_time'])); ?>
+                                            </p>
+                                            <p class="text-xs text-gray-600 mb-2">
+                                                <i class="fas fa-map-marker-alt mr-1"></i>
+                                                <?php echo $schedule['building'] . ' ' . $schedule['room_name']; ?>
+                                            </p>
+                                        </div>
+                                        
+                                        <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
+                                            <?php if ($schedule['status'] == 're_defense'): ?>
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Re-defense</span>
+                                            <?php elseif ($schedule['status'] == 'proceeding_final'): ?>
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">Proceeding Final</span>
+                                            <?php elseif ($schedule['status'] == 'awaiting_result'): ?>
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Awaiting Result</span>
+                                            <?php else: ?>
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Scheduled</span>
+                                            <?php endif; ?>
+                                            
+                                            <div class="flex space-x-1">
+                                                <?php if ($schedule['status'] == 'proceeding_final'): ?>
+                                                <button onclick="toggleModal(<?php echo $schedule['group_id']; ?>, '<?php echo addslashes($schedule['group_name']); ?>', '<?php echo addslashes($schedule['program']); ?>', '<?php echo addslashes($schedule['cluster'] ?? ''); ?>', 'final')" class="text-green-600 hover:text-green-900 p-1" title="Schedule Final Defense">
+                                                    <i class="fas fa-arrow-right"></i>
+                                                </button>
+                                                <button class="text-orange-600 hover:text-orange-900 p-1" onclick="completeDefense(<?php echo $schedule['id']; ?>, '<?php echo $schedule['group_name']; ?>', '<?php echo $schedule['defense_type']; ?>')" title="Mark for Re-defense">
+                                                    <i class="fas fa-redo"></i>
+                                                </button>
+                                                <?php elseif ($schedule['status'] == 'awaiting_result'): ?>
+                                                <button class="text-green-600 hover:text-green-900 p-1" onclick="completeDefense(<?php echo $schedule['id']; ?>, '<?php echo $schedule['group_name']; ?>', '<?php echo $schedule['defense_type']; ?>')" title="Complete Defense">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <?php endif; ?>
+                                                <button class="text-indigo-600 hover:text-indigo-900 p-1" onclick="populateEditForm(<?php echo htmlspecialchars(json_encode($schedule)); ?>)" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button onclick="confirmDelete(<?php echo $schedule['id']; ?>, '<?php echo $schedule['group_name']; ?>')" class="text-red-600 hover:text-red-900 p-1" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+            
+            <!-- Completed Defenses Section -->
+            <div class="stats-card rounded-2xl p-8 animate-scale-in mb-8">
+                <div class="flex items-center mb-8">
+                    <div class="gradient-purple p-3 rounded-xl mr-4">
+                        <i class="fas fa-check-circle text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">Completed Defenses</h2>
+                </div>
+                
+                <?php 
+                // Get completed defenses organized by program -> cluster -> group
+                $completed_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, r.room_name, r.building, p.title as proposal_title
+                                   FROM defense_schedules ds 
+                                   LEFT JOIN groups g ON ds.group_id = g.id 
+                                   LEFT JOIN clusters c ON g.cluster_id = c.id
+                                   LEFT JOIN rooms r ON ds.room_id = r.id 
+                                   LEFT JOIN proposals p ON g.id = p.group_id
+                                   WHERE ds.status = 'completed'
+                                   ORDER BY g.program, c.cluster, g.name, ds.defense_date DESC";
+                $completed_result = mysqli_query($conn, $completed_query);
+                $organized_completed = [];
+                
+                while ($completed = mysqli_fetch_assoc($completed_result)) {
+                    $program = $completed['program'];
+                    $cluster = $completed['cluster'] ?? 'Unassigned';
+                    $organized_completed[$program][$cluster][] = $completed;
+                }
+                
+                if (empty($organized_completed)): ?>
+                <div class="text-center py-8">
+                    <i class="fas fa-check-circle text-4xl text-gray-400 mb-3"></i>
+                    <p class="text-gray-500">No completed defenses yet</p>
+                </div>
+                <?php else: ?>
+                
+                <?php foreach ($organized_completed as $program => $clusters): ?>
+                <div class="mb-6">
+                    <div class="program-header cursor-pointer bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-4 hover:shadow-md transition-all" onclick="toggleCompletedProgram('<?php echo md5($program . '_completed'); ?>')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-green-600 text-xl mr-3"></i>
+                                <h3 class="text-xl font-bold text-gray-800"><?php echo htmlspecialchars($program); ?> - Completed</h3>
+                                <span class="ml-4 bg-green-500 text-white text-sm font-bold px-3 py-2 rounded-xl shadow-lg">
+                                    <?php echo array_sum(array_map('count', $clusters)); ?> completed
+                                </span>
+                            </div>
+                            <i class="fas fa-chevron-down text-green-600 transition-transform" id="completed-program-chevron-<?php echo md5($program . '_completed'); ?>"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="program-content hidden ml-4" id="completed-program-<?php echo md5($program . '_completed'); ?>">
+                        <?php foreach ($clusters as $cluster_name => $cluster_completed): ?>
+                        <div class="cluster-section mb-4">
+                            <div class="cluster-header cursor-pointer bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200 rounded-xl p-3 mb-3 hover:shadow-md transition-all" onclick="toggleCompletedCluster('<?php echo md5($program . $cluster_name . '_completed'); ?>')">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-layer-group text-gray-600 text-lg mr-3"></i>
+                                        <h4 class="text-lg font-semibold text-gray-800">Cluster <?php echo htmlspecialchars($cluster_name); ?></h4>
+                                        <span class="ml-3 bg-gray-500 text-white text-xs font-bold px-2 py-1 rounded-lg">
+                                            <?php echo count($cluster_completed); ?> groups
+                                        </span>
+                                    </div>
+                                    <i class="fas fa-chevron-down text-gray-600 transition-transform" id="completed-cluster-chevron-<?php echo md5($program . $cluster_name . '_completed'); ?>"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="cluster-content hidden ml-4" id="completed-cluster-<?php echo md5($program . $cluster_name . '_completed'); ?>">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <?php foreach ($cluster_completed as $completed): ?>
+                                    <div class="defense-card bg-white border border-gray-200 rounded-xl shadow-md p-4">
+                                        <div>
+                                            <div class="flex justify-between items-start mb-2">
+                                                <h5 class="text-md font-semibold text-gray-900"><?php echo $completed['proposal_title'] ?? 'No Title'; ?></h5>
+                                                <span class="px-2 py-1 text-xs font-medium rounded-full <?php echo $completed['defense_type'] === 'final' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'; ?>">
+                                                    <?php echo ucfirst(str_replace('_', ' ', $completed['defense_type'])); ?>
+                                                </span>
+                                            </div>
+                                            <p class="text-sm text-gray-500 mb-2"><?php echo $completed['group_name']; ?></p>
+                                            <p class="text-xs text-gray-600 mb-1">
+                                                <i class="fas fa-calendar mr-1"></i>
+                                                <?php echo date('M j, Y', strtotime($completed['defense_date'])); ?>
+                                            </p>
+                                            <p class="text-xs text-gray-600 mb-2">
+                                                <i class="fas fa-clock mr-1"></i>
+                                                <?php echo date('g:i A', strtotime($completed['start_time'])); ?> - 
+                                                <?php echo date('g:i A', strtotime($completed['end_time'])); ?>
+                                            </p>
+                                        </div>
+                                        
+                                        <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
+                                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Completed</span>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
                 <?php endif; ?>
             </div>
         </main>
@@ -1551,6 +2039,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             <div class="fixed inset-0 transition-opacity" aria-hidden="true">
                 <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
+<<<<<<< HEAD
             <div class="inline-block bg-gradient-to-br from-white via-blue-50 to-indigo-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-2xl w-full modal-content border-0 max-h-[90vh] overflow-y-auto custom-scrollbar-blue">
                 <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 border-0">
                     <h3 class="text-lg font-bold flex items-center">
@@ -1564,14 +2053,23 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             <form method="POST" action="" class="p-6" onsubmit="return validateDefenseDuration()">
                 <input type="hidden" name="defense_type" id="defense_type" value="initial">
                 <input type="hidden" name="parent_defense_id" id="parent_defense_id">
+=======
+            <form method="POST" action="" class="p-6">
+                <input type="hidden" name="group_id" id="selected_group_id" required>
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
                 
                 <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-medium mb-2" for="group_id">Select Group</label>
-                    <select name="group_id" id="group_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-                        <option value="">Select a group</option>
-                        <?php foreach ($groups as $group): ?>
-                        <option value="<?php echo $group['id']; ?>"><?php echo $group['name'] . ' - ' . $group['proposal_title']; ?></option>
-                        <?php endforeach; ?>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Selected Group</label>
+                    <div class="px-3 py-2 bg-gray-100 rounded-lg">
+                        <p id="selected_group_name" class="font-medium text-gray-800"></p>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-xs font-medium mb-1">Defense Type</label>
+                    <select name="defense_type" id="defense_type" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+                        <option value="pre_oral">Pre-Oral Defense</option>
+                        <option value="final">Final Defense</option>
                     </select>
                 </div>
                 
@@ -1598,6 +2096,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
+<<<<<<< HEAD
                         <label class="block text-gray-700 text-sm font-medium mb-2" for="time_slot">Available Time Slots</label>
                         <select name="time_slot" id="time_slot" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" onchange="updateTimeInputs()">
                             <option value="">Select date and room first</option>
@@ -1608,6 +2107,14 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
                         <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm" id="duration_display">No slot selected</div>
+=======
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="start_time">Start Time</label>
+                        <input type="time" name="start_time" id="start_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" onchange="setEndTime()">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="end_time">End Time (Auto-set to 30 mins)</label>
+                        <input type="time" name="end_time" id="end_time" required readonly class="w-full px-3 py-2 border rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary">
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
                     </div>
                 </div>
                 
@@ -1630,7 +2137,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
                             <?php foreach ($chairpersons as $panel_member): ?>
                             <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
-                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-3 rounded text-primary focus:ring-primary">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-3 rounded text-primary focus:ring-primary panel-checkbox" data-role="chairperson" onchange="validatePanelSelection()">
                                 <div class="flex-1">
                                     <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
                                     <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
@@ -1641,7 +2148,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                             </label>
                             <?php endforeach; ?>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2">Select chairperson for this defense schedule.</p>
+                        <p class="text-xs text-gray-500 mt-2">Select exactly 1 chairperson for this defense schedule.</p>
                         <?php else: ?>
                         <div class="text-center p-6 border rounded-lg bg-gray-50">
                             <i class="fas fa-user-tie text-gray-300 text-3xl mb-3"></i>
@@ -1661,7 +2168,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
                             <?php foreach ($members as $panel_member): ?>
                             <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
-                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-3 rounded text-primary focus:ring-primary">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-3 rounded text-primary focus:ring-primary panel-checkbox" data-role="member" onchange="validatePanelSelection()">
                                 <div class="flex-1">
                                     <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
                                     <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
@@ -1672,7 +2179,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                             </label>
                             <?php endforeach; ?>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2">Select panel members for this defense schedule.</p>
+                        <p class="text-xs text-gray-500 mt-2">Select exactly 2 panel members for this defense schedule.</p>
                         <?php else: ?>
                         <div class="text-center p-6 border rounded-lg bg-gray-50">
                             <i class="fas fa-users text-gray-300 text-3xl mb-3"></i>
@@ -1687,9 +2194,17 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <button type="button" onclick="toggleModal()" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
                         <i class="fas fa-times mr-2"></i>Cancel
                     </button>
+<<<<<<< HEAD
                     <button type="submit" name="schedule_defense" class="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
+=======
+                    <button type="submit" name="schedule_defense" id="schedule_btn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center opacity-50 cursor-not-allowed" disabled>
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
                         <i class="fas fa-calendar-plus mr-2"></i>Schedule Defense
                     </button>
+                </div>
+                <div id="payment_warning" class="mt-3 p-3 bg-yellow-100 border border-yellow-300 rounded-lg text-yellow-800 text-sm hidden">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <span id="warning_text"></span>
                 </div>
             </form>
             </div>
@@ -1717,8 +2232,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 <input type="hidden" name="defense_id" id="edit_defense_id">
                 
                 <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-medium mb-2">Group</label>
-                    <p id="edit_group_name" class="px-3 py-2 bg-gray-100 rounded-lg"></p>
+                    <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_group_id">Group</label>
+                    <select name="group_id" id="edit_group_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">Select a group</option>
+                        <?php foreach ($groups as $group): ?>
+                        <option value="<?php echo $group['id']; ?>"><?php echo $group['program'] . ($group['cluster'] ? ' - Cluster ' . $group['cluster'] : '') . ' - ' . $group['name']; ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -1739,6 +2259,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
+<<<<<<< HEAD
                         <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_time_slot">Available Time Slots</label>
                         <select name="time_slot" id="edit_time_slot" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" onchange="updateEditTimeInputs()">
                             <option value="">Select date and room first</option>
@@ -1749,6 +2270,14 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <div>
                         <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
                         <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm" id="edit_duration_display">No slot selected</div>
+=======
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_start_time">Start Time</label>
+                        <input type="time" name="start_time" id="edit_start_time" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" onchange="setEditEndTime()">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="edit_end_time">End Time (Auto-set to 30 mins)</label>
+                        <input type="time" name="end_time" id="edit_end_time" required readonly class="w-full px-3 py-2 border rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary">
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
                     </div>
                 </div>
                 
@@ -1900,6 +2429,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         </div>
     </div>
 
+<<<<<<< HEAD
    <!-- Delete Confirmation Modal -->
 <div id="deleteConfirmModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
     <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
@@ -1907,6 +2437,56 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         <div class="fixed inset-0 transition-opacity" aria-hidden="true">
             <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
         </div>
+=======
+    <!-- Complete Defense Modal -->
+    <div id="completeDefenseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div class="border-b px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-semibold">Complete Defense</h3>
+                <button onclick="toggleCompleteModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form method="POST" action="" class="p-6">
+                <input type="hidden" name="defense_id" id="complete_defense_id">
+                
+                <div class="mb-4">
+                    <p class="text-gray-700 mb-2">Group: <span id="complete_group_name" class="font-semibold"></span></p>
+                    <p class="text-gray-700 mb-4">Defense Type: <span id="complete_defense_type" class="font-semibold"></span></p>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Defense Result</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="radio" name="result" value="pass" class="mr-2" required>
+                            <span class="text-green-600 font-medium">Pass</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="result" value="fail" class="mr-2" required>
+                            <span class="text-red-600 font-medium">Fail (Re-defense required)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="toggleCompleteModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" name="complete_defense" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">
+                        Complete Defense
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Form (Hidden) -->
+    <form id="deleteForm" method="POST" action="" class="hidden">
+        <input type="hidden" name="defense_id" id="defense_id">
+        <input type="hidden" name="delete_schedule" value="1">
+    </form>
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
 
         <!-- Modal Content -->
         <div class="inline-block bg-gradient-to-br from-white via-red-50 to-rose-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-md w-full modal-content border-0 max-h-[90vh] overflow-y-auto custom-scrollbar-red">
@@ -2103,15 +2683,24 @@ function toggleDetailsModal() {
 /* ========= EDIT FORM POPULATION ========= */
 function populateEditForm(schedule) {
     try {
+<<<<<<< HEAD
         document.getElementById('edit_defense_id').value = schedule.id || '';
         document.getElementById('edit_group_name').textContent =
             (schedule.proposal_title || 'No Title') + ' - ' + (schedule.group_name || 'No Group');
 
         document.getElementById('edit_defense_date').value = schedule.defense_date || '';
+=======
+        console.log('Populating edit form with:', schedule);
+        
+        document.getElementById('edit_defense_id').value = schedule.id;
+        document.getElementById('edit_group_id').value = schedule.group_id || '';
+        document.getElementById('edit_defense_date').value = schedule.defense_date;
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
         document.getElementById('edit_room_id').value = schedule.room_id || '';
         document.getElementById('edit_start_time').value = schedule.start_time || '';
         document.getElementById('edit_end_time').value = schedule.end_time || '';
         
+<<<<<<< HEAD
         // Set current time slot and populate available slots
         if (schedule.start_time && schedule.end_time) {
             const currentSlot = `${schedule.start_time}|${schedule.end_time}`;
@@ -2139,6 +2728,26 @@ function populateEditForm(schedule) {
                 if (panelId) {
                     const checkbox = document.querySelector(`.edit-panel-member[value="${panelId}"]`);
                     if (checkbox) checkbox.checked = true;
+=======
+        // Clear all checkboxes first
+        document.querySelectorAll('.edit-panel-member').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        // Check the panel members for this defense
+        console.log('Panel members:', schedule.panel_members);
+        if (schedule.panel_members && schedule.panel_members.length > 0) {
+            schedule.panel_members.forEach(panel => {
+                // Try different possible ID fields
+                const panelId = panel.user_id || panel.id || panel.faculty_id || panel.panel_member_id;
+                console.log('Looking for panel member with ID:', panelId);
+                if (panelId) {
+                    const checkbox = document.querySelector(`.edit-panel-member[value="${panelId}"]`);
+                    console.log('Found checkbox:', checkbox);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
                 }
             });
         }
@@ -2149,6 +2758,7 @@ function populateEditForm(schedule) {
         alert('Error loading defense data for editing.');
     }
 }
+<<<<<<< HEAD
 
 /* ========= PANEL TABS ========= */
 function switchEditPanelTab(tabName) {
@@ -2202,5 +2812,205 @@ document.addEventListener('DOMContentLoaded', () => {
     <?php endif; ?>
 });
 </script>
+=======
+        
+        // Function to switch between panel member tabs in edit modal
+        function switchEditPanelTab(tabName) {
+            // Update active tab
+            document.querySelectorAll('.panel-tab').forEach(tab => {
+                if (tab.getAttribute('data-tab') === tabName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // Show active content
+            document.querySelectorAll('.panel-content').forEach(content => {
+                if (content.getAttribute('data-tab') === tabName) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+        
+        // Validate panel selection (1 chairperson + 2 members = 3 total)
+        function validatePanelSelection() {
+            const chairpersonBoxes = document.querySelectorAll('.panel-checkbox[data-role="chairperson"]:checked');
+            const memberBoxes = document.querySelectorAll('.panel-checkbox[data-role="member"]:checked');
+            const scheduleBtn = document.getElementById('schedule_btn');
+            
+            const chairpersonCount = chairpersonBoxes.length;
+            const memberCount = memberBoxes.length;
+            const totalCount = chairpersonCount + memberCount;
+            
+            // Disable other chairperson checkboxes if one is selected
+            const allChairpersonBoxes = document.querySelectorAll('.panel-checkbox[data-role="chairperson"]');
+            allChairpersonBoxes.forEach(box => {
+                if (!box.checked && chairpersonCount >= 1) {
+                    box.disabled = true;
+                    box.parentElement.style.opacity = '0.5';
+                } else if (chairpersonCount < 1) {
+                    box.disabled = false;
+                    box.parentElement.style.opacity = '1';
+                }
+            });
+            
+            // Disable other member checkboxes if two are selected
+            const allMemberBoxes = document.querySelectorAll('.panel-checkbox[data-role="member"]');
+            allMemberBoxes.forEach(box => {
+                if (!box.checked && memberCount >= 2) {
+                    box.disabled = true;
+                    box.parentElement.style.opacity = '0.5';
+                } else if (memberCount < 2) {
+                    box.disabled = false;
+                    box.parentElement.style.opacity = '1';
+                }
+            });
+            
+            // Enable/disable schedule button based on selection
+            if (totalCount === 3 && chairpersonCount === 1 && memberCount === 2) {
+                scheduleBtn.disabled = false;
+                scheduleBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                scheduleBtn.disabled = true;
+                scheduleBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+        
+        // Enable schedule button when modal opens with group selected
+        function enableScheduleButton() {
+            validatePanelSelection();
+        }
+        
+        // Toggle upcoming program visibility
+        function toggleUpcomingProgram(programId) {
+            const content = document.getElementById('upcoming-program-' + programId);
+            const chevron = document.getElementById('upcoming-program-chevron-' + programId);
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+        
+        // Toggle upcoming cluster visibility
+        function toggleUpcomingCluster(clusterId) {
+            const content = document.getElementById('upcoming-cluster-' + clusterId);
+            const chevron = document.getElementById('upcoming-cluster-chevron-' + clusterId);
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+        
+        // Toggle unscheduled program visibility
+        function toggleUnscheduledProgram(programId) {
+            const content = document.getElementById('unscheduled-program-' + programId);
+            const chevron = document.getElementById('unscheduled-program-chevron-' + programId);
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+        
+        // Toggle unscheduled cluster visibility
+        function toggleUnscheduledCluster(clusterId) {
+            const content = document.getElementById('unscheduled-cluster-' + clusterId);
+            const chevron = document.getElementById('unscheduled-cluster-chevron-' + clusterId);
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+        
+        // Toggle completed program visibility
+        function toggleCompletedProgram(programId) {
+            const content = document.getElementById('completed-program-' + programId);
+            const chevron = document.getElementById('completed-program-chevron-' + programId);
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+        
+        // Toggle completed cluster visibility
+        function toggleCompletedCluster(clusterId) {
+            const content = document.getElementById('completed-cluster-' + clusterId);
+            const chevron = document.getElementById('completed-cluster-chevron-' + clusterId);
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+        
+        // Complete defense function
+        function completeDefense(defenseId, groupName, defenseType) {
+            const modal = document.getElementById('completeDefenseModal');
+            document.getElementById('complete_defense_id').value = defenseId;
+            document.getElementById('complete_group_name').textContent = groupName;
+            document.getElementById('complete_defense_type').textContent = defenseType.replace('_', ' ').toUpperCase();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        
+        // Toggle complete defense modal
+        function toggleCompleteModal() {
+            const modal = document.getElementById('completeDefenseModal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+        }
+        
+        // Initialize page on load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up auto end time calculation for new schedule form
+            document.getElementById('start_time').addEventListener('change', setEndTime);
+            
+            // Initialize edit modal tabs on page load
+            // Set default filter to 'all'
+            filterStatus('all');
+            
+            // Set default panel tab to 'chairperson'
+            switchPanelTab('chairperson');
+            
+            // Edit modal default to chairperson tab
+            switchEditPanelTab('edit_chairperson');
+            
+            // Validate panel selection on load
+            validatePanelSelection();
+            
+            // Check if we need to refresh room availability
+            <?php if (isset($_SESSION['refresh_availability'])): ?>
+            // Switch to availability tab and refresh
+            switchMainTab('availability');
+            <?php unset($_SESSION['refresh_availability']); ?>
+            <?php endif; ?>
+        });
+    </script>
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
 </body>
 </html>

@@ -46,10 +46,21 @@ if ($has_group) {
         $proposal = mysqli_fetch_assoc($proposal_result);
     }
     
-    // Check if user has paid
-    $payment_query = "SELECT * FROM payments WHERE student_id = '$user_id' AND status = 'completed'";
-    $payment_result = mysqli_query($conn, $payment_query);
-    $has_paid = mysqli_num_rows($payment_result) > 0;
+    // Check payment status for each type
+    $research_forum_query = "SELECT * FROM payments WHERE student_id = '$user_id' AND payment_type = 'research_forum' AND status = 'approved'";
+    $research_forum_result = mysqli_query($conn, $research_forum_query);
+    $has_research_forum_payment = mysqli_num_rows($research_forum_result) > 0;
+    
+    $pre_oral_query = "SELECT * FROM payments WHERE student_id = '$user_id' AND payment_type = 'pre_oral_defense' AND status = 'approved'";
+    $pre_oral_result = mysqli_query($conn, $pre_oral_query);
+    $has_pre_oral_payment = mysqli_num_rows($pre_oral_result) > 0;
+    
+    $final_defense_query = "SELECT * FROM payments WHERE student_id = '$user_id' AND payment_type = 'final_defense' AND status = 'approved'";
+    $final_defense_result = mysqli_query($conn, $final_defense_query);
+    $has_final_defense_payment = mysqli_num_rows($final_defense_result) > 0;
+    
+    // For proposal submission, only research forum payment is required
+    $has_paid = $has_research_forum_payment;
     
     // Handle join code generation
     if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_join_code'])) {
@@ -67,13 +78,22 @@ if ($has_group) {
     // Handle group name update
     if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_group_name'])) {
         $new_group_name = mysqli_real_escape_string($conn, $_POST['new_group_name']);
-        $update_name_query = "UPDATE groups SET name = '$new_group_name' WHERE id = '$group_id'";
-        if (mysqli_query($conn, $update_name_query)) {
-            $_SESSION['success_message'] = "Group name updated successfully!";
-            header("Location: ../student_pages/proposal.php");
-            exit();
+        
+        // Check if the group name is already taken
+        $check_name_query = "SELECT id FROM groups WHERE name = '$new_group_name' AND id != '$group_id'";
+        $check_result = mysqli_query($conn, $check_name_query);
+        
+        if (mysqli_num_rows($check_result) > 0) {
+            $error_message = "Group name '$new_group_name' is already taken. Please choose another name.";
         } else {
-            $error_message = "Error updating group name: " . mysqli_error($conn);
+            $update_name_query = "UPDATE groups SET name = '$new_group_name' WHERE id = '$group_id'";
+            if (mysqli_query($conn, $update_name_query)) {
+                $_SESSION['success_message'] = "Group name updated successfully!";
+                header("Location: ../student_pages/proposal.php");
+                exit();
+            } else {
+                $error_message = "Error updating group name: " . mysqli_error($conn);
+            }
         }
     }
 }
@@ -81,22 +101,40 @@ if ($has_group) {
 // Handle other form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['submit_proposal'])) {
-        $title = mysqli_real_escape_string($conn, $_POST['title']);
-        $description = mysqli_real_escape_string($conn, $_POST['description']);
+        // Check if proposal already exists to prevent duplicates
+        if ($has_proposal) {
+            $error_message = "Proposal already submitted for this group.";
+        } else {
+            $title = mysqli_real_escape_string($conn, $_POST['title']);
+            $description = mysqli_real_escape_string($conn, $_POST['description']);
         
         // File upload handling
-        $target_dir = "assets/uploads";
+        $target_dir = "../assets/uploads/proposals/";
         if (!file_exists($target_dir)) {
             mkdir($target_dir, 0777, true);
         }
-        $file_name = "proposal_" . $group_id . "_" . time() . ".pdf";
-        $target_file = $target_dir . $file_name;
         
-        if (move_uploaded_file($_FILES["proposal_file"]["tmp_name"], $target_file)) {
+        // Validate file upload
+        if (!isset($_FILES['proposal_file']) || $_FILES['proposal_file']['error'] !== UPLOAD_ERR_OK) {
+            $error_message = "Please select a valid PDF file to upload.";
+        } else {
+            $file_info = $_FILES['proposal_file'];
+            $file_extension = strtolower(pathinfo($file_info['name'], PATHINFO_EXTENSION));
+            
+            // Validate file type
+            if ($file_extension !== 'pdf') {
+                $error_message = "Only PDF files are allowed.";
+            } elseif ($file_info['size'] > 10 * 1024 * 1024) { // 10MB limit
+                $error_message = "File size must be less than 10MB.";
+            } else {
+                $original_name = $file_info['name'];
+                $target_file = $target_dir . $original_name;
+                
+                if (move_uploaded_file($file_info['tmp_name'], $target_file)) {
             $insert_query = "INSERT INTO proposals (group_id, title, description, file_path) 
                             VALUES ('$group_id', '$title', '$description', '$target_file')";
             
-            if (mysqli_query($conn, $insert_query)) {
+                if (mysqli_query($conn, $insert_query)) {
                 // Include notification helper
                 include('../includes/notification-helper.php');
                 
@@ -120,15 +158,56 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     "info"
                 );
                 
-                $success_message = "Proposal submitted successfully!";
-                $has_proposal = true;
-                header("Location: ../student_pages/proposal.php");
-                exit();
+                    $success_message = "Proposal submitted successfully!";
+                    $has_proposal = true;
+                    header("Location: ../student_pages/proposal.php");
+                    exit();
+                } else {
+                    $error_message = "Error submitting proposal: " . mysqli_error($conn);
+                }
+                } else {
+                    $error_message = "Error uploading file. Please try again.";
+                }
+            }
+        }
+        }
+    }
+    
+    if (isset($_POST['update_proposal'])) {
+        $title = mysqli_real_escape_string($conn, $_POST['title']);
+        $description = mysqli_real_escape_string($conn, $_POST['description']);
+        
+        // Check if new file is uploaded
+        if (isset($_FILES['proposal_file']) && $_FILES['proposal_file']['error'] === UPLOAD_ERR_OK) {
+            $target_dir = "../assets/uploads/proposals/";
+            $file_info = $_FILES['proposal_file'];
+            $file_extension = strtolower(pathinfo($file_info['name'], PATHINFO_EXTENSION));
+            
+            if ($file_extension !== 'pdf') {
+                $error_message = "Only PDF files are allowed.";
+            } elseif ($file_info['size'] > 10 * 1024 * 1024) {
+                $error_message = "File size must be less than 10MB.";
             } else {
-                $error_message = "Error submitting proposal: " . mysqli_error($conn);
+                $original_name = $file_info['name'];
+                $target_file = $target_dir . $original_name;
+                
+                if (move_uploaded_file($file_info['tmp_name'], $target_file)) {
+                    $update_query = "UPDATE proposals SET title = '$title', description = '$description', file_path = '$target_file' WHERE group_id = '$group_id'";
+                } else {
+                    $error_message = "Error uploading file. Please try again.";
+                }
             }
         } else {
-            $error_message = "Sorry, there was an error uploading your file.";
+            // Update without changing file
+            $update_query = "UPDATE proposals SET title = '$title', description = '$description' WHERE group_id = '$group_id'";
+        }
+        
+        if (isset($update_query) && mysqli_query($conn, $update_query)) {
+            $success_message = "Proposal updated successfully!";
+            header("Location: ../student_pages/proposal.php");
+            exit();
+        } elseif (!isset($error_message)) {
+            $error_message = "Error updating proposal: " . mysqli_error($conn);
         }
     }
     
@@ -190,6 +269,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Add user to group
                     $join_query = "INSERT INTO group_members (group_id, student_id) VALUES ('$group_id_to_join', '$user_id')";
                     if (mysqli_query($conn, $join_query)) {
+                        // Get group's cluster assignment
+                        $group_cluster_query = "SELECT cluster_id FROM groups WHERE id = '$group_id_to_join'";
+                        $group_cluster_result = mysqli_query($conn, $group_cluster_query);
+                        $group_cluster_data = mysqli_fetch_assoc($group_cluster_result);
+                        
+                        if ($group_cluster_data && $group_cluster_data['cluster_id']) {
+                            // Assign new member to same cluster and adviser as group
+                            $assign_query = "UPDATE student_profiles 
+                                            SET cluster = (SELECT cluster FROM clusters WHERE id = '{$group_cluster_data['cluster_id']}'),
+                                                faculty_id = (SELECT faculty_id FROM clusters WHERE id = '{$group_cluster_data['cluster_id']}'),
+                                                updated_at = NOW() 
+                                            WHERE user_id = '$user_id'";
+                            mysqli_query($conn, $assign_query);
+                            
+                            // Update cluster student count
+                            $update_count_query = "UPDATE clusters SET student_count = student_count + 1 WHERE id = '{$group_cluster_data['cluster_id']}'";
+                            mysqli_query($conn, $update_count_query);
+                        }
+                        
                         $success_message = "Joined program group successfully!";
                         header("Location: ../student_pages/proposal.php");
                         exit();
@@ -203,18 +301,51 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
     
-    if (isset($_POST['make_payment'])) {
-        // Simulate payment processing
+    if (isset($_POST['upload_payment'])) {
+        $payment_type = mysqli_real_escape_string($conn, $_POST['payment_type']);
         $payment_amount = 100.00;
-        $payment_query = "INSERT INTO payments (student_id, amount, status, payment_date) 
-                         VALUES ('$user_id', '$payment_amount', 'completed', NOW())";
-        if (mysqli_query($conn, $payment_query)) {
-            $success_message = "Payment processed successfully!";
-            $has_paid = true;
-            header("Location: ../student_pages/proposal.php");
-            exit();
+        
+        $target_dir = "../assets/uploads/receipts/";
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+        
+        // Validate file upload
+        if (!isset($_FILES['payment_receipt']) || $_FILES['payment_receipt']['error'] !== UPLOAD_ERR_OK) {
+            $error_message = "Please select a valid PDF receipt to upload.";
         } else {
-            $error_message = "Error processing payment: " . mysqli_error($conn);
+            $file_info = $_FILES['payment_receipt'];
+            $file_extension = strtolower(pathinfo($file_info['name'], PATHINFO_EXTENSION));
+            
+            // Validate file type
+            if ($file_extension !== 'pdf') {
+                $error_message = "Only PDF files are allowed for receipts.";
+            } elseif ($file_info['size'] > 5 * 1024 * 1024) { // 5MB limit
+                $error_message = "Receipt file size must be less than 5MB.";
+            } else {
+                $original_name = $file_info['name'];
+                $target_file = $target_dir . $original_name;
+                
+                if (move_uploaded_file($file_info['tmp_name'], $target_file)) {
+                    // Get all group members
+                    $members_query = "SELECT student_id FROM group_members WHERE group_id = '$group_id'";
+                    $members_result = mysqli_query($conn, $members_query);
+                    
+                    // Insert payment for each group member
+                    while ($member = mysqli_fetch_assoc($members_result)) {
+                        $member_id = $member['student_id'];
+                        $payment_query = "INSERT INTO payments (student_id, payment_type, amount, pdf_receipt, status, payment_date) 
+                                         VALUES ('$member_id', '$payment_type', '$payment_amount', '$target_file', 'approved', NOW())";
+                        mysqli_query($conn, $payment_query);
+                    }
+                    
+                    $success_message = "Group payment receipt uploaded successfully!";
+                    header("Location: ../student_pages/proposal.php");
+                    exit();
+                } else {
+                    $error_message = "Error uploading receipt file. Please try again.";
+                }
+            }
         }
     }
     
@@ -233,6 +364,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             exit();
         } else {
             $error_message = "Error removing member: " . mysqli_error($conn);
+        }
+    }
+    
+    if (isset($_POST['leave_group'])) {
+        $leave_query = "DELETE FROM group_members WHERE group_id = '$group_id' AND student_id = '$user_id'";
+        if (mysqli_query($conn, $leave_query)) {
+            // Get current cluster_id before resetting
+            $current_cluster_query = "SELECT cluster_id FROM groups WHERE id = '$group_id'";
+            $current_cluster_result = mysqli_query($conn, $current_cluster_query);
+            $current_cluster_data = mysqli_fetch_assoc($current_cluster_result);
+            
+            // Reset user's cluster
+            $reset_cluster_query = "UPDATE student_profiles 
+                                    SET cluster = NULL, faculty_id = NULL, updated_at = NOW() 
+                                    WHERE user_id = '$user_id'";
+            mysqli_query($conn, $reset_cluster_query);
+            
+            // Update cluster student count
+            if ($current_cluster_data && $current_cluster_data['cluster_id']) {
+                $update_count_query = "UPDATE clusters SET student_count = student_count - 1 WHERE id = '{$current_cluster_data['cluster_id']}'";
+                mysqli_query($conn, $update_count_query);
+            }
+            
+            $success_message = "Left group successfully!";
+            header("Location: ../student_pages/proposal.php");
+            exit();
+        } else {
+            $error_message = "Error leaving group: " . mysqli_error($conn);
         }
     }
 }
@@ -585,8 +744,28 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                 <form method="POST" id="edit-group-name-form" class="hidden mt-3">
                                     <input type="hidden" name="update_group_name" value="1">
                                     <div class="flex gap-2">
-                                        <input type="text" name="new_group_name" value="<?php echo $group['name']; ?>" 
-                                               class="flex-1 px-2 py-1 border border-blue-300 rounded text-sm">
+                                        <select name="new_group_name" class="flex-1 px-2 py-1 border border-blue-300 rounded text-sm">
+                                            <?php 
+                                            // Get taken group names
+                                            $taken_names_query = "SELECT name FROM groups WHERE id != '$group_id'";
+                                            $taken_names_result = mysqli_query($conn, $taken_names_query);
+                                            $taken_names = [];
+                                            while ($row = mysqli_fetch_assoc($taken_names_result)) {
+                                                $taken_names[] = $row['name'];
+                                            }
+                                            
+                                            for($i = 1; $i <= 100; $i++): 
+                                                $group_name = "GRP $i";
+                                                $is_taken = in_array($group_name, $taken_names);
+                                                $is_current = ($group['name'] === $group_name);
+                                            ?>
+                                                <option value="<?php echo $group_name; ?>" 
+                                                    <?php echo $is_current ? 'selected' : ''; ?>
+                                                    <?php echo ($is_taken && !$is_current) ? 'disabled' : ''; ?>>
+                                                    <?php echo $group_name; ?><?php echo ($is_taken && !$is_current) ? ' (Taken)' : ''; ?>
+                                                </option>
+                                            <?php endfor; ?>
+                                        </select>
                                         <button type="submit" class="bg-blue-600 text-white px-2 py-1 rounded text-sm hover:bg-blue-700">
                                             <i class="fas fa-check"></i>
                                         </button>
@@ -622,29 +801,37 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             </div>
 
                             <!-- Payment Status Card -->
-                            <div class="stats-card bg-gradient-to-br from-<?php echo $has_paid ? 'green' : 'yellow'; ?>-50 to-<?php echo $has_paid ? 'green' : 'yellow'; ?>-100 rounded-xl p-5 border border-<?php echo $has_paid ? 'green' : 'yellow'; ?>-200">
-                                <h3 class="font-semibold text-<?php echo $has_paid ? 'green' : 'yellow'; ?>-800 text-sm uppercase tracking-wide">Payment Status</h3>
-                                <p class="text-lg font-bold text-gray-900 mt-1 flex items-center">
-                                    <?php if ($has_paid): ?>
-                                        <span class="bg-green-500 text-white p-1 rounded-full mr-2">
-                                            <i class="fas fa-check text-xs"></i>
-                                        </span>
-                                        Completed
-                                    <?php else: ?>
-                                        <span class="bg-yellow-500 text-white p-1 rounded-full mr-2">
-                                            <i class="fas fa-clock text-xs"></i>
-                                        </span>
-                                        Pending
-                                    <?php endif; ?>
-                                </p>
-                                <?php if (!$has_paid): ?>
-                                    <form method="POST" class="mt-3">
-                                        <button type="submit" name="make_payment" 
-                                            class="enhanced-button bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center shadow-sm transition-all w-full justify-center">
-                                            <i class="fas fa-credit-card mr-2"></i> Pay Now
-                                        </button>
-                                    </form>
-                                <?php endif; ?>
+                            <div class="stats-card bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
+                                <h3 class="font-semibold text-blue-800 text-sm uppercase tracking-wide">Payment Status</h3>
+                                <div class="mt-2 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-600">Research Forum:</span>
+                                        <?php if ($has_research_forum_payment): ?>
+                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>
+                                        <?php else: ?>
+                                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-600">Pre-Oral Defense:</span>
+                                        <?php if ($has_pre_oral_payment): ?>
+                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>
+                                        <?php else: ?>
+                                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-600">Final Defense:</span>
+                                        <?php if ($has_final_defense_payment): ?>
+                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>
+                                        <?php else: ?>
+                                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <button onclick="toggleModal('paymentModal')" class="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center justify-center">
+                                    <i class="fas fa-upload mr-2"></i> Upload Receipt
+                                </button>
                             </div>
                         </div>
 
@@ -720,6 +907,15 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             <div id="copyNotification" class="hidden mt-3 bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded-lg text-sm shadow-sm flex items-center">
                                 <i class="fas fa-check-circle mr-2"></i> Code copied to clipboard!
                             </div>
+                        </div>
+
+                        <!-- Leave Group -->
+                        <div class="mb-8">
+                            <form method="POST" onsubmit="return confirm('Are you sure you want to leave this group? This action cannot be undone.')">
+                                <button type="submit" name="leave_group" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                                    <i class="fas fa-sign-out-alt mr-2"></i> Leave Group
+                                </button>
+                            </form>
                         </div>
 
                     <?php else: ?>
@@ -841,29 +1037,27 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             </div>
                         <?php endif; ?>
                         
-                        <?php if (!$has_paid): ?>
+                        <?php if (!$has_research_forum_payment): ?>
                             <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-6 backdrop-filter backdrop-blur-sm">
                                 <div class="flex items-start">
                                     <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-3"></i>
                                     <div>
-                                        <h3 class="font-semibold text-yellow-800">Payment Required</h3>
-                                        <p class="text-yellow-700">You need to complete the payment before you can submit a proposal.</p>
-                                        <form method="POST" class="mt-3">
-                                            <button type="submit" name="make_payment" class="bg-primary-600 text-white px-4 py-2 rounded-lg">
-                                                <i class="fas fa-credit-card mr-2"></i> Make Payment
-                                            </button>
-                                        </form>
+                                        <h3 class="font-semibold text-yellow-800">Research Forum Payment Required</h3>
+                                        <p class="text-yellow-700">Team leader needs to upload the group's Research Forum payment receipt before you can submit a proposal.</p>
+                                        <button onclick="toggleModal('paymentModal')" class="mt-3 bg-primary-600 text-white px-4 py-2 rounded-lg">
+                                            <i class="fas fa-upload mr-2"></i> Upload Receipt
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         <?php endif; ?>
                         
-                        <form action="/CRAD-system/student_pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo ($has_proposal || !$has_paid) ? 'onsubmit="return false;"' : ''; ?>>
+                        <form action="/CRAD-system/student_pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo !$has_research_forum_payment ? 'onsubmit="return false;"' : ''; ?>>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Title</label>
                                 <input type="text" name="title" required 
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                                    <?php echo ($has_proposal || !$has_paid) ? 'disabled' : ''; ?>
+                                    <?php echo !$has_research_forum_payment ? 'disabled' : ''; ?>
                                     value="<?php echo $has_proposal ? $proposal['title'] : ''; ?>">
                             </div>
                             
@@ -871,33 +1065,38 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <textarea name="description" rows="3" 
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                                    <?php echo ($has_proposal || !$has_paid) ? 'disabled' : ''; ?>
+                                    <?php echo !$has_research_forum_payment ? 'disabled' : ''; ?>
                                 ><?php echo $has_proposal ? $proposal['description'] : ''; ?></textarea>
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Upload Signed Proposal (PDF only)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    <?php echo $has_proposal ? 'Update Proposal File (PDF only) - Optional' : 'Upload Signed Proposal (PDF only)'; ?>
+                                </label>
                                 <div class="mt-1 flex items-center">
                                     <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center hover:bg-gray-50 transition 
-                                        <?php echo ($has_proposal || !$has_paid) ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                                        <?php echo !$has_research_forum_payment ? 'opacity-50 cursor-not-allowed' : ''; ?>">
                                         <i class="fas fa-file-pdf text-red-500 mr-2"></i>
-                                        <span class="text-sm font-medium">Choose File</span>
-                                        <input type="file" name="proposal_file" accept=".pdf" required 
-                                            <?php echo ($has_proposal || !$has_paid) ? 'disabled' : ''; ?>
-                                            class="hidden">
+                                        <span class="text-sm font-medium" id="file-label">Choose PDF File</span>
+                                        <input type="file" name="proposal_file" accept=".pdf" <?php echo !$has_proposal ? 'required' : ''; ?> 
+                                            <?php echo !$has_research_forum_payment ? 'disabled' : ''; ?>
+                                            class="hidden" onchange="updateFileName(this)">
                                     </label>
                                     <span class="ml-3 text-sm text-gray-500" id="file-name">
                                         <?php echo $has_proposal ? basename($proposal['file_path']) : 'No file chosen'; ?>
                                     </span>
                                 </div>
+                                <?php if ($has_proposal): ?>
+                                    <p class="text-sm text-gray-500 mt-1">Leave empty to keep current file</p>
+                                <?php endif; ?>
                             </div>
                             
                             <div class="pt-4">
-                                <button type="submit" name="submit_proposal" 
+                                <button type="submit" name="<?php echo $has_proposal ? 'update_proposal' : 'submit_proposal'; ?>" 
                                     class="enhanced-button bg-gradient-to-r from-primary-600 to-secondary-600 text-white px-6 py-3 rounded-lg hover:shadow-md transition flex items-center justify-center font-medium
-                                    <?php echo ($has_proposal || !$has_paid) ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'; ?>">
-                                    <i class="fas fa-paper-plane mr-2"></i> 
-                                    <?php echo $has_proposal ? 'Proposal Already Submitted' : 'Submit Proposal'; ?>
+                                    <?php echo !$has_research_forum_payment ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'; ?>">
+                                    <i class="fas fa-<?php echo $has_proposal ? 'edit' : 'paper-plane'; ?> mr-2"></i> 
+                                    <?php echo $has_proposal ? 'Update Proposal' : 'Submit Proposal'; ?>
                                 </button>
                             </div>
                         </form>
@@ -919,7 +1118,12 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
             <form method="POST" class="px-6 py-4">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
-                    <input type="text" name="group_name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    <select name="group_name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select Group Name</option>
+                        <?php for($i = 1; $i <= 100; $i++): ?>
+                            <option value="GRP <?php echo $i; ?>">GRP <?php echo $i; ?></option>
+                        <?php endfor; ?>
+                    </select>
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Program</label>
@@ -959,12 +1163,70 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
         </div>
     </div>
 
+    <!-- Payment Upload Modal -->
+    <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="enhanced-modal rounded-lg shadow-xl w-full max-w-md">
+            <div class="border-b px-6 py-4 flex justify-between items-center">
+                <h3 class="text-xl font-semibold text-gray-800">Upload Group Payment Receipt</h3>
+                <button onclick="toggleModal('paymentModal')" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form method="POST" enctype="multipart/form-data" class="px-6 py-4">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
+                    <select name="payment_type" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select payment type</option>
+                        <?php if (!$has_research_forum_payment): ?>
+                            <option value="research_forum">Research Forum</option>
+                        <?php endif; ?>
+                        <?php if (!$has_pre_oral_payment): ?>
+                            <option value="pre_oral_defense">Pre-Oral Defense</option>
+                        <?php endif; ?>
+                        <?php if (!$has_final_defense_payment): ?>
+                            <option value="final_defense">Final Defense</option>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Receipt (PDF only)</label>
+                    <div class="mt-1 flex items-center">
+                        <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center hover:bg-gray-50 transition w-full">
+                            <i class="fas fa-file-pdf text-red-500 mr-2"></i>
+                            <span class="text-sm font-medium">Choose PDF File</span>
+                            <input type="file" name="payment_receipt" accept=".pdf" required class="hidden">
+                        </label>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">Upload the group's collective payment receipt in PDF format. This will apply to all group members.</p>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" onclick="toggleModal('paymentModal')" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancel</button>
+                    <button type="submit" name="upload_payment" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
+                        <i class="fas fa-upload mr-2"></i>Upload Receipt
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
-        // Display selected file name
-        document.querySelector('input[name="proposal_file"]')?.addEventListener('change', function(e) {
-            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
-            document.getElementById('file-name').textContent = fileName;
-        });
+        function updateFileName(input) {
+            const fileName = input.files[0] ? input.files[0].name : 'No file chosen';
+            const fileLabel = document.getElementById('file-label');
+            const fileNameSpan = document.getElementById('file-name');
+            
+            if (input.files[0]) {
+                fileLabel.textContent = 'PDF Selected';
+                fileNameSpan.textContent = fileName;
+                fileNameSpan.classList.remove('text-gray-500');
+                fileNameSpan.classList.add('text-green-600', 'font-medium');
+            } else {
+                fileLabel.textContent = 'Choose PDF File';
+                fileNameSpan.textContent = 'No file chosen';
+                fileNameSpan.classList.remove('text-green-600', 'font-medium');
+                fileNameSpan.classList.add('text-gray-500');
+            }
+        }
     </script>
 </body>
 </html>

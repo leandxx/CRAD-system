@@ -111,17 +111,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $proposal_id = (int)($_POST['proposal_id'] ?? 0);
         $feedback = $_POST['feedback'] ?? '';
         
-        // Check if all requirements are met
-        $all_requirements_met = checkProposalRequirements($conn, $proposal_id);
+        // Get proposal and group information
+        $proposal_query = "SELECT p.*, g.id as group_id FROM proposals p JOIN groups g ON p.group_id = g.id WHERE p.id = ?"; 
+        $stmt = $conn->prepare($proposal_query);
+        $stmt->bind_param("i", $proposal_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $proposal = $result->fetch_assoc();
+        $stmt->close();
         
-        // Always mark as complete when admin clicks the button
-        $stmt = $conn->prepare("UPDATE proposals SET status = 'Completed', reviewed_at = NOW() WHERE id = ?");
+        if ($proposal) {
+            // Check if group has paid (research forum payment required for proposal completion)
+            $payment_check = checkGroupPaymentStatus($conn, $proposal['group_id']);
+            
+            if (!$payment_check['has_research_forum_payment']) {
+                $_SESSION['error_message'] = "Cannot mark as complete: Group has not submitted Research Forum payment receipt.";
+            } else {
+                // Mark as complete when admin clicks the button
+                $stmt = $conn->prepare("UPDATE proposals SET status = 'Completed', reviewed_at = NOW() WHERE id = ?");
+                $stmt->bind_param("i", $proposal_id);
+                $stmt->execute();
+                $stmt->close();
+                
+                $_SESSION['success_message'] = " Proposal approved successfully! The group can now proceed to the next phase.";
+            }
+        } else {
+            $_SESSION['error_message'] = "Proposal not found.";
+        }
+        
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit();
+    }
+    
+    // Revert proposal approval
+    if (isset($_POST['revert_approval'])) {
+        $proposal_id = (int)($_POST['proposal_id'] ?? 0);
+        
+        // Get group_id from proposal
+        $group_query = "SELECT group_id FROM proposals WHERE id = ?";
+        $stmt = $conn->prepare($group_query);
+        $stmt->bind_param("i", $proposal_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $proposal_data = $result->fetch_assoc();
+        $stmt->close();
+        
+        if ($proposal_data) {
+            // Delete defense schedule for this group
+            $delete_panel_query = "DELETE FROM defense_panel WHERE defense_id IN (SELECT id FROM defense_schedules WHERE group_id = ?)";
+            $stmt = $conn->prepare($delete_panel_query);
+            $stmt->bind_param("i", $proposal_data['group_id']);
+            $stmt->execute();
+            $stmt->close();
+            
+            $delete_schedule_query = "DELETE FROM defense_schedules WHERE group_id = ?";
+            $stmt = $conn->prepare($delete_schedule_query);
+            $stmt->bind_param("i", $proposal_data['group_id']);
+            $stmt->execute();
+            $stmt->close();
+        }
+        
+        // Revert proposal status
+        $stmt = $conn->prepare("UPDATE proposals SET status = 'Pending', reviewed_at = NULL WHERE id = ?");
         $stmt->bind_param("i", $proposal_id);
         $stmt->execute();
         $stmt->close();
         
-        $_SESSION['success_message'] = "Proposal marked as complete!";
-        
+        $_SESSION['success_message'] = "Proposal approval reverted successfully. Status changed back to pending.";
         header("Location: " . $_SERVER['REQUEST_URI']);
         exit();
     }
@@ -216,6 +272,58 @@ function hasMinimumGroupMembers($conn, $group_id, $min_count = 2) {
     return $row['count'] >= $min_count;
 }
 
+// Function to check group payment status
+function checkGroupPaymentStatus($conn, $group_id) {
+    // Get all group members
+    $members_query = "SELECT student_id FROM group_members WHERE group_id = ?";
+    $stmt = $conn->prepare($members_query);
+    $stmt->bind_param("i", $group_id);
+    $stmt->execute();
+    $members_result = $stmt->get_result();
+    $stmt->close();
+    
+    $payment_status = [
+        'has_research_forum_payment' => false,
+        'has_pre_oral_payment' => false, 
+        'has_final_defense_payment' => false,
+        'payment_details' => []
+    ];
+    
+    if ($members_result->num_rows > 0) {
+        $member = $members_result->fetch_assoc();
+        $student_id = $member['student_id'];
+        
+        // Check for research forum payment (required for proposal completion)
+        $research_forum_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'research_forum' AND status = 'approved'";
+        $stmt = $conn->prepare($research_forum_query);
+        $stmt->bind_param("i", $student_id);
+        $stmt->execute();
+        $research_result = $stmt->get_result();
+        $payment_status['has_research_forum_payment'] = $research_result->num_rows > 0;
+        $stmt->close();
+        
+        // Check for pre-oral defense payment
+        $pre_oral_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'pre_oral_defense' AND status = 'approved'";
+        $stmt = $conn->prepare($pre_oral_query);
+        $stmt->bind_param("i", $student_id);
+        $stmt->execute();
+        $pre_oral_result = $stmt->get_result();
+        $payment_status['has_pre_oral_payment'] = $pre_oral_result->num_rows > 0;
+        $stmt->close();
+        
+        // Check for final defense payment
+        $final_defense_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'final_defense' AND status = 'approved'";
+        $stmt = $conn->prepare($final_defense_query);
+        $stmt->bind_param("i", $student_id);
+        $stmt->execute();
+        $final_result = $stmt->get_result();
+        $payment_status['has_final_defense_payment'] = $final_result->num_rows > 0;
+        $stmt->close();
+    }
+    
+    return $payment_status;
+}
+
 // Get active timeline
 $active_timeline = null;
 $milestones = [];
@@ -247,15 +355,17 @@ foreach ($milestones as $m) {
 $search_term = $_GET['search'] ?? '';
 $program_filter = $_GET['program'] ?? '';
 
-// Get all submitted proposals for review with program info
+// Get all submitted proposals for review with program info, cluster info and payment status
 $proposals_query = "SELECT 
     p.*, 
     g.name AS group_name, 
     g.id AS group_id, 
     CONCAT(sp.full_name) AS submitted_by,
-    sp.program
+    sp.program,
+    c.cluster
 FROM proposals p
 JOIN groups g ON p.group_id = g.id
+LEFT JOIN clusters c ON g.cluster_id = c.id
 JOIN group_members gm ON g.id = gm.group_id
 JOIN student_profiles sp ON gm.student_id = sp.user_id
 WHERE gm.student_id = (
@@ -284,6 +394,8 @@ $proposals = [];
 $programs = [];
 
 while ($proposal = mysqli_fetch_assoc($proposals_result)) {
+    // Add payment status to each proposal
+    $proposal['payment_status'] = checkGroupPaymentStatus($conn, $proposal['group_id']);
     $proposals[] = $proposal;
     if (!in_array($proposal['program'], $programs)) {
         $programs[] = $proposal['program'];
@@ -471,12 +583,21 @@ $isoDeadline = $current_milestone
     <div class="flex-1 overflow-y-auto p-6">
       <!-- Success message -->
       <?php if (isset($_SESSION['success_message'])): ?>
-        <div class="crad-alert crad-alert-success crad-fade-in" role="alert">
-          <i class="fas fa-check-circle mr-2"></i>
-          <span><?= htmlspecialchars($_SESSION['success_message']) ?></span>
-          <button type="button" class="ml-auto text-success-600 hover:text-success-800" onclick="this.parentElement.remove()">
-            <i class="fas fa-times"></i>
-          </button>
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-6 shadow-sm animate-slide-up" role="alert">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-green-100 rounded-full p-2">
+                <i class="fas fa-check-circle text-green-600 text-lg"></i>
+              </div>
+            </div>
+            <div class="ml-3 flex-1">
+              <h3 class="text-sm font-semibold text-green-800">Success!</h3>
+              <p class="text-sm text-green-700 mt-1"><?= htmlspecialchars($_SESSION['success_message']) ?></p>
+            </div>
+            <button type="button" class="ml-4 text-green-400 hover:text-green-600 transition-colors" onclick="this.parentElement.parentElement.remove()">
+              <i class="fas fa-times text-sm"></i>
+            </button>
+          </div>
         </div>
         <?php unset($_SESSION['success_message']); ?>
       <?php endif; ?>
@@ -646,9 +767,10 @@ $isoDeadline = $current_milestone
   <div class="mb-8 flex flex-col md:flex-row gap-4">
     <div class="flex-1">
       <div class="relative">
-        <input type="text" id="searchInput" placeholder="Search by title, group name, or student name..." 
+        <input type="text" id="searchInput" placeholder="Search by cluster, program, or group name..." 
                value="<?php echo htmlspecialchars($search_term); ?>"
-               class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+               class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+               oninput="searchProposals()">
         <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
       </div>
     </div>
@@ -672,24 +794,32 @@ $isoDeadline = $current_milestone
 
   <?php if (!empty($proposals)): ?>
     <?php 
-    // Group proposals by program
+    // Group proposals by cluster and program
     $grouped_proposals = [];
     foreach ($proposals as $proposal) {
-        $grouped_proposals[$proposal['program']][] = $proposal;
+        $cluster_key = $proposal['program'] . ' - Cluster ' . ($proposal['cluster'] ?? 'Unassigned');
+        $grouped_proposals[$cluster_key][] = $proposal;
     }
     ?>
     
-    <?php foreach ($grouped_proposals as $program => $program_proposals): ?>
+    <?php foreach ($grouped_proposals as $cluster_name => $cluster_proposals): ?>
       <div class="mb-8">
-        <div class="flex items-center mb-6">
-          <h3 class="text-2xl font-bold text-gray-800 mr-4"><?php echo htmlspecialchars($program); ?></h3>
-          <span class="gradient-blue text-white text-sm font-bold px-3 py-2 rounded-xl shadow-lg">
-            <?php echo count($program_proposals); ?> proposal<?php echo count($program_proposals) !== 1 ? 's' : ''; ?>
-          </span>
+        <div class="cluster-header cursor-pointer bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-4 hover:shadow-md transition-all" onclick="toggleCluster('<?php echo md5($cluster_name); ?>')">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <i class="fas fa-layer-group text-blue-600 text-xl mr-3"></i>
+              <h3 class="text-xl font-bold text-gray-800"><?php echo htmlspecialchars($cluster_name); ?></h3>
+              <span class="ml-4 gradient-blue text-white text-sm font-bold px-3 py-2 rounded-xl shadow-lg">
+                <?php echo count($cluster_proposals); ?> proposal<?php echo count($cluster_proposals) !== 1 ? 's' : ''; ?>
+              </span>
+            </div>
+            <i class="fas fa-chevron-down text-blue-600 transition-transform" id="chevron-<?php echo md5($cluster_name); ?>"></i>
+          </div>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <?php foreach ($program_proposals as $proposal): 
+        <div class="cluster-content hidden" id="cluster-<?php echo md5($cluster_name); ?>">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-8">
+          <?php foreach ($cluster_proposals as $proposal): 
         // Simplified status system
         // Default to pending
         $status_class = 'bg-yellow-100 text-yellow-800';
@@ -711,6 +841,10 @@ $isoDeadline = $current_milestone
               $status_text = 'Pending';
           }
         }
+        
+        // Check payment status
+        $payment_status = $proposal['payment_status'];
+        $has_paid = $payment_status['has_research_forum_payment'];
       ?>
       
       <div class="proposal-card bg-white border border-gray-200 shadow-md rounded-2xl p-6 flex flex-col justify-between">
@@ -734,26 +868,48 @@ $isoDeadline = $current_milestone
           <p class="text-sm text-gray-700 mb-2">
             <span class="font-semibold">Submitted By:</span> <?php echo htmlspecialchars($proposal['submitted_by']); ?>
           </p>
-          <p class="text-sm text-gray-500 mb-4">
+          <p class="text-sm text-gray-500 mb-2">
             <span class="font-semibold">Date:</span> <?php echo date('M j, Y', strtotime($proposal['submitted_at'])); ?>
           </p>
+          
+          <!-- Payment Status Indicator -->
+          <div class="mb-4">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-semibold text-gray-700">Payment Status:</span>
+              <?php if ($has_paid): ?>
+                <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                  <i class="fas fa-check-circle mr-1"></i> Paid
+                </span>
+              <?php else: ?>
+                <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                  <i class="fas fa-times-circle mr-1"></i> Not Paid
+                </span>
+              <?php endif; ?>
+            </div>
+          </div>
         </div>
 
         <!-- Actions -->
         <div class="flex justify-center items-center mt-4 pt-4 border-t border-gray-100">
           <?php if ($proposal['status'] === 'Completed'): ?>
-            <button disabled class="inline-flex items-center px-6 py-3 bg-gray-400 text-white text-sm font-bold rounded-xl shadow-lg cursor-not-allowed">
-              <i class="fas fa-calendar mr-2"></i> Scheduled for Defense
+            <button onclick='openRevertModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)'
+              class="inline-flex items-center px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-xl shadow-lg transition-all duration-300 hover:scale-105">
+              <i class="fas fa-undo mr-2"></i> Revert Approval
+            </button>
+          <?php elseif (!$has_paid): ?>
+            <button disabled class="inline-flex items-center px-6 py-3 bg-red-500 text-white text-sm font-bold rounded-xl shadow-lg cursor-not-allowed">
+              <i class="fas fa-times mr-2"></i> Payment Required
             </button>
           <?php else: ?>
             <button onclick='openProposalReviewModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)'
               class="inline-flex items-center px-6 py-3 gradient-green text-white text-sm font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <i class="fas fa-check mr-2"></i> Mark as Complete
+              <i class="fas fa-check mr-2"></i> Review Proposal
             </button>
           <?php endif; ?>
         </div>
       </div>
           <?php endforeach; ?>
+          </div>
         </div>
       </div>
     <?php endforeach; ?>
@@ -922,22 +1078,114 @@ $isoDeadline = $current_milestone
               </a>
             </div>
             
-            <!-- Requirements Checker -->
-            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h4 class="text-lg font-medium mb-3">Requirements Check</h4>
-              <div id="requirementsList" class="mb-4">
-                <!-- Requirements will be populated by JavaScript -->
-              </div>
-              
-              <button type="submit" name="check_requirements" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md w-full">
-                Check Requirements
+            <div class="mb-6">
+              <button type="button" onclick="openApprovalModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md w-full" id="approvalButton">
+                Approve Proposal
               </button>
+            </div>
+            
+            <!-- Payment Status Summary -->
+            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+              <h4 class="text-lg font-medium mb-3">💰 Payment Status Summary</h4>
+              <div id="paymentStatusSummary" class="space-y-2">
+                <!-- Payment status will be populated by JavaScript -->
+              </div>
             </div>
             
 
             <div class="flex justify-end">
               <button type="button" onclick="toggleModal('proposalReviewModal')" class="px-4 py-2 border border-gray-300 rounded-md">
                 Close
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Approval Confirmation Modal -->
+    <div id="approvalModal" class="modal-container hidden">
+      <div class="modal-content" style="max-width: 500px;">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-green-800">✅ Approve Proposal</h3>
+            <button type="button" onclick="toggleModal('approvalModal')" class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <div class="mb-6">
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+              <div class="flex items-center">
+                <i class="fas fa-check-circle text-green-600 text-2xl mr-3"></i>
+                <div>
+                  <h4 class="font-semibold text-green-800">Ready for Approval</h4>
+                  <p class="text-green-700 text-sm">All requirements have been verified and the group has completed payment.</p>
+                </div>
+              </div>
+            </div>
+            
+            <p class="text-gray-700 mb-4">Are you sure you want to approve this proposal? This action will:</p>
+            <ul class="list-disc list-inside text-sm text-gray-600 space-y-1 mb-4">
+              <li>Mark the proposal as completed</li>
+              <li>Allow the group to proceed to the next phase</li>
+              <li>Send approval notifications to all group members</li>
+            </ul>
+          </div>
+          
+          <form method="POST">
+            <input type="hidden" id="approval_proposal_id" name="proposal_id">
+            <div class="flex justify-end space-x-3">
+              <button type="button" onclick="toggleModal('approvalModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button type="submit" name="check_requirements" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-semibold">
+                <i class="fas fa-check mr-2"></i>Approve Proposal
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revert Approval Modal -->
+    <div id="revertModal" class="modal-container hidden">
+      <div class="modal-content" style="max-width: 500px;">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-orange-800">🔄 Revert Approval</h3>
+            <button type="button" onclick="toggleModal('revertModal')" class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <div class="mb-6">
+            <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+              <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle text-orange-600 text-2xl mr-3"></i>
+                <div>
+                  <h4 class="font-semibold text-orange-800">Warning: Revert Approval</h4>
+                  <p class="text-orange-700 text-sm">This will change the proposal status back to pending.</p>
+                </div>
+              </div>
+            </div>
+            
+            <p class="text-gray-700 mb-4">Are you sure you want to revert this approval? This action will:</p>
+            <ul class="list-disc list-inside text-sm text-gray-600 space-y-1 mb-4">
+              <li>Change proposal status from "Completed" to "Pending"</li>
+              <li>Remove the approval timestamp</li>
+              <li>Allow the proposal to be reviewed again</li>
+            </ul>
+          </div>
+          
+          <form method="POST">
+            <input type="hidden" id="revert_proposal_id" name="proposal_id">
+            <div class="flex justify-end space-x-3">
+              <button type="button" onclick="toggleModal('revertModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button type="submit" name="revert_approval" class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-md font-semibold">
+                <i class="fas fa-undo mr-2"></i>Revert Approval
               </button>
             </div>
           </form>
@@ -1113,70 +1361,87 @@ $isoDeadline = $current_milestone
         feedbackTextarea.value = proposal.feedback;
       }
       
-      // Check requirements and update UI
-      checkRequirements(proposal);
+      // Update payment status summary
+      updatePaymentStatusSummary(proposal);
+      
+      // Update button based on status and payment
+      updateApprovalButton(proposal);
       
 
       
       toggleModal('proposalReviewModal');
     }
 
-    // Check requirements for a proposal
-    function checkRequirements(proposal) {
-      const requirementsList = document.getElementById('requirementsList');
-      requirementsList.innerHTML = '';
+    // Update approval button based on proposal status
+    function updateApprovalButton(proposal) {
+      const approvalButton = document.getElementById('approvalButton');
       
-      // Define basic requirements
-      const requirements = [
-        { id: 'has_title', label: 'Proposal has a title', met: !!proposal.title },
-        { id: 'has_description', label: 'Proposal has a description', met: !!proposal.description },
-        { id: 'has_file', label: 'Proposal file is uploaded', met: !!proposal.file_path },
-        { id: 'has_group', label: 'Proposal is submitted by a group', met: !!proposal.group_name },
+      if (proposal.status === 'Completed') {
+        approvalButton.textContent = '🔄 Revert Approval';
+        approvalButton.className = 'bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md w-full font-semibold';
+        approvalButton.onclick = function() { openRevertModal(); };
+      } else if (!proposal.payment_status?.has_research_forum_payment) {
+        approvalButton.textContent = '❌ Payment Required';
+        approvalButton.className = 'bg-red-500 text-white px-4 py-2 rounded-md w-full font-semibold cursor-not-allowed';
+        approvalButton.disabled = true;
+      } else {
+        approvalButton.textContent = '✅ Approve Proposal';
+        approvalButton.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md w-full font-semibold';
+        approvalButton.disabled = false;
+        approvalButton.onclick = function() { openApprovalModal(); };
+      }
+    }
+    
+    // Open approval modal
+    function openApprovalModal() {
+      const proposalId = document.getElementById('review_proposal_id').value;
+      document.getElementById('approval_proposal_id').value = proposalId;
+      toggleModal('approvalModal');
+    }
+    
+    // Open revert modal
+    function openRevertModal(proposal) {
+      if (proposal) {
+        document.getElementById('revert_proposal_id').value = proposal.id;
+      } else {
+        const proposalId = document.getElementById('review_proposal_id').value;
+        document.getElementById('revert_proposal_id').value = proposalId;
+      }
+      toggleModal('proposalReviewModal');
+      toggleModal('revertModal');
+    }
+    
+    // Update payment status summary
+    function updatePaymentStatusSummary(proposal) {
+      const summaryDiv = document.getElementById('paymentStatusSummary');
+      summaryDiv.innerHTML = '';
+      
+      const paymentTypes = [
+        { key: 'has_research_forum_payment', label: 'Research Forum', required: true },
+        { key: 'has_pre_oral_payment', label: 'Pre-Oral Defense', required: false },
+        { key: 'has_final_defense_payment', label: 'Final Defense', required: false }
       ];
       
-      // Add requirements to the list
-      requirements.forEach(req => {
-        const requirementEl = document.createElement('div');
-        requirementEl.className = 'requirement-check flex items-center py-2 px-3 rounded-md mb-2';
-        requirementEl.style.backgroundColor = req.met ? '#f0fdf4' : '#fef2f2';
-        requirementEl.innerHTML = `
-          <i class="fas ${req.met ? 'fa-check-circle text-green-600' : 'fa-times-circle text-red-600'} mr-3 text-lg"></i>
-          <span class="${req.met ? 'text-green-800 font-medium' : 'text-red-800'}">${req.label}</span>
-        `;
-        requirementsList.appendChild(requirementEl);
-      });
-      
-      // Check if all requirements are met
-      const allMet = requirements.every(req => req.met);
-      const statusText = document.getElementById('review_current_status');
-      const checkButton = document.querySelector('button[name="check_requirements"]');
-      
-      // Show different button based on status
-      if (proposal.status === 'Completed') {
-        checkButton.textContent = '📅 Scheduled for Defense';
-        checkButton.className = 'bg-gray-400 text-white px-4 py-2 rounded-md w-full font-semibold cursor-not-allowed';
-        checkButton.disabled = true;
-      } else {
-        checkButton.textContent = '✓ Mark as Complete';
-        checkButton.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md w-full font-semibold';
-        checkButton.disabled = false;
-      }
-      
-      if (allMet) {
-        statusText.textContent = '✅ Ready for Completion';
-        statusText.className = 'text-sm text-green-900 p-3 bg-green-100 rounded-md font-semibold border border-green-200';
-      } else {
-        const missingCount = requirements.filter(req => !req.met).length;
-        const missingNotice = document.createElement('div');
-        missingNotice.className = 'mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md';
-        missingNotice.innerHTML = `
+      paymentTypes.forEach(payment => {
+        const isPaid = proposal.payment_status?.[payment.key] || false;
+        const paymentEl = document.createElement('div');
+        paymentEl.className = 'flex items-center justify-between py-2 px-3 rounded-md';
+        paymentEl.style.backgroundColor = isPaid ? '#f0fdf4' : '#fef2f2';
+        paymentEl.className += ' border border-gray-200';
+        
+        paymentEl.innerHTML = `
           <div class="flex items-center">
-            <i class="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>
-            <span class="text-yellow-800 text-sm font-medium">${missingCount} requirement(s) missing, but you can still mark as complete.</span>
+            <i class="fas ${isPaid ? 'fa-check-circle text-green-600' : 'fa-times-circle text-red-600'} mr-2"></i>
+            <span class="${isPaid ? 'text-green-800 font-medium' : 'text-red-800'}">${payment.label}</span>
+            ${payment.required ? '<span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">Required</span>' : ''}
           </div>
+          <span class="text-xs font-medium ${isPaid ? 'text-green-700' : 'text-red-700'}">
+            ${isPaid ? 'PAID' : 'NOT PAID'}
+          </span>
         `;
-        requirementsList.appendChild(missingNotice);
-      }
+        
+        summaryDiv.appendChild(paymentEl);
+      });
     }
 
     // Global remove handler (works for both modals)
@@ -1290,6 +1555,89 @@ $isoDeadline = $current_milestone
         applyFilters();
       }
     });
+
+    // Toggle cluster visibility
+    function toggleCluster(clusterId) {
+      const content = document.getElementById('cluster-' + clusterId);
+      const chevron = document.getElementById('chevron-' + clusterId);
+      
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+      } else {
+        content.classList.add('hidden');
+        chevron.style.transform = 'rotate(0deg)';
+      }
+    }
+    
+    // Real-time search function
+    function searchProposals() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const clusterHeaders = document.querySelectorAll('.cluster-header');
+      const proposalCards = document.querySelectorAll('.proposal-card');
+      
+      if (searchTerm === '') {
+        // Show all clusters and cards
+        clusterHeaders.forEach(header => header.parentElement.style.display = 'block');
+        proposalCards.forEach(card => card.style.display = 'flex');
+        return;
+      }
+      
+      // Hide all clusters initially
+      clusterHeaders.forEach(header => header.parentElement.style.display = 'none');
+      
+      // Also check cluster headers directly
+      clusterHeaders.forEach(header => {
+        const clusterName = header.querySelector('h3').textContent.toLowerCase();
+        if (clusterName.includes(searchTerm)) {
+          header.parentElement.style.display = 'block';
+          // Auto-expand cluster
+          const clusterId = header.querySelector('[id^="chevron-"]').id.replace('chevron-', '');
+          const clusterContent = document.getElementById('cluster-' + clusterId);
+          clusterContent.classList.remove('hidden');
+          document.getElementById('chevron-' + clusterId).style.transform = 'rotate(180deg)';
+          // Show all cards in this cluster
+          clusterContent.querySelectorAll('.proposal-card').forEach(card => {
+            card.style.display = 'flex';
+          });
+        }
+      });
+      
+      // Search through proposal cards and cluster headers
+      proposalCards.forEach(card => {
+        const group = card.querySelector('.text-gray-700').textContent.toLowerCase();
+        const program = card.querySelectorAll('.text-gray-700')[1].textContent.toLowerCase();
+        
+        // Get cluster name from parent cluster header
+        const clusterContent = card.closest('.cluster-content');
+        let clusterName = '';
+        if (clusterContent) {
+          const clusterId = clusterContent.id.replace('cluster-', '');
+          const clusterHeader = document.getElementById('chevron-' + clusterId).closest('.cluster-header');
+          clusterName = clusterHeader.querySelector('h3').textContent.toLowerCase();
+        }
+        
+        const matches = group.includes(searchTerm) || 
+                       program.includes(searchTerm) || 
+                       clusterName.includes(searchTerm);
+        
+        if (matches) {
+          card.style.display = 'flex';
+          // Show parent cluster
+          const clusterContent = card.closest('.cluster-content');
+          if (clusterContent) {
+            const clusterId = clusterContent.id.replace('cluster-', '');
+            const clusterHeader = document.getElementById('chevron-' + clusterId).closest('.cluster-header').parentElement;
+            clusterHeader.style.display = 'block';
+            // Auto-expand cluster
+            clusterContent.classList.remove('hidden');
+            document.getElementById('chevron-' + clusterId).style.transform = 'rotate(180deg)';
+          }
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
 
     // Init on load
     document.addEventListener('DOMContentLoaded', function(){

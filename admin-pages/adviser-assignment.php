@@ -1581,9 +1581,16 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             <table class="w-full text-sm">
                                 <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
                                     <tr>
+<<<<<<< HEAD
                                         <th class="px-6 py-4 text-left font-semibold text-gray-700">Student ID</th>
                                         <th class="px-6 py-4 text-left font-semibold text-gray-700">Name</th>
                                         <th class="px-6 py-4 text-left font-semibold text-gray-700">Program</th>
+=======
+                                        <th class="px-4 py-3">Student ID</th>
+                                        <th class="px-4 py-3">Name</th>
+                                        <th class="px-4 py-3">Program</th>
+                                        <th class="px-4 py-3">Group</th>
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
                                     </tr>
                                 </thead>
                                 <tbody id="modal-students-table" class="divide-y divide-gray-200">
@@ -1976,6 +1983,7 @@ document.addEventListener('click', function(e) {
         if (students.length > 0) {
             students.forEach((student, index) => {
                 const row = `
+<<<<<<< HEAD
                     <tr class="hover:bg-blue-50 transition-colors duration-200">
                         <td class="px-6 py-4 font-medium text-gray-900">${student.school_id}</td>
                         <td class="px-6 py-4 text-gray-700">${student.full_name}</td>
@@ -1984,12 +1992,23 @@ document.addEventListener('click', function(e) {
                                 ${student.program}
                             </span>
                         </td>
+=======
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-4 py-3">${student.school_id}</td>
+                        <td class="px-4 py-3">${student.full_name}</td>
+                        <td class="px-4 py-3">${student.program}</td>
+                        <td class="px-4 py-3">${student.group_name || 'No Group'}</td>
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
                     </tr>
                 `;
                 studentsTable.innerHTML += row;
             });
         } else {
+<<<<<<< HEAD
             studentsTable.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500"><div class="flex flex-col items-center"><i class="fas fa-users text-gray-300 text-3xl mb-2"></i><span>No students assigned to this cluster</span></div></td></tr>';
+=======
+            studentsTable.innerHTML = '<tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">No students assigned</td></tr>';
+>>>>>>> 29f5bd2ef4f9723a7f461ac23a6052848ab51c4e
         }
     }
     

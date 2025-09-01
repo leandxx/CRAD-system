@@ -147,6 +147,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['revert_approval'])) {
         $proposal_id = (int)($_POST['proposal_id'] ?? 0);
         
+        // Get group_id from proposal
+        $group_query = "SELECT group_id FROM proposals WHERE id = ?";
+        $stmt = $conn->prepare($group_query);
+        $stmt->bind_param("i", $proposal_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $proposal_data = $result->fetch_assoc();
+        $stmt->close();
+        
+        if ($proposal_data) {
+            // Delete defense schedule for this group
+            $delete_panel_query = "DELETE FROM defense_panel WHERE defense_id IN (SELECT id FROM defense_schedules WHERE group_id = ?)";
+            $stmt = $conn->prepare($delete_panel_query);
+            $stmt->bind_param("i", $proposal_data['group_id']);
+            $stmt->execute();
+            $stmt->close();
+            
+            $delete_schedule_query = "DELETE FROM defense_schedules WHERE group_id = ?";
+            $stmt = $conn->prepare($delete_schedule_query);
+            $stmt->bind_param("i", $proposal_data['group_id']);
+            $stmt->execute();
+            $stmt->close();
+        }
+        
+        // Revert proposal status
         $stmt = $conn->prepare("UPDATE proposals SET status = 'Pending', reviewed_at = NULL WHERE id = ?");
         $stmt->bind_param("i", $proposal_id);
         $stmt->execute();

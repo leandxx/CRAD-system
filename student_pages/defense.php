@@ -46,6 +46,19 @@ if ($has_group) {
     if (mysqli_num_rows($defense_result) > 0) {
         $temp_schedule = mysqli_fetch_assoc($defense_result);
         
+        // Get payment status first
+        $research_forum_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'research_forum' AND status = 'approved'";
+        $research_forum_result = mysqli_query($conn, $research_forum_query);
+        $has_research_forum_payment = mysqli_fetch_assoc($research_forum_result)['count'] > 0;
+        
+        $pre_oral_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'pre_oral_defense' AND status = 'approved'";
+        $pre_oral_result = mysqli_query($conn, $pre_oral_query);
+        $has_pre_oral_payment = mysqli_fetch_assoc($pre_oral_result)['count'] > 0;
+        
+        $final_defense_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'final_defense' AND status = 'approved'";
+        $final_defense_result = mysqli_query($conn, $final_defense_query);
+        $has_final_defense_payment = mysqli_fetch_assoc($final_defense_result)['count'] > 0;
+        
         // Only show schedule if student has required payments
         $show_schedule = false;
         // Assume pre-oral defense if before current date + 30 days, otherwise final defense
@@ -85,18 +98,20 @@ if ($has_group) {
         $requirements_status['proposal_submitted'] = $proposal_data['count'];
     }
     
-    // 2. Check payment status for each type
-    $research_forum_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'research_forum' AND status = 'approved'";
-    $research_forum_result = mysqli_query($conn, $research_forum_query);
-    $has_research_forum_payment = mysqli_fetch_assoc($research_forum_result)['count'] > 0;
-    
-    $pre_oral_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'pre_oral_defense' AND status = 'approved'";
-    $pre_oral_result = mysqli_query($conn, $pre_oral_query);
-    $has_pre_oral_payment = mysqli_fetch_assoc($pre_oral_result)['count'] > 0;
-    
-    $final_defense_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'final_defense' AND status = 'approved'";
-    $final_defense_result = mysqli_query($conn, $final_defense_query);
-    $has_final_defense_payment = mysqli_fetch_assoc($final_defense_result)['count'] > 0;
+    // 2. Payment status already checked above if defense schedule exists
+    if (!isset($has_research_forum_payment)) {
+        $research_forum_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'research_forum' AND status = 'approved'";
+        $research_forum_result = mysqli_query($conn, $research_forum_query);
+        $has_research_forum_payment = mysqli_fetch_assoc($research_forum_result)['count'] > 0;
+        
+        $pre_oral_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'pre_oral_defense' AND status = 'approved'";
+        $pre_oral_result = mysqli_query($conn, $pre_oral_query);
+        $has_pre_oral_payment = mysqli_fetch_assoc($pre_oral_result)['count'] > 0;
+        
+        $final_defense_query = "SELECT COUNT(*) as count FROM payments WHERE student_id = '$user_id' AND payment_type = 'final_defense' AND status = 'approved'";
+        $final_defense_result = mysqli_query($conn, $final_defense_query);
+        $has_final_defense_payment = mysqli_fetch_assoc($final_defense_result)['count'] > 0;
+    }
     
     // For backward compatibility, set payment_completed if any payment is approved
     $requirements_status['payment_completed'] = ($has_research_forum_payment || $has_pre_oral_payment || $has_final_defense_payment) ? 1 : 0;

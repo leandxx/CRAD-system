@@ -439,9 +439,14 @@ $isoDeadline = $current_milestone
       from { transform: scale(0.95); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
     }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
     .animate-slide-up { animation: slideInUp 0.6s ease-out; }
     .animate-fade-in { animation: fadeIn 0.8s ease-out; }
     .animate-scale-in { animation: scaleIn 0.5s ease-out; }
+    .animate-pulse { animation: pulse 2s infinite; }
     
     .modal-container{
       display:flex;
@@ -449,100 +454,127 @@ $isoDeadline = $current_milestone
       justify-content:center;
       position:fixed;
       inset:0;
-      background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4));
-      backdrop-filter: blur(4px);
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.6));
+      backdrop-filter: blur(12px);
       z-index:50;
-      transition: all 300ms ease-in-out;
+      transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+      visibility: hidden;
+    }
+    .modal-container:not(.hidden) {
+      opacity: 1;
+      visibility: visible;
     }
     .modal-content{
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 16px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+      border: 2px solid rgba(59, 130, 246, 0.1);
+      border-radius: 32px;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.8),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
       width:100%;
-      max-width:42rem;
+      max-width:56rem;
       max-height:90vh;
-      overflow-y:auto;
-      transform: translateY(-30px) scale(0.95);
-      transition: all 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      overflow:hidden;
+      transform: translateY(40px) scale(0.9);
+      transition: all 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
     }
     .modal-container:not(.hidden) .modal-content {
       transform: translateY(0) scale(1);
     }
+    .modal-content::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.3), transparent);
+    }
+    .modal-header {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(147, 197, 253, 0.05));
+      border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+      padding: 2rem;
+      border-radius: 32px 32px 0 0;
+    }
+    .modal-body {
+      padding: 2rem;
+      max-height: calc(90vh - 200px);
+      overflow-y: auto;
+    }
+    .modal-footer {
+      background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(241, 245, 249, 0.8));
+      border-top: 1px solid rgba(59, 130, 246, 0.1);
+      padding: 2rem;
+      border-radius: 0 0 32px 32px;
+    }
     .milestone-dot{
-      width:40px;
-      height:40px;
+      width:48px;
+      height:48px;
       border-radius:50%;
       display:flex;
       align-items:center;
       justify-content:center;
-      box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.3);
-      transition: all 0.3s ease;
+      box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.3);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
     }
     .milestone-dot:hover {
-      transform: scale(1.1);
-      box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.4);
+      transform: scale(1.15) translateY(-2px);
+      box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.4);
     }
-    .proposal-status-badge {
-      display: inline-block;
-      padding: 0.375rem 0.875rem;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    .milestone-dot.current {
+      animation: pulse 2s infinite;
     }
-    .status-pending { 
-      background: linear-gradient(135deg, #fef3c7, #fde68a); 
-      color: #92400e; 
-      border: 1px solid #f59e0b;
+    .timeline-connector {
+      position: absolute;
+      top: 50%;
+      left: 100%;
+      width: calc(100% - 48px);
+      height: 4px;
+      background: linear-gradient(90deg, #e5e7eb, #d1d5db);
+      border-radius: 2px;
+      z-index: -1;
     }
-    .status-under-review { 
-      background: linear-gradient(135deg, #dbeafe, #bfdbfe); 
-      color: #1e40af; 
-      border: 1px solid #3b82f6;
-    }
-    .status-approved { 
-      background: linear-gradient(135deg, #d1fae5, #a7f3d0); 
-      color: #065f46; 
-      border: 1px solid #10b981;
-    }
-    .status-rejected { 
-      background: linear-gradient(135deg, #fee2e2, #fecaca); 
-      color: #b91c1c; 
-      border: 1px solid #ef4444;
-    }
-    .status-revision-requested { 
-      background: linear-gradient(135deg, #fef3c7, #fde68a); 
-      color: #92400e; 
-      border: 1px solid #f59e0b;
+    .timeline-connector.completed {
+      background: linear-gradient(90deg, #10b981, #059669);
     }
     .stats-card {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 16px;
-      transition: all 0.3s ease;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 24px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.1);
     }
     .stats-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 15px 35px -8px rgba(0, 0, 0, 0.1);
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.15);
+      border-color: rgba(59, 130, 246, 0.3);
     }
     .gradient-blue {
-      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8, #1e40af);
     }
     .gradient-green {
-      background: linear-gradient(135deg, #10b981, #059669);
+      background: linear-gradient(135deg, #10b981, #059669, #047857);
     }
     .gradient-purple {
-      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed, #6d28d9);
+    }
+    .gradient-orange {
+      background: linear-gradient(135deg, #f59e0b, #d97706, #b45309);
     }
     .proposal-card {
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       overflow: hidden;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.1);
     }
     .proposal-card::before {
       content: '';
@@ -551,15 +583,113 @@ $isoDeadline = $current_milestone
       left: -100%;
       width: 100%;
       height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.5s;
+      background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+      transition: left 0.6s ease;
     }
     .proposal-card:hover::before {
       left: 100%;
     }
     .proposal-card:hover {
-      transform: translateY(-4px) scale(1.02);
-      box-shadow: 0 15px 30px -8px rgba(0, 0, 0, 0.15);
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.2);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+    .cluster-header {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 197, 253, 0.1));
+      border: 2px solid rgba(59, 130, 246, 0.2);
+      transition: all 0.3s ease;
+    }
+    .cluster-header:hover {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(147, 197, 253, 0.15));
+      border-color: rgba(59, 130, 246, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.2);
+    }
+    .countdown-digit {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      padding: 0.75rem;
+      min-width: 4rem;
+      text-align: center;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      border: none;
+      border-radius: 12px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px -4px rgba(59, 130, 246, 0.4);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.5);
+    }
+    .status-badge {
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+    }
+    
+    .countdown-banner {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.95) 0%, rgba(124, 58, 237, 0.95) 50%, rgba(79, 70, 229, 0.95) 100%);
+      backdrop-filter: blur(25px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+      animation: slideInDown 1s ease-out;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .countdown-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      animation: shimmer 3s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+    
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-40px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .modal-content::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .modal-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .modal-content::-webkit-scrollbar-thumb {
+      background: rgba(59, 130, 246, 0.3);
+      border-radius: 3px;
+    }
+    
+    .modal-content::-webkit-scrollbar-thumb:hover {
+      background: rgba(59, 130, 246, 0.5);
     }
   </style>
   <script>
@@ -614,94 +744,101 @@ $isoDeadline = $current_milestone
         <?php unset($_SESSION['error_message']); ?>
       <?php endif; ?>
 
-      <!-- Countdown Header -->
-      <div id="countdown-banner" class="bg-gradient-to-r from-primary to-secondary text-white p-6 rounded-2xl shadow-xl mb-8 animate-slide-up">
-        <div class="flex flex-col md:flex-row items-center justify-between">
-          <div class="flex items-center mb-4 md:mb-0">
-            <i class="fas fa-clock text-2xl mr-3"></i>
+      <!-- Enhanced Countdown Banner -->
+      <div class="countdown-banner text-white p-8 rounded-2xl mb-8 shadow-2xl" id="countdown-banner">
+        <div class="flex flex-col lg:flex-row items-center justify-between">
+          <div class="flex items-center mb-6 lg:mb-0">
+            <div class="bg-white/20 backdrop-blur-sm rounded-xl p-4 mr-6">
+              <i class="fas fa-stopwatch text-3xl"></i>
+            </div>
             <div>
-              <h3 class="font-bold text-lg">Current Phase Countdown</h3>
-              <?php if (!empty($milestones)): ?>
-                <?php
-                  $now = new DateTime();
-                  $current_milestone = null;
-                  foreach ($milestones as $milestone) {
-                      $deadline = new DateTime($milestone['deadline']);
-                      if ($deadline > $now) { $current_milestone = $milestone; break; }
-                  }
-                ?>
-                <p class="text-sm opacity-90">
-                  <?= $current_milestone ? htmlspecialchars($current_milestone['title']) : 'All milestones completed' ?> -
-                  Ends <?= $current_milestone ? date('F j, Y \a\t g:i A', strtotime($current_milestone['deadline'])) : '' ?>
-                </p>
-              <?php else: ?>
-                <p class="text-sm opacity-90">No active milestones</p>
-              <?php endif; ?>
+              <h3 class="font-bold text-2xl mb-2">Current Phase Countdown</h3>
+              <p class="text-lg opacity-90">
+                <?php if (!empty($milestones)): ?>
+                  <?php
+                    $now = new DateTime();
+                    $current_milestone = null;
+                    foreach ($milestones as $milestone) {
+                        $deadline = new DateTime($milestone['deadline']);
+                        if ($deadline > $now) { $current_milestone = $milestone; break; }
+                    }
+                  ?>
+                  <?php if ($current_milestone): ?>
+                    <span class="font-semibold"><?= htmlspecialchars($current_milestone['title']) ?></span>
+                    <br><span class="text-sm">Deadline: <?= date('F j, Y \a\t g:i A', strtotime($current_milestone['deadline'])) ?></span>
+                  <?php else: ?>
+                    All milestones completed
+                  <?php endif; ?>
+                <?php else: ?>
+                  No active milestones
+                <?php endif; ?>
+              </p>
             </div>
           </div>
-
-          <div class="flex items-center">
-            <div class="text-center px-4">
-              <div id="admin-countdown-days" class="text-3xl font-bold">00</div>
-              <div class="text-xs opacity-90">Days</div>
+          <div class="grid grid-cols-4 gap-4">
+            <div class="text-center bg-white/20 backdrop-blur-sm rounded-xl p-4">
+              <div id="admin-countdown-days" class="text-4xl font-bold mb-1">00</div>
+              <div class="text-sm opacity-90 font-medium">Days</div>
             </div>
-            <div class="text-2xl font-bold opacity-70">:</div>
-            <div class="text-center px-4">
-              <div id="admin-countdown-hours" class="text-3xl font-bold">00</div>
-              <div class="text-xs opacity-90">Hours</div>
+            <div class="text-center bg-white/20 backdrop-blur-sm rounded-xl p-4">
+              <div id="admin-countdown-hours" class="text-4xl font-bold mb-1">00</div>
+              <div class="text-sm opacity-90 font-medium">Hours</div>
             </div>
-            <div class="text-2xl font-bold opacity-70">:</div>
-            <div class="text-center px-4">
-              <div id="admin-countdown-minutes" class="text-3xl font-bold">00</div>
-              <div class="text-xs opacity-90">Minutes</div>
+            <div class="text-center bg-white/20 backdrop-blur-sm rounded-xl p-4">
+              <div id="admin-countdown-minutes" class="text-4xl font-bold mb-1">00</div>
+              <div class="text-sm opacity-90 font-medium">Minutes</div>
             </div>
-            <div class="text-2xl font-bold opacity-70">:</div>
-            <div class="text-center px-4">
-              <div id="admin-countdown-seconds" class="text-3xl font-bold">00</div>
-              <div class="text-xs opacity-90">Seconds</div>
+            <div class="text-center bg-white/20 backdrop-blur-sm rounded-xl p-4">
+              <div id="admin-countdown-seconds" class="text-4xl font-bold mb-1">00</div>
+              <div class="text-sm opacity-90 font-medium">Seconds</div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Timeline Management -->
-      <div class="stats-card p-8 mb-8 animate-fade-in">
-        <div class="flex items-center justify-between mb-8">
-          <div class="flex items-center">
-            <div class="gradient-blue p-4 rounded-2xl shadow-lg mr-4">
-              <i class="fas fa-calendar-alt text-white text-2xl"></i>
+      <div class="bg-gradient-to-br from-white via-blue-50 to-indigo-100 border border-blue-200 rounded-2xl p-6 mb-8 shadow-lg">
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-xl mb-6">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <div class="bg-white/20 p-2 rounded-lg mr-3">
+                <i class="fas fa-calendar-alt text-white text-lg"></i>
+              </div>
+              <div>
+                <h2 class="text-xl font-bold">Timeline Management</h2>
+                <p class="text-blue-100 text-sm mt-1">Manage submission phases and milestones</p>
+              </div>
             </div>
-            <h2 class="text-3xl font-bold text-gray-800">Submission Timeline Management</h2>
+            <button type="button"
+              onclick="toggleModal('createTimelineModal')"
+              class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300">
+              <i class="fas fa-plus mr-2"></i>Create Timeline
+            </button>
           </div>
-          <button type="button"
-            onclick="toggleModal('createTimelineModal')"
-            class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
-            <i class="fas fa-plus mr-2"></i> Create New Timeline
-          </button>
         </div>
 
         <?php if ($active_timeline): ?>
-          <div class="mb-8">
-            <div class="flex justify-between items-center mb-4">
-              <h3 class="text-xl font-semibold"><?= htmlspecialchars($active_timeline['title']) ?></h3>
-              <div class="flex space-x-2">
+          <div class="mb-6">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-lg font-semibold text-gray-800"><?= htmlspecialchars($active_timeline['title']) ?></h3>
+              <div class="flex gap-2">
                 <button type="button"
                   onclick='openEditModal(<?= htmlspecialchars(json_encode($active_timeline), ENT_QUOTES, "UTF-8") ?>, <?= htmlspecialchars(json_encode($milestones), ENT_QUOTES, "UTF-8") ?>)'
-                  class="text-primary hover:text-secondary transition">
-                  <i class="fas fa-edit mr-1"></i> Edit
+                  class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-all">
+                  <i class="fas fa-edit mr-1"></i>Edit
                 </button>
                 <form method="POST" class="inline">
                   <input type="hidden" name="timeline_id" value="<?= (int)$active_timeline['id'] ?>">
-                  <button type="submit" name="toggle_timeline" class="text-gray-500 hover:text-gray-700 transition">
-                    <i class="fas fa-toggle-on mr-1"></i> Disable
+                  <button type="submit" name="toggle_timeline" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-all">
+                    <i class="fas fa-toggle-off mr-1"></i>Disable
                   </button>
                 </form>
               </div>
             </div>
-            <p class="text-gray-600 mb-6"><?= htmlspecialchars($active_timeline['description']) ?></p>
+            <p class="text-gray-600 mb-4 text-sm"><?= htmlspecialchars($active_timeline['description']) ?></p>
 
             <!-- Progress Timeline -->
-            <div class="relative">
+            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-white/40">
               <?php
                 $total_milestones = count($milestones);
                 $completed_milestones = 0;
@@ -712,28 +849,28 @@ $isoDeadline = $current_milestone
                 }
                 $progress = $total_milestones > 0 ? ($completed_milestones / $total_milestones) * 100 : 0;
               ?>
-              <div class="h-2 bg-gray-200 rounded-full mb-8">
-                <div class="h-full bg-gradient-to-r from-primary to-secondary rounded-full" style="width: <?= $progress ?>%"></div>
+              <div class="h-1.5 bg-gray-200 rounded-full mb-4">
+                <div class="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full" style="width: <?= $progress ?>%"></div>
               </div>
 
-              <div class="flex justify-between relative gap-2">
+              <div class="grid grid-cols-<?= count($milestones) ?> gap-2">
                 <?php foreach ($milestones as $index => $milestone):
                     $deadline = new DateTime($milestone['deadline']);
                     $is_past = $deadline < $now;
                     $prevDeadline = $index > 0 ? new DateTime($milestones[$index-1]['deadline']) : null;
                     $is_current = !$is_past && (!$prevDeadline || $prevDeadline < $now);
                 ?>
-                  <div class="flex-1 text-center px-2">
-                    <div class="milestone-dot <?= $is_past ? 'bg-success' : ($is_current ? 'bg-warning' : 'bg-gray-300') ?> text-white mx-auto mb-2">
-                      <i class="fas <?= $is_past ? 'fa-check' : ($is_current ? 'fa-exclamation' : 'fa-flag') ?>"></i>
+                  <div class="text-center">
+                    <div class="w-8 h-8 <?= $is_past ? 'bg-green-500' : ($is_current ? 'bg-yellow-500' : 'bg-gray-300') ?> text-white mx-auto mb-2 rounded-full flex items-center justify-center">
+                      <i class="fas <?= $is_past ? 'fa-check' : ($is_current ? 'fa-exclamation' : 'fa-flag') ?> text-xs"></i>
                     </div>
-                    <div class="text-sm font-medium"><?= htmlspecialchars($milestone['title']) ?></div>
-                    <div class="text-xs text-gray-500"><?= date('M j, Y', strtotime($milestone['deadline'])) ?></div>
+                    <div class="text-xs font-medium text-gray-800"><?= htmlspecialchars($milestone['title']) ?></div>
+                    <div class="text-xs text-gray-500"><?= date('M j', strtotime($milestone['deadline'])) ?></div>
                     <?php if ($is_current):
                         $diff = $now->diff($deadline);
                         $days_left = $diff->days;
                     ?>
-                      <div class="text-xs mt-1 font-medium text-warning"><?= (int)$days_left ?> days left</div>
+                      <div class="text-xs mt-1 font-medium text-yellow-600"><?= (int)$days_left ?>d left</div>
                     <?php endif; ?>
                   </div>
                 <?php endforeach; ?>
@@ -742,21 +879,26 @@ $isoDeadline = $current_milestone
           </div>
         <?php else: ?>
           <div class="text-center py-8">
-            <i class="fas fa-calendar-times text-4xl text-gray-300 mb-4"></i>
-            <h3 class="text-lg font-medium text-gray-500">No active timeline</h3>
-            <p class="text-gray-400">Create a new timeline to get started</p>
+            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-white/40">
+              <i class="fas fa-calendar-times text-3xl text-blue-400 mb-3"></i>
+              <h3 class="text-base font-semibold text-gray-700 mb-2">No Active Timeline</h3>
+              <p class="text-gray-500 text-sm mb-4">Create a new timeline to get started with milestone management.</p>
+              <button onclick="toggleModal('createTimelineModal')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                <i class="fas fa-plus mr-2"></i>Create Timeline
+              </button>
+            </div>
           </div>
         <?php endif; ?>
       </div>
 
     <!-- Proposal Review Section -->
-<div class="stats-card p-8 mb-8 animate-scale-in">
+<div class="stats-card rounded-2xl p-8 mb-8 animate-scale-in">
   <div class="flex items-center justify-between mb-8">
     <div class="flex items-center">
-      <div class="gradient-purple p-4 rounded-2xl shadow-lg mr-4">
-        <i class="fas fa-file-alt text-white text-2xl"></i>
+      <div class="gradient-purple p-3 rounded-xl mr-4">
+        <i class="fas fa-file-alt text-white text-xl"></i>
       </div>
-      <h2 class="text-3xl font-bold text-gray-800">Proposal Review</h2>
+      <h2 class="text-2xl font-bold text-gray-800">Proposal Review</h2>
     </div>
     <span class="gradient-green text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg">
       <?php echo count($proposals); ?> Submitted
@@ -803,22 +945,29 @@ $isoDeadline = $current_milestone
     ?>
     
     <?php foreach ($grouped_proposals as $cluster_name => $cluster_proposals): ?>
-      <div class="mb-8">
-        <div class="cluster-header cursor-pointer bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-4 hover:shadow-md transition-all" onclick="toggleCluster('<?php echo md5($cluster_name); ?>')">
+      <div class="mb-10">
+        <div class="cluster-header cursor-pointer rounded-2xl p-6 mb-6 transition-all" onclick="toggleCluster('<?php echo md5($cluster_name); ?>')">
           <div class="flex items-center justify-between">
             <div class="flex items-center">
-              <i class="fas fa-layer-group text-blue-600 text-xl mr-3"></i>
-              <h3 class="text-xl font-bold text-gray-800"><?php echo htmlspecialchars($cluster_name); ?></h3>
-              <span class="ml-4 gradient-blue text-white text-sm font-bold px-3 py-2 rounded-xl shadow-lg">
-                <?php echo count($cluster_proposals); ?> proposal<?php echo count($cluster_proposals) !== 1 ? 's' : ''; ?>
-              </span>
+              <div class="bg-blue-500 p-3 rounded-xl mr-4">
+                <i class="fas fa-layer-group text-white text-xl"></i>
+              </div>
+              <div>
+                <h3 class="text-2xl font-bold text-gray-800"><?php echo htmlspecialchars($cluster_name); ?></h3>
+                <p class="text-gray-600">Click to expand proposals</p>
+              </div>
+              <div class="ml-6 bg-blue-500 text-white text-lg font-bold px-4 py-2 rounded-xl shadow-lg">
+                <?php echo count($cluster_proposals); ?>
+              </div>
             </div>
-            <i class="fas fa-chevron-down text-blue-600 transition-transform" id="chevron-<?php echo md5($cluster_name); ?>"></i>
+            <div class="bg-white/50 p-3 rounded-xl">
+              <i class="fas fa-chevron-down text-blue-600 transition-transform text-xl" id="chevron-<?php echo md5($cluster_name); ?>"></i>
+            </div>
           </div>
         </div>
         
         <div class="cluster-content hidden" id="cluster-<?php echo md5($cluster_name); ?>">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 ml-8">
           <?php foreach ($cluster_proposals as $proposal): 
         // Simplified status system
         // Default to pending
@@ -847,65 +996,86 @@ $isoDeadline = $current_milestone
         $has_paid = $payment_status['has_research_forum_payment'];
       ?>
       
-      <div class="proposal-card bg-white border border-gray-200 shadow-md rounded-2xl p-6 flex flex-col justify-between">
-        <!-- Header -->
-        <div>
-          <div class="flex justify-between items-start mb-3">
-            <h3 class="text-lg font-semibold text-gray-900">
-              <?php echo htmlspecialchars($proposal['title']); ?>
-            </h3>
+      <div class="proposal-card bg-gradient-to-br from-white via-blue-50 to-indigo-100 border border-blue-200 rounded-xl shadow-md hover:shadow-lg p-4 flex flex-col justify-between relative overflow-hidden min-h-[300px] transition-all duration-300">
+        
+        <div class="absolute top-3 right-3">
+          <?php if ($proposal['status'] === 'Completed'): ?>
+            <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+          <?php else: ?>
+            <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+          <?php endif; ?>
+        </div>
+      
+        <div class="relative z-10">
+          <!-- Header -->
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-2">
+            <div class="flex items-center flex-1 min-w-0">
+              <div class="gradient-blue p-2 sm:p-3 rounded-xl mr-2 sm:mr-3 shadow-lg flex-shrink-0">
+                <i class="fas fa-file-alt text-white text-sm sm:text-lg"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3 class="text-sm sm:text-lg font-bold text-gray-900 leading-tight truncate"><?php echo htmlspecialchars($proposal['title']); ?></h3>
+                <p class="text-xs text-blue-600 font-medium truncate"><?php echo htmlspecialchars($proposal['group_name']); ?></p>
+              </div>
+            </div>
             <span class="px-3 py-1 text-xs font-medium rounded-full <?php echo $status_class; ?>">
               <?php echo $status_text; ?>
             </span>
           </div>
 
-          <p class="text-sm text-gray-700 mb-2">
-            <span class="font-semibold">Group:</span> <?php echo htmlspecialchars($proposal['group_name']); ?>
-          </p>
-          <p class="text-sm text-gray-700 mb-2">
-            <span class="font-semibold">Program:</span> <?php echo htmlspecialchars($proposal['program']); ?>
-          </p>
-          <p class="text-sm text-gray-700 mb-2">
-            <span class="font-semibold">Submitted By:</span> <?php echo htmlspecialchars($proposal['submitted_by']); ?>
-          </p>
-          <p class="text-sm text-gray-500 mb-2">
-            <span class="font-semibold">Date:</span> <?php echo date('M j, Y', strtotime($proposal['submitted_at'])); ?>
-          </p>
-          
-          <!-- Payment Status Indicator -->
-          <div class="mb-4">
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-semibold text-gray-700">Payment Status:</span>
-              <?php if ($has_paid): ?>
-                <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                  <i class="fas fa-check-circle mr-1"></i> Paid
-                </span>
-              <?php else: ?>
-                <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                  <i class="fas fa-times-circle mr-1"></i> Not Paid
-                </span>
-              <?php endif; ?>
+          <!-- Details Section -->
+          <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+            <div class="grid grid-cols-1 gap-3">
+              <div class="flex items-center text-sm">
+                <i class="fas fa-graduation-cap text-blue-500 mr-3 w-4"></i>
+                <span class="text-gray-700 font-medium"><?php echo htmlspecialchars($proposal['program']); ?></span>
+              </div>
+              <div class="flex items-center text-sm">
+                <i class="fas fa-user text-blue-500 mr-3 w-4"></i>
+                <span class="text-gray-700 font-medium"><?php echo htmlspecialchars($proposal['submitted_by']); ?></span>
+              </div>
+              <div class="flex items-center text-sm">
+                <i class="fas fa-calendar text-blue-500 mr-3 w-4"></i>
+                <span class="text-gray-700 font-medium"><?php echo date('M j, Y', strtotime($proposal['submitted_at'])); ?></span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Actions -->
-        <div class="flex justify-center items-center mt-4 pt-4 border-t border-gray-100">
-          <?php if ($proposal['status'] === 'Completed'): ?>
-            <button onclick='openRevertModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)'
-              class="inline-flex items-center px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-xl shadow-lg transition-all duration-300 hover:scale-105">
-              <i class="fas fa-undo mr-2"></i> Revert Approval
-            </button>
-          <?php elseif (!$has_paid): ?>
-            <button disabled class="inline-flex items-center px-6 py-3 bg-red-500 text-white text-sm font-bold rounded-xl shadow-lg cursor-not-allowed">
-              <i class="fas fa-times mr-2"></i> Payment Required
-            </button>
-          <?php else: ?>
-            <button onclick='openProposalReviewModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)'
-              class="inline-flex items-center px-6 py-3 gradient-green text-white text-sm font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <i class="fas fa-check mr-2"></i> Review Proposal
-            </button>
-          <?php endif; ?>
+          <!-- Payment Section -->
+          <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+            <div class="flex items-start">
+              <i class="fas fa-credit-card text-purple-500 mr-3 mt-1 w-4"></i>
+              <div class="flex-1">
+                <p class="text-xs text-gray-600 font-medium uppercase tracking-wide mb-1">Payment Status</p>
+                <?php if ($has_paid): ?>
+                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                    <i class="fas fa-check-circle mr-1"></i>Verified
+                  </span>
+                <?php else: ?>
+                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                    <i class="fas fa-times-circle mr-1"></i>Required
+                  </span>
+                <?php endif; ?>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex flex-col sm:flex-row gap-2">
+            <?php if ($proposal['status'] === 'Completed'): ?>
+              <button type="button" onclick='openRevertModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)' class="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Revert Approval">
+                <i class="fas fa-undo mr-1"></i>Revert
+              </button>
+            <?php elseif (!$has_paid): ?>
+              <button disabled class="flex-1 bg-gradient-to-r from-red-400 to-red-600 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center cursor-not-allowed opacity-75" title="Payment Required">
+                <i class="fas fa-times mr-1"></i>Payment Required
+              </button>
+            <?php else: ?>
+              <button type="button" onclick='openProposalReviewModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)' class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Review Proposal">
+                <i class="fas fa-check mr-1"></i>Review
+              </button>
+            <?php endif; ?>
+          </div>
         </div>
       </div>
           <?php endforeach; ?>
@@ -914,304 +1084,400 @@ $isoDeadline = $current_milestone
       </div>
     <?php endforeach; ?>
   <?php else: ?>
-    <div class="text-center py-8">
-      <i class="fas fa-file-alt text-4xl text-gray-300 mb-4"></i>
-      <h3 class="text-lg font-medium text-gray-500">No proposals submitted yet</h3>
-      <p class="text-gray-400">Proposals will appear here once students submit them</p>
+    <div class="text-center py-16">
+      <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-12 max-w-md mx-auto">
+        <div class="bg-gray-200 rounded-full p-6 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+          <i class="fas fa-file-alt text-4xl text-gray-400"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-700 mb-4">No Proposals Yet</h3>
+        <p class="text-gray-500">Proposals will appear here once students submit them through the system.</p>
+      </div>
     </div>
   <?php endif; ?>
 </div>
 
     <!-- Create Timeline Modal -->
-    <div id="createTimelineModal" class="modal-container hidden">
-      <div class="modal-content">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Create New Timeline</h3>
-            <button type="button" onclick="toggleModal('createTimelineModal')" class="text-gray-500 hover:text-gray-700">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          <form method="POST">
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Timeline Title</label>
-              <input type="text" name="title" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+    <div id="createTimelineModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
-            </div>
+            <div class="inline-block bg-gradient-to-br from-white via-blue-50 to-indigo-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-2xl w-full modal-content border-0 max-h-[90vh] overflow-y-auto" style="scrollbar-width: thin; scrollbar-color: rgba(59, 130, 246, 0.3) transparent;">
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 border-0">
+                    <h3 class="text-lg font-bold flex items-center">
+                        <div class="bg-white/20 p-2 rounded-lg mr-3">
+                            <i class="fas fa-calendar-plus text-white text-sm"></i>
+                        </div>
+                        Create Timeline
+                    </h3>
+                    <p class="text-blue-100 mt-1 text-sm">Set up submission phases and milestones</p>
+                </div>
+                <form method="POST" id="createTimelineForm" class="p-6">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Timeline Title</label>
+                        <input type="text" name="title" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" required>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Description</label>
+                        <textarea name="description" rows="3" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
+                    </div>
 
-            <h4 class="text-lg font-medium mb-3">Milestones</h4>
-            <div id="milestoneContainer">
-              <div class="milestone-item mb-4 p-4 border border-gray-200 rounded-lg">
-                <div class="flex justify-between items-center mb-2">
-                  <h5 class="font-medium">Milestone #1</h5>
-                  <button type="button" class="text-red-500 hover:text-red-700 remove-milestone">
-                    <i class="fas fa-trash"></i>
-                  </button>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Milestones</label>
+                        <div id="milestoneContainer">
+                            <div class="milestone-item mb-4 p-4 border border-gray-200 rounded-lg">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h5 class="font-medium">Milestone #1</h5>
+                                    <button type="button" class="text-red-500 hover:text-red-700 remove-milestone">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                        <input type="text" name="milestone_title[]" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+                                        <input type="datetime-local" name="milestone_deadline[]" class="w-full px-3 py-2 border border-gray-300 rounded-md flatpickr" required>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <textarea name="milestone_description[]" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" id="addMilestone" class="bg-green-100 hover:bg-green-200 text-green-700 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                            <i class="fas fa-plus mr-2"></i>Add Milestone
+                        </button>
+                    </div>
+                </form>
+                <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
+                    <button type="button" onclick="toggleModal('createTimelineModal')" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button type="submit" form="createTimelineForm" name="create_timeline" class="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
+                        <i class="fas fa-save mr-2"></i>Create Timeline
+                    </button>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                    <input type="text" name="milestone_title[]" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-                    <input type="datetime-local" name="milestone_deadline[]" class="w-full px-3 py-2 border border-gray-300 rounded-md flatpickr" required>
-                  </div>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea name="milestone_description[]" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
-                </div>
-              </div>
             </div>
-
-            <div class="flex justify-between mt-4">
-              <button type="button" id="addMilestone" class="text-primary hover:text-secondary">
-                <i class="fas fa-plus mr-1"></i> Add Milestone
-              </button>
-              <div>
-                <button type="button" onclick="toggleModal('createTimelineModal')" class="mr-2 px-4 py-2 border border-gray-300 rounded-md">
-                  Cancel
-                </button>
-                <button type="submit" name="create_timeline" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md">
-                  Save Timeline
-                </button>
-              </div>
-            </div>
-          </form>
         </div>
-      </div>
     </div>
 
     <!-- Edit Timeline Modal -->
     <div id="editTimelineModal" class="modal-container hidden">
       <div class="modal-content">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Edit Timeline</h3>
-            <button type="button" onclick="toggleModal('editTimelineModal')" class="text-gray-500 hover:text-gray-700">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          <form method="POST">
-            <input type="hidden" id="edit_timeline_id" name="timeline_id">
-            <input type="hidden" id="deleted_milestones" name="deleted_milestones" value="">
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Timeline Title</label>
-              <input type="text" id="edit_title" name="title" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
-            </div>
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea id="edit_description" name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
-            </div>
-
-            <h4 class="text-lg font-medium mb-3">Milestones</h4>
-            <div id="editMilestoneContainer"><!-- populated by JS --></div>
-
-            <div class="flex justify-between mt-4">
-              <button type="button" id="addEditMilestone" class="text-primary hover:text-secondary">
-                <i class="fas fa-plus mr-1"></i> Add Milestone
-              </button>
+        <div class="modal-header">
+          <div class="flex justify-between items-center">
+            <div class="flex items-center">
+              <div class="bg-orange-500 p-3 rounded-2xl mr-4">
+                <i class="fas fa-edit text-white text-xl"></i>
+              </div>
               <div>
-                <button type="button" onclick="toggleModal('editTimelineModal')" class="mr-2 px-4 py-2 border border-gray-300 rounded-md">
-                  Cancel
-                </button>
-                <button type="submit" name="update_timeline" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md">
-                  Update Timeline
-                </button>
+                <h3 class="text-3xl font-bold text-gray-800">Edit Timeline</h3>
+                <p class="text-gray-600 mt-1">Modify timeline settings and milestones</p>
               </div>
             </div>
+            <button type="button" onclick="toggleModal('editTimelineModal')" class="bg-gray-100 hover:bg-gray-200 p-3 rounded-2xl transition-all duration-300 hover:scale-110">
+              <i class="fas fa-times text-gray-600 text-lg"></i>
+            </button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <form method="POST" id="editTimelineForm">
+            <input type="hidden" id="edit_timeline_id" name="timeline_id">
+            <input type="hidden" id="deleted_milestones" name="deleted_milestones" value="">
+            <div class="mb-6">
+              <label class="block text-sm font-bold text-gray-700 mb-3">Timeline Title</label>
+              <input type="text" id="edit_title" name="title" class="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-lg" required>
+            </div>
+            <div class="mb-8">
+              <label class="block text-sm font-bold text-gray-700 mb-3">Description</label>
+              <textarea id="edit_description" name="description" rows="4" class="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"></textarea>
+            </div>
+
+            <div class="flex items-center mb-6">
+              <div class="bg-green-500 p-2 rounded-xl mr-3">
+                <i class="fas fa-flag text-white"></i>
+              </div>
+              <h4 class="text-2xl font-bold text-gray-800">Milestones</h4>
+            </div>
+            <div id="editMilestoneContainer"><!-- populated by JS --></div>
+
+            <div class="flex justify-between mt-8">
+              <button type="button" id="addEditMilestone" class="bg-green-100 hover:bg-green-200 text-green-700 px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:scale-105">
+                <i class="fas fa-plus mr-2"></i> Add Milestone
+              </button>
+            </div>
           </form>
+        </div>
+        <div class="modal-footer">
+          <div class="flex justify-end space-x-4">
+            <button type="button" onclick="toggleModal('editTimelineModal')" class="px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-semibold transition-all duration-300 hover:scale-105">
+              Cancel
+            </button>
+            <button type="submit" form="editTimelineForm" name="update_timeline" class="px-8 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
+              <i class="fas fa-save mr-2"></i>Update Timeline
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Proposal Review Modal -->
-    <div id="proposalReviewModal" class="modal-container hidden">
-      <div class="modal-content" style="max-width: 800px;">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Review Proposal</h3>
-            <button type="button" onclick="toggleModal('proposalReviewModal')" class="text-gray-500 hover:text-gray-700">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          <form method="POST">
-            <input type="hidden" id="review_proposal_id" name="proposal_id">
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
-                <p id="review_group_name" class="text-sm text-gray-900 p-2 bg-gray-100 rounded-md"></p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Submitted By</label>
-                <p id="review_submitted_by" class="text-sm text-gray-900 p-2 bg-gray-100 rounded-md"></p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Submission Date</label>
-                <p id="review_submission_date" class="text-sm text-gray-900 p-2 bg-gray-100 rounded-md"></p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Current Status</label>
-                <p id="review_current_status" class="text-sm text-gray-900 p-2 bg-gray-100 rounded-md"></p>
-              </div>
+    <div id="proposalReviewModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
-            
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Title</label>
-              <p id="review_proposal_title" class="text-lg font-medium text-gray-900 p-2 bg-gray-100 rounded-md"></p>
-            </div>
-            
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Description</label>
-              <p id="review_proposal_description" class="text-sm text-gray-900 p-2 bg-gray-100 rounded-md h-32 overflow-y-auto"></p>
-            </div>
-            
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Download Proposal</label>
-              <a id="review_proposal_download" href="#" target="_blank" class="inline-flex items-center text-primary hover:text-secondary">
-                <i class="fas fa-download mr-2"></i> Download PDF File
-              </a>
-            </div>
-            
-            <div class="mb-6">
-              <button type="button" onclick="openApprovalModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md w-full" id="approvalButton">
-                Approve Proposal
-              </button>
-            </div>
-            
-            <!-- Payment Status Summary -->
-            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h4 class="text-lg font-medium mb-3">💰 Payment Status Summary</h4>
-              <div id="paymentStatusSummary" class="space-y-2">
-                <!-- Payment status will be populated by JavaScript -->
-              </div>
-            </div>
-            
+            <div class="inline-block bg-gradient-to-br from-white via-blue-50 to-indigo-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-4xl w-full modal-content border-0 max-h-[90vh] overflow-y-auto" style="scrollbar-width: thin; scrollbar-color: rgba(59, 130, 246, 0.3) transparent;">
+                <div class="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-4 border-0">
+                    <h3 class="text-lg font-bold flex items-center">
+                        <div class="bg-white/20 p-2 rounded-lg mr-3">
+                            <i class="fas fa-file-search text-white text-sm"></i>
+                        </div>
+                        Proposal Review
+                    </h3>
+                    <p class="text-purple-100 mt-1 text-sm">Evaluate and approve student proposal</p>
+                </div>
+                <form method="POST" class="p-6">
+                    <input type="hidden" id="review_proposal_id" name="proposal_id">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Group Name</label>
+                            <input type="text" id="review_group_name" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Submitted By</label>
+                            <input type="text" id="review_submitted_by" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Submission Date</label>
+                            <input type="text" id="review_submission_date" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Current Status</label>
+                            <input type="text" id="review_current_status" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Proposal Title</label>
+                        <input type="text" id="review_proposal_title" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" readonly>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Proposal Description</label>
+                        <textarea id="review_proposal_description" rows="3" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none" readonly></textarea>
+                    </div>
 
-            <div class="flex justify-end">
-              <button type="button" onclick="toggleModal('proposalReviewModal')" class="px-4 py-2 border border-gray-300 rounded-md">
-                Close
-              </button>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Download Proposal</label>
+                        <a id="review_proposal_download" href="#" target="_blank" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                            <i class="fas fa-download mr-2"></i>Download PDF File
+                        </a>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Payment Status</label>
+                        <div id="paymentStatusSummary" class="space-y-2">
+                            <!-- Payment status will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center mt-6">
+                        <button type="button" onclick="openApprovalModal()" class="bg-green-100 hover:bg-green-200 text-green-700 px-6 py-2 rounded-lg text-sm font-medium transition-all" id="approvalButton">
+                            <i class="fas fa-check mr-2"></i>Approve Proposal
+                        </button>
+                    </div>
+                </form>
+                <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
+                    <button type="button" onclick="toggleModal('proposalReviewModal')" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
+                        <i class="fas fa-times mr-2"></i>Close
+                    </button>
+                </div>
             </div>
-          </form>
         </div>
-      </div>
     </div>
 
     <!-- Approval Confirmation Modal -->
     <div id="approvalModal" class="modal-container hidden">
-      <div class="modal-content" style="max-width: 500px;">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-green-800">✅ Approve Proposal</h3>
-            <button type="button" onclick="toggleModal('approvalModal')" class="text-gray-500 hover:text-gray-700">
-              <i class="fas fa-times"></i>
+      <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+          <div class="flex justify-between items-center">
+            <div class="flex items-center">
+              <div class="bg-green-500 p-3 rounded-2xl mr-4">
+                <i class="fas fa-check-circle text-white text-xl"></i>
+              </div>
+              <div>
+                <h3 class="text-3xl font-bold text-green-800">Approve Proposal</h3>
+                <p class="text-green-600 mt-1">Confirm proposal approval</p>
+              </div>
+            </div>
+            <button type="button" onclick="toggleModal('approvalModal')" class="bg-gray-100 hover:bg-gray-200 p-3 rounded-2xl transition-all duration-300 hover:scale-110">
+              <i class="fas fa-times text-gray-600 text-lg"></i>
             </button>
           </div>
-          
-          <div class="mb-6">
-            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+        </div>
+        <div class="modal-body">
+          <div class="mb-8">
+            <div class="bg-green-50 border-2 border-green-200 rounded-2xl p-6 mb-6">
               <div class="flex items-center">
-                <i class="fas fa-check-circle text-green-600 text-2xl mr-3"></i>
+                <i class="fas fa-check-circle text-green-600 text-3xl mr-4"></i>
                 <div>
-                  <h4 class="font-semibold text-green-800">Ready for Approval</h4>
-                  <p class="text-green-700 text-sm">All requirements have been verified and the group has completed payment.</p>
+                  <h4 class="font-bold text-xl text-green-800 mb-2">Ready for Approval</h4>
+                  <p class="text-green-700">All requirements have been verified and the group has completed payment.</p>
                 </div>
               </div>
             </div>
             
-            <p class="text-gray-700 mb-4">Are you sure you want to approve this proposal? This action will:</p>
-            <ul class="list-disc list-inside text-sm text-gray-600 space-y-1 mb-4">
-              <li>Mark the proposal as completed</li>
-              <li>Allow the group to proceed to the next phase</li>
-              <li>Send approval notifications to all group members</li>
+            <p class="text-gray-700 mb-6 text-lg">Are you sure you want to approve this proposal? This action will:</p>
+            <ul class="list-none space-y-3 mb-6">
+              <li class="flex items-center text-gray-700">
+                <i class="fas fa-check text-green-600 mr-3"></i>
+                Mark the proposal as completed
+              </li>
+              <li class="flex items-center text-gray-700">
+                <i class="fas fa-arrow-right text-blue-600 mr-3"></i>
+                Allow the group to proceed to the next phase
+              </li>
+              <li class="flex items-center text-gray-700">
+                <i class="fas fa-bell text-yellow-600 mr-3"></i>
+                Send approval notifications to all group members
+              </li>
             </ul>
           </div>
           
-          <form method="POST">
+          <form method="POST" id="approvalForm">
             <input type="hidden" id="approval_proposal_id" name="proposal_id">
-            <div class="flex justify-end space-x-3">
-              <button type="button" onclick="toggleModal('approvalModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                Cancel
-              </button>
-              <button type="submit" name="check_requirements" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-semibold">
-                <i class="fas fa-check mr-2"></i>Approve Proposal
-              </button>
-            </div>
           </form>
+        </div>
+        <div class="modal-footer">
+          <div class="flex justify-end space-x-4">
+            <button type="button" onclick="toggleModal('approvalModal')" class="px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-semibold transition-all duration-300 hover:scale-105">
+              Cancel
+            </button>
+            <button type="submit" form="approvalForm" name="check_requirements" class="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
+              <i class="fas fa-check mr-2"></i>Approve Proposal
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Revert Approval Modal -->
-    <div id="revertModal" class="modal-container hidden">
-      <div class="modal-content" style="max-width: 500px;">
-        <div class="p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-orange-800">🔄 Revert Approval</h3>
-            <button type="button" onclick="toggleModal('revertModal')" class="text-gray-500 hover:text-gray-700">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          
-          <div class="mb-6">
-            <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
-              <div class="flex items-center">
-                <i class="fas fa-exclamation-triangle text-orange-600 text-2xl mr-3"></i>
-                <div>
-                  <h4 class="font-semibold text-orange-800">Warning: Revert Approval</h4>
-                  <p class="text-orange-700 text-sm">This will change the proposal status back to pending.</p>
+    <div id="revertModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <div class="inline-block bg-gradient-to-br from-white via-blue-50 to-indigo-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-2xl w-full modal-content border-0 max-h-[90vh] overflow-y-auto" style="scrollbar-width: thin; scrollbar-color: rgba(59, 130, 246, 0.3) transparent;">
+                <div class="bg-gradient-to-r from-orange-600 to-red-700 text-white p-4 border-0">
+                    <h3 class="text-lg font-bold flex items-center">
+                        <div class="bg-white/20 p-2 rounded-lg mr-3">
+                            <i class="fas fa-undo text-white text-sm"></i>
+                        </div>
+                        Revert Approval
+                    </h3>
+                    <p class="text-orange-100 mt-1 text-sm">Undo proposal approval</p>
                 </div>
-              </div>
+                <div class="p-6">
+                    <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle text-orange-600 text-xl mr-3"></i>
+                            <div>
+                                <h4 class="font-medium text-orange-800 mb-1">Warning: Revert Approval</h4>
+                                <p class="text-orange-700 text-sm">This will change the proposal status back to pending.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="text-gray-700 mb-4">Are you sure you want to revert this approval? This action will:</p>
+                    <ul class="list-none space-y-2 mb-6">
+                        <li class="flex items-center text-gray-700 text-sm">
+                            <i class="fas fa-arrow-left text-orange-600 mr-3 w-4"></i>
+                            Change proposal status from "Completed" to "Pending"
+                        </li>
+                        <li class="flex items-center text-gray-700 text-sm">
+                            <i class="fas fa-clock text-red-600 mr-3 w-4"></i>
+                            Remove the approval timestamp
+                        </li>
+                        <li class="flex items-center text-gray-700 text-sm">
+                            <i class="fas fa-redo text-blue-600 mr-3 w-4"></i>
+                            Allow the proposal to be reviewed again
+                        </li>
+                    </ul>
+                    
+                    <form method="POST" id="revertForm">
+                        <input type="hidden" id="revert_proposal_id" name="proposal_id">
+                    </form>
+                </div>
+                <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
+                    <button type="button" onclick="toggleModal('revertModal')" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </button>
+                    <button type="submit" form="revertForm" name="revert_approval" class="bg-gradient-to-r from-orange-600 to-red-700 hover:from-orange-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
+                        <i class="fas fa-undo mr-2"></i>Revert Approval
+                    </button>
+                </div>
             </div>
-            
-            <p class="text-gray-700 mb-4">Are you sure you want to revert this approval? This action will:</p>
-            <ul class="list-disc list-inside text-sm text-gray-600 space-y-1 mb-4">
-              <li>Change proposal status from "Completed" to "Pending"</li>
-              <li>Remove the approval timestamp</li>
-              <li>Allow the proposal to be reviewed again</li>
-            </ul>
-          </div>
-          
-          <form method="POST">
-            <input type="hidden" id="revert_proposal_id" name="proposal_id">
-            <div class="flex justify-end space-x-3">
-              <button type="button" onclick="toggleModal('revertModal')" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-                Cancel
-              </button>
-              <button type="submit" name="revert_approval" class="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-md font-semibold">
-                <i class="fas fa-undo mr-2"></i>Revert Approval
-              </button>
-            </div>
-          </form>
         </div>
-      </div>
     </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl p-8 flex items-center space-x-4">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <span class="text-lg font-semibold text-gray-700">Processing...</span>
+    </div>
+  </div>
 
   </div> <!-- /min-h-screen -->
 
   <script>
     // --- Modal helpers ---
-    function toggleModal(modalId){
-      const modal = document.getElementById(modalId);
-      modal.classList.toggle('hidden');
-      modal.classList.toggle('flex');
+    function toggleModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        
+        // Handle both modal systems
+        if (modal.classList.contains('modal-container')) {
+            // New modal system
+            modal.classList.toggle('hidden');
+        } else {
+            // Old modal system (createtimelinemodal and proposalReviewModal)
+            if (modal.classList.contains('opacity-0')) {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+            } else {
+                modal.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
     }
 
     // Close modals on backdrop click or ESC
     document.addEventListener('click', (e)=>{
       const mc = e.target.closest('.modal-container');
       if(mc && e.target === mc){ mc.classList.add('hidden'); mc.classList.remove('flex'); }
+      
+      // Handle old modal system backdrop clicks
+      const oldModal = e.target.closest('.modal-overlay');
+      if(oldModal && e.target.classList.contains('modal-overlay')){
+        oldModal.classList.add('opacity-0', 'pointer-events-none');
+      }
     });
     document.addEventListener('keydown', (e)=>{
       if(e.key === 'Escape'){
         document.querySelectorAll('.modal-container').forEach(m=>{
           m.classList.add('hidden'); m.classList.remove('flex');
+        });
+        document.querySelectorAll('.modal-overlay').forEach(m=>{
+          m.classList.add('opacity-0', 'pointer-events-none');
         });
       }
     });
@@ -1221,22 +1487,23 @@ $isoDeadline = $current_milestone
 
     function setBannerGradient(distance){
       const banner = document.getElementById('countdown-banner');
-      banner.classList.remove('from-primary','to-secondary','from-yellow-500','to-yellow-600','from-warning','to-orange-500','from-gray-500','to-gray-600');
-
+      banner.style.background = '';
+      
       if (distance === null) {
-        banner.classList.add('from-gray-500','to-gray-600');
+        banner.style.background = 'linear-gradient(135deg, rgba(107, 114, 128, 0.95) 0%, rgba(75, 85, 99, 0.95) 100%)';
         return;
       }
       if (distance < 0) {
-        // Past — let reload handle it
         return;
       }
       if (distance < 24*60*60*1000) {
-        banner.classList.add('from-warning','to-orange-500');
+        banner.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%)';
       } else if (distance < 3*24*60*60*1000) {
-        banner.classList.add('from-yellow-500','to-yellow-600');
+        banner.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.95) 0%, rgba(217, 119, 6, 0.95) 100%)';
+      } else if (distance < 7*24*60*60*1000) {
+        banner.style.background = 'linear-gradient(135deg, rgba(251, 191, 36, 0.95) 0%, rgba(245, 158, 11, 0.95) 100%)';
       } else {
-        banner.classList.add('from-primary','to-secondary');
+        banner.style.background = 'linear-gradient(135deg, rgba(37, 99, 235, 0.95) 0%, rgba(124, 58, 237, 0.95) 50%, rgba(79, 70, 229, 0.95) 100%)';
       }
     }
 
@@ -1330,12 +1597,21 @@ $isoDeadline = $current_milestone
 
     // Proposal Review Modal
     function openProposalReviewModal(proposal) {
+      console.log('Opening proposal review modal for:', proposal);
+      
+      // Check if modal exists
+      const modal = document.getElementById('proposalReviewModal');
+      if (!modal) {
+        console.error('Proposal review modal not found');
+        return;
+      }
+      
       document.getElementById('review_proposal_id').value = proposal.id;
-      document.getElementById('review_group_name').textContent = proposal.group_name;
-      document.getElementById('review_submitted_by').textContent = proposal.submitted_by;
-      document.getElementById('review_submission_date').textContent = new Date(proposal.submitted_at).toLocaleDateString();
-      document.getElementById('review_proposal_title').textContent = proposal.title;
-      document.getElementById('review_proposal_description').textContent = proposal.description;
+      document.getElementById('review_group_name').value = proposal.group_name;
+      document.getElementById('review_submitted_by').value = proposal.submitted_by;
+      document.getElementById('review_submission_date').value = new Date(proposal.submitted_at).toLocaleDateString();
+      document.getElementById('review_proposal_title').value = proposal.title;
+      document.getElementById('review_proposal_description').value = proposal.description;
       document.getElementById('review_proposal_download').href = proposal.file_path;
       
       // Set current status
@@ -1353,7 +1629,7 @@ $isoDeadline = $current_milestone
         }
       }
       
-      document.getElementById('review_current_status').textContent = statusText;
+      document.getElementById('review_current_status').value = statusText;
       
       // Set existing feedback
       const feedbackTextarea = document.querySelector('textarea[name="feedback"]');
@@ -1366,8 +1642,6 @@ $isoDeadline = $current_milestone
       
       // Update button based on status and payment
       updateApprovalButton(proposal);
-      
-
       
       toggleModal('proposalReviewModal');
     }
@@ -1401,13 +1675,28 @@ $isoDeadline = $current_milestone
     
     // Open revert modal
     function openRevertModal(proposal) {
+      console.log('Opening revert modal for:', proposal);
+      
+      // Check if modal exists
+      const modal = document.getElementById('revertModal');
+      if (!modal) {
+        console.error('Revert modal not found');
+        return;
+      }
+      
       if (proposal) {
         document.getElementById('revert_proposal_id').value = proposal.id;
       } else {
         const proposalId = document.getElementById('review_proposal_id').value;
         document.getElementById('revert_proposal_id').value = proposalId;
       }
-      toggleModal('proposalReviewModal');
+      
+      // Close review modal if open
+      const reviewModal = document.getElementById('proposalReviewModal');
+      if (reviewModal && !reviewModal.classList.contains('opacity-0')) {
+        toggleModal('proposalReviewModal');
+      }
+      
       toggleModal('revertModal');
     }
     
@@ -1469,6 +1758,14 @@ $isoDeadline = $current_milestone
         h5.textContent = `Milestone #${idx+1}`;
       });
     });
+
+    // Make functions globally accessible
+    window.openProposalReviewModal = openProposalReviewModal;
+    window.openRevertModal = openRevertModal;
+    window.openApprovalModal = openApprovalModal;
+    window.updateApprovalButton = updateApprovalButton;
+    window.updatePaymentStatusSummary = updatePaymentStatusSummary;
+    window.toggleModal = toggleModal;
 
     // Add new milestone in edit modal
     document.getElementById('addEditMilestone').addEventListener('click', function(){
@@ -1556,7 +1853,7 @@ $isoDeadline = $current_milestone
       }
     });
 
-    // Toggle cluster visibility
+    // Toggle cluster visibility with smooth animation
     function toggleCluster(clusterId) {
       const content = document.getElementById('cluster-' + clusterId);
       const chevron = document.getElementById('chevron-' + clusterId);
@@ -1564,9 +1861,25 @@ $isoDeadline = $current_milestone
       if (content.classList.contains('hidden')) {
         content.classList.remove('hidden');
         chevron.style.transform = 'rotate(180deg)';
+        // Add smooth slide animation
+        content.style.opacity = '0';
+        content.style.transform = 'translateY(-20px)';
+        setTimeout(() => {
+          content.style.transition = 'all 0.3s ease';
+          content.style.opacity = '1';
+          content.style.transform = 'translateY(0)';
+        }, 10);
       } else {
-        content.classList.add('hidden');
+        content.style.transition = 'all 0.3s ease';
+        content.style.opacity = '0';
+        content.style.transform = 'translateY(-20px)';
         chevron.style.transform = 'rotate(0deg)';
+        setTimeout(() => {
+          content.classList.add('hidden');
+          content.style.opacity = '';
+          content.style.transform = '';
+          content.style.transition = '';
+        }, 300);
       }
     }
     
@@ -1639,14 +1952,45 @@ $isoDeadline = $current_milestone
       });
     }
 
+    // Show loading overlay
+    function showLoading() {
+      document.getElementById('loadingOverlay').classList.remove('hidden');
+    }
+    
+    // Hide loading overlay
+    function hideLoading() {
+      document.getElementById('loadingOverlay').classList.add('hidden');
+    }
+    
+    // Enhanced form submission with loading
+    function submitWithLoading(form) {
+      showLoading();
+      form.submit();
+    }
+
     // Init on load
     document.addEventListener('DOMContentLoaded', function(){
       // Initialize any existing flatpickr fields
-      flatpickr(".flatpickr", { enableTime:true, dateFormat:"Y-m-d H:i", minDate:"today" });
+      flatpickr(".flatpickr", { 
+        enableTime: true, 
+        dateFormat: "Y-m-d H:i", 
+        minDate: "today",
+        theme: "material_blue"
+      });
 
       // Countdown every second
       updateAdminCountdown();
       setInterval(updateAdminCountdown, 1000);
+      
+      // Add loading to form submissions
+      document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function() {
+          showLoading();
+        });
+      });
+      
+      // Auto-hide loading after page load
+      setTimeout(hideLoading, 500);
     });
   </script>
 </body>

@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $school_year = $start_year . '-' . ($start_year + 1);
         
         $capacity = (int) $_POST['capacity'];
-        $programs = ['BSCS', 'BSBA', 'BSED', 'BSIT', 'BSCRIM'];
+        $programs = ['BS Information Technology', 'BS Hospitality Management', 'BS Office Administration', 'BS Business Administration', 'BS Criminology', 'Bachelor of Elementary Education', 'Bachelor of Secondary Education', 'BS Computer Engineering', 'BS Tourism Management', 'BS Entrepreneurship', 'BS Accounting Information System', 'BS Psychology', 'BL Information Science'];
         
         foreach ($programs as $program) {
             for ($i = 41001; $i <= 41010; $i++) {
@@ -723,11 +723,19 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                 <div class="flex gap-3">
                                     <select id="programFilter" class="border-2 border-gray-200 text-gray-700 py-3 px-4 rounded-xl text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
                                         <option value="">All Programs</option>
-                                        <option value="BSCS">BSCS - Computer Science</option>
-                                        <option value="BSBA">BSBA - Business Administration</option>
-                                        <option value="BSED">BSED - Education</option>
-                                        <option value="BSIT">BSIT - Information Technology</option>
-                                        <option value="BSCRIM">BSCRIM - Criminology</option>
+                                        <option value="BS Information Technology">BS Information Technology (BSIT)</option>
+                                        <option value="BS Hospitality Management">BS Hospitality Management (BSHM)</option>
+                                        <option value="BS Office Administration">BS Office Administration (BSOA)</option>
+                                        <option value="BS Business Administration">BS Business Administration (BSBA)</option>
+                                        <option value="BS Criminology">BS Criminology (BSCRIM)</option>
+                                        <option value="Bachelor of Elementary Education">Bachelor of Elementary Education (BEED)</option>
+                                        <option value="Bachelor of Secondary Education">Bachelor of Secondary Education (BSED)</option>
+                                        <option value="BS Computer Engineering">BS Computer Engineering (BSCE)</option>
+                                        <option value="BS Tourism Management">BS Tourism Management (BSTM)</option>
+                                        <option value="BS Entrepreneurship">BS Entrepreneurship (BSE)</option>
+                                        <option value="BS Accounting Information System">BS Accounting Information System (BSAIS)</option>
+                                        <option value="BS Psychology">BS Psychology (BSPSYCH)</option>
+                                        <option value="BL Information Science">BL Information Science (BLIS)</option>
                                     </select>
                                     <button class="gradient-green text-white font-semibold py-3 px-6 rounded-xl flex items-center transition-all duration-300 hover:shadow-lg hover:scale-105" data-bs-toggle="modal" data-bs-target="#bulkCreateModal">
                                         <i class="fas fa-magic mr-2"></i>Auto Generate
@@ -904,11 +912,19 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                 <div class="flex gap-3">
                                     <select id="departmentFilter" class="border-2 border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm font-medium focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all">
                                         <option value="">All Departments</option>
-                                        <option value="Computer Science">Computer Science</option>
                                         <option value="Information Technology">Information Technology</option>
+                                        <option value="Hospitality Management">Hospitality Management</option>
+                                        <option value="Office Administration">Office Administration</option>
                                         <option value="Business Administration">Business Administration</option>
-                                        <option value="Education">Education</option>
                                         <option value="Criminology">Criminology</option>
+                                        <option value="Elementary Education">Elementary Education</option>
+                                        <option value="Secondary Education">Secondary Education</option>
+                                        <option value="Computer Engineering">Computer Engineering</option>
+                                        <option value="Tourism Management">Tourism Management</option>
+                                        <option value="Entrepreneurship">Entrepreneurship</option>
+                                        <option value="Accounting Information System">Accounting Information System</option>
+                                        <option value="Psychology">Psychology</option>
+                                        <option value="Information Science">Information Science</option>
                                     </select>
                                     <button class="gradient-purple text-white font-semibold py-2 px-4 rounded-lg flex items-center transition-all duration-300 hover:shadow-lg hover:scale-105" data-bs-toggle="modal" data-bs-target="#createFacultyModal">
                                         <i class="fas fa-plus mr-2"></i>Add Faculty
@@ -1017,27 +1033,27 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             <div class="grid grid-cols-1 gap-2 mb-4">
                                 <div class="flex items-center p-2 bg-blue-50 rounded-lg">
                                     <i class="fas fa-laptop-code text-blue-600 mr-3"></i>
-                                    <span class="text-gray-700">BSCS - Computer Science (10 clusters)</span>
+                                    <span class="text-gray-700">BS Information Technology (10 clusters)</span>
                                 </div>
                                 <div class="flex items-center p-2 bg-purple-50 rounded-lg">
                                     <i class="fas fa-briefcase text-purple-600 mr-3"></i>
-                                    <span class="text-gray-700">BSBA - Business Administration (10 clusters)</span>
+                                    <span class="text-gray-700">BS Business Administration (10 clusters)</span>
                                 </div>
                                 <div class="flex items-center p-2 bg-yellow-50 rounded-lg">
                                     <i class="fas fa-graduation-cap text-yellow-600 mr-3"></i>
-                                    <span class="text-gray-700">BSED - Education (10 clusters)</span>
+                                    <span class="text-gray-700">Bachelor of Elementary Education (10 clusters)</span>
+                                </div>
+                                <div class="flex items-center p-2 bg-green-50 rounded-lg">
+                                    <i class="fas fa-shield-alt text-green-600 mr-3"></i>
+                                    <span class="text-gray-700">BS Criminology (10 clusters)</span>
                                 </div>
                                 <div class="flex items-center p-2 bg-indigo-50 rounded-lg">
                                     <i class="fas fa-server text-indigo-600 mr-3"></i>
-                                    <span class="text-gray-700">BSIT - Information Technology (10 clusters)</span>
-                                </div>
-                                <div class="flex items-center p-2 bg-red-50 rounded-lg">
-                                    <i class="fas fa-shield-alt text-red-600 mr-3"></i>
-                                    <span class="text-gray-700">BSCRIM - Criminology (10 clusters)</span>
+                                    <span class="text-gray-700">BS Computer Engineering (10 clusters)</span>
                                 </div>
                             </div>
                             <div class="bg-green-100 border border-green-200 rounded-lg p-3">
-                                <p class="text-green-800 font-semibold text-center">Total: 50 clusters will be created</p>
+                                <p class="text-green-800 font-semibold text-center">Total: 130 clusters will be created (13 programs × 10 clusters each)</p>
                             </div>
                         </div>
                         <div class="space-y-4">
@@ -1068,7 +1084,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                     </div>
                     <div class="modal-footer bg-white/80 backdrop-blur-sm p-6 border-0 space-x-3">
                         <button type="button" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="bulk_create" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-lg" onclick="return confirm('Create 50 clusters for all programs?')">Generate All Clusters</button>
+                        <button type="submit" name="bulk_create" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-lg" onclick="return confirm('Create 130 clusters for all programs?')">Generate All Clusters</button>
                     </div>
                 </form>
             </div>
@@ -1094,11 +1110,19 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             <label class="block text-gray-700 font-medium mb-2">Program</label>
                             <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" name="program" required>
                                 <option value="">-- Select Program --</option>
-                                <option value="BSCS">BSCS - Computer Science</option>
-                                <option value="BSBA">BSBA - Business Administration</option>
-                                <option value="BSED">BSED - Education</option>
-                                <option value="BSIT">BSIT - Information Technology</option>
-                                <option value="BSCRIM">BSCRIM - Criminology</option>
+                                <option value="BS Information Technology">BS Information Technology (BSIT)</option>
+                                <option value="BS Hospitality Management">BS Hospitality Management (BSHM)</option>
+                                <option value="BS Office Administration">BS Office Administration (BSOA)</option>
+                                <option value="BS Business Administration">BS Business Administration (BSBA)</option>
+                                <option value="BS Criminology">BS Criminology (BSCRIM)</option>
+                                <option value="Bachelor of Elementary Education">Bachelor of Elementary Education (BEED)</option>
+                                <option value="Bachelor of Secondary Education">Bachelor of Secondary Education (BSED)</option>
+                                <option value="BS Computer Engineering">BS Computer Engineering (BSCE)</option>
+                                <option value="BS Tourism Management">BS Tourism Management (BSTM)</option>
+                                <option value="BS Entrepreneurship">BS Entrepreneurship (BSE)</option>
+                                <option value="BS Accounting Information System">BS Accounting Information System (BSAIS)</option>
+                                <option value="BS Psychology">BS Psychology (BSPSYCH)</option>
+                                <option value="BL Information Science">BL Information Science (BLIS)</option>
                             </select>
                         </div>
                         <div>
@@ -1431,11 +1455,19 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             <label class="block text-gray-700 font-medium mb-2">Program</label>
                             <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" name="department" required>
                                 <option value="">-- Select Program --</option>
-                                <option value="Computer Science">Computer Science</option>
                                 <option value="Information Technology">Information Technology</option>
+                                <option value="Hospitality Management">Hospitality Management</option>
+                                <option value="Office Administration">Office Administration</option>
                                 <option value="Business Administration">Business Administration</option>
-                                <option value="Education">Education</option>
                                 <option value="Criminology">Criminology</option>
+                                <option value="Elementary Education">Elementary Education</option>
+                                <option value="Secondary Education">Secondary Education</option>
+                                <option value="Computer Engineering">Computer Engineering</option>
+                                <option value="Tourism Management">Tourism Management</option>
+                                <option value="Entrepreneurship">Entrepreneurship</option>
+                                <option value="Accounting Information System">Accounting Information System</option>
+                                <option value="Psychology">Psychology</option>
+                                <option value="Information Science">Information Science</option>
                             </select>
                         </div>
                         <div>
@@ -1480,11 +1512,19 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             <label class="block text-gray-700 font-medium mb-2">Program</label>
                             <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" name="department" id="edit_department" required>
                                 <option value="">-- Select Program --</option>
-                                <option value="Computer Science">Computer Science</option>
                                 <option value="Information Technology">Information Technology</option>
+                                <option value="Hospitality Management">Hospitality Management</option>
+                                <option value="Office Administration">Office Administration</option>
                                 <option value="Business Administration">Business Administration</option>
-                                <option value="Education">Education</option>
                                 <option value="Criminology">Criminology</option>
+                                <option value="Elementary Education">Elementary Education</option>
+                                <option value="Secondary Education">Secondary Education</option>
+                                <option value="Computer Engineering">Computer Engineering</option>
+                                <option value="Tourism Management">Tourism Management</option>
+                                <option value="Entrepreneurship">Entrepreneurship</option>
+                                <option value="Accounting Information System">Accounting Information System</option>
+                                <option value="Psychology">Psychology</option>
+                                <option value="Information Science">Information Science</option>
                             </select>
                         </div>
                         <div>

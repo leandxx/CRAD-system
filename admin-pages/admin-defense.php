@@ -30,8 +30,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } elseif (strtotime($start_time) >= strtotime($end_time)) {
             $error_message = "End time must be after start time.";
         } else {
-            // Check room availability
-            $availability_query = "SELECT COUNT(*) as conflict_count 
+            // Check if all group members have paid required fees
+            $unpaid_check = "SELECT COUNT(*) as unpaid_count 
+                            FROM group_members gm 
+                            WHERE gm.group_id = '$group_id' 
+                            AND gm.student_id NOT IN (
+                                SELECT DISTINCT student_id 
+                                FROM payments 
+                                WHERE status = 'approved' 
+                                AND payment_type IN ('research_forum', 'pre_oral_defense')
+                            )";
+            $unpaid_result = mysqli_query($conn, $unpaid_check);
+            $unpaid_data = mysqli_fetch_assoc($unpaid_result);
+            
+            if ($unpaid_data['unpaid_count'] > 0) {
+                $error_message = "Cannot schedule defense. Some group members have unpaid fees. Please verify payment status first.";
+            } else {
+                // Check room availability
+                $availability_query = "SELECT COUNT(*) as conflict_count 
                                   FROM defense_schedules 
                                   WHERE room_id = '$room_id' 
                                   AND defense_date = '$defense_date' 
@@ -41,12 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                       (start_time < '$end_time' AND end_time >= '$end_time') OR
                                       (start_time >= '$start_time' AND end_time <= '$end_time')
                                   )";
-            $availability_result = mysqli_query($conn, $availability_query);
-            $availability_data = mysqli_fetch_assoc($availability_result);
-            
-            if ($availability_data['conflict_count'] > 0) {
-                $error_message = "Room is not available during the selected time slot. Please choose a different time or room.";
-            } else {
+                $availability_result = mysqli_query($conn, $availability_query);
+                $availability_data = mysqli_fetch_assoc($availability_result);
+                
+                if ($availability_data['conflict_count'] > 0) {
+                    $error_message = "Room is not available during the selected time slot. Please choose a different time or room.";
+                } else {
 
         // Default status = scheduled
         $status = 'scheduled';
@@ -79,11 +95,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Delete existing panel members first (to prevent duplicates)
             mysqli_query($conn, "DELETE FROM defense_panel WHERE defense_id = '$defense_id'");
             
-            // Insert panel members
-            foreach ($panel_members as $faculty_id) {
-                $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
+            // Insert panel members with their roles
+            foreach ($panel_members as $member_data) {
+                $parts = explode('|', $member_data);
+                $faculty_id = mysqli_real_escape_string($conn, $parts[0]);
+                $role = mysqli_real_escape_string($conn, $parts[1] ?? 'member');
+                
                 $panel_query = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
-                               VALUES ('$defense_id', '$faculty_id', 'member')";
+                               VALUES ('$defense_id', '$faculty_id', '$role')";
                 mysqli_query($conn, $panel_query);
             }
 
@@ -105,6 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } else {
             $error_message = "Error scheduling defense: " . mysqli_error($conn);
         }
+                }
             }
         }
     }
@@ -185,10 +205,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $delete_panel_query = "DELETE FROM defense_panel WHERE defense_id = '$defense_id'";
             mysqli_query($conn, $delete_panel_query);
 
-            foreach ($panel_members as $faculty_id) {
-                $faculty_id = mysqli_real_escape_string($conn, $faculty_id);
+            // Insert panel members with their roles
+            foreach ($panel_members as $member_data) {
+                $parts = explode('|', $member_data);
+                $faculty_id = mysqli_real_escape_string($conn, $parts[0]);
+                $role = mysqli_real_escape_string($conn, $parts[1] ?? 'member');
+                
                 $panel_query = "INSERT INTO defense_panel (defense_id, faculty_id, role) 
-                               VALUES ('$defense_id', '$faculty_id', 'member')";
+                               VALUES ('$defense_id', '$faculty_id', '$role')";
                 mysqli_query($conn, $panel_query);
             }
 
@@ -309,6 +333,14 @@ if (empty($accepted_panel_members)) {
     while ($panel_member = mysqli_fetch_assoc($all_panel_result)) {
         $accepted_panel_members[] = $panel_member;
     }
+}
+
+// Get all groups with their programs for filtering
+$groups_programs_query = "SELECT id, name, program FROM groups ORDER BY name";
+$groups_programs_result = mysqli_query($conn, $groups_programs_query);
+$groups_programs = [];
+while ($group_program = mysqli_fetch_assoc($groups_programs_result)) {
+    $groups_programs[$group_program['id']] = strtolower($group_program['program']);
 }
 
 // Get all rooms
@@ -837,6 +869,25 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             });
             
             // Show active content
+            document.querySelectorAll('.panel-content').forEach(content => {
+                if (content.getAttribute('data-tab') === tabName) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+        
+        // Function to switch between edit panel tabs
+        function switchEditPanelTab(tabName) {
+            document.querySelectorAll('.panel-tab').forEach(tab => {
+                if (tab.getAttribute('data-tab') === tabName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+
             document.querySelectorAll('.panel-content').forEach(content => {
                 if (content.getAttribute('data-tab') === tabName) {
                     content.classList.add('active');
@@ -1863,64 +1914,52 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     
                     <!-- Chairperson Panel Content -->
                     <div class="panel-content active" data-tab="chairperson">
-                        <?php 
-                        $chairpersons = array_filter($accepted_panel_members, function($member) {
-                            return $member['role'] === 'chairperson';
-                        });
-                        if (!empty($chairpersons)): ?>
-                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-                            <?php foreach ($chairpersons as $panel_member): ?>
-                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
-                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-3 rounded text-primary focus:ring-primary">
+                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50" id="chairperson-list">
+                            <?php 
+                            $chairpersons = array_filter($accepted_panel_members, function($member) {
+                                return $member['role'] === 'chairperson';
+                            });
+                            foreach ($chairpersons as $panel_member): ?>
+                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all panel-member-item" data-program="<?php echo strtolower($panel_member['program']); ?>">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|chair" class="mr-3 rounded text-primary focus:ring-primary">
                                 <div class="flex-1">
                                     <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
                                     <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
-                                    <?php if (!empty($panel_member['specialization'])): ?>
-                                    <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
-                                    <?php endif; ?>
+                                    <div class="text-xs text-purple-600 mt-1"><?php echo ucfirst($panel_member['program']); ?> Program</div>
                                 </div>
                             </label>
                             <?php endforeach; ?>
                         </div>
                         <p class="text-xs text-gray-500 mt-2">Select chairperson for this defense schedule.</p>
-                        <?php else: ?>
-                        <div class="text-center p-6 border rounded-lg bg-gray-50">
+                        <div id="no-chairpersons-message" class="text-center p-6 border rounded-lg bg-gray-50 hidden">
                             <i class="fas fa-user-tie text-gray-300 text-3xl mb-3"></i>
-                            <p class="text-gray-500 text-sm mb-2">No chairpersons found.</p>
-                            <p class="text-xs text-gray-400">Please add chairpersons in the Panel Assignment section first.</p>
+                            <p class="text-gray-500 text-sm mb-2">No chairpersons found for this program.</p>
                         </div>
-                        <?php endif; ?>
                     </div>
                     
                     <!-- Members Panel Content -->
                     <div class="panel-content" data-tab="member">
-                        <?php 
-                        $members = array_filter($accepted_panel_members, function($member) {
-                            return $member['role'] === 'member';
-                        });
-                        if (!empty($members)): ?>
-                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-                            <?php foreach ($members as $panel_member): ?>
-                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
-                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="mr-3 rounded text-primary focus:ring-primary">
+                        <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50" id="members-list">
+                            <?php 
+                            $members = array_filter($accepted_panel_members, function($member) {
+                                return $member['role'] === 'member';
+                            });
+                            foreach ($members as $panel_member): ?>
+                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all panel-member-item" data-program="<?php echo strtolower($panel_member['program']); ?>">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|member" class="mr-3 rounded text-primary focus:ring-primary">
                                 <div class="flex-1">
                                     <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
                                     <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
-                                    <?php if (!empty($panel_member['specialization'])): ?>
                                     <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
-                                    <?php endif; ?>
                                 </div>
                             </label>
                             <?php endforeach; ?>
                         </div>
                         <p class="text-xs text-gray-500 mt-2">Select panel members for this defense schedule.</p>
-                        <?php else: ?>
-                        <div class="text-center p-6 border rounded-lg bg-gray-50">
+                        <div id="no-members-message" class="text-center p-6 border rounded-lg bg-gray-50 hidden">
                             <i class="fas fa-users text-gray-300 text-3xl mb-3"></i>
-                            <p class="text-gray-500 text-sm mb-2">No panel members found.</p>
-                            <p class="text-xs text-gray-400">Please add panel members in the Panel Assignment section first.</p>
+                            <p class="text-gray-500 text-sm mb-2">No panel members found for this program.</p>
                         </div>
-                        <?php endif; ?>
                     </div>
                 </div>
                 
@@ -2004,66 +2043,53 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     
                     <!-- Edit Chairperson Panel Content -->
                     <div class="panel-content active" data-tab="edit_chairperson">
-                        <?php 
-                        $chairpersons = array_filter($accepted_panel_members, function($member) {
-                            return $member['role'] === 'chairperson';
-                        });
-                        if (!empty($chairpersons)): ?>
-                        <div class="grid grid-cols-1 gap-2 max-h-64 overflow-y-scroll p-2 border rounded-lg bg-gray-50">
-                            <?php foreach ($chairpersons as $panel_member): ?>
-                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
-                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="edit-panel-member mr-3 rounded text-primary focus:ring-primary" data-id="<?php echo $panel_member['id']; ?>">
+                        <div class="grid grid-cols-1 gap-2 max-h-64 overflow-y-scroll p-2 border rounded-lg bg-gray-50" id="edit-chairperson-list">
+                            <?php 
+                            $chairpersons = array_filter($accepted_panel_members, function($member) {
+                                return $member['role'] === 'chairperson';
+                            });
+                            foreach ($chairpersons as $panel_member): ?>
+                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all edit-panel-member-item" data-program="<?php echo strtolower($panel_member['program']); ?>">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|chair" class="edit-panel-member mr-3 rounded text-primary focus:ring-primary" data-id="<?php echo $panel_member['id']; ?>">
                                 <div class="flex-1">
                                     <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
                                     <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
-                                    <?php if (!empty($panel_member['specialization'])): ?>
-                                    <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
-                                    <?php endif; ?>
+                                    <div class="text-xs text-purple-600 mt-1"><?php echo ucfirst($panel_member['program']); ?> Program</div>
                                 </div>
                             </label>
                             <?php endforeach; ?>
                         </div>
                         <p class="text-xs text-gray-500 mt-2">Select chairperson for this defense schedule.</p>
-                        <?php else: ?>
-                        <div class="text-center p-6 border rounded-lg bg-gray-50">
+                        <div id="edit-no-chairpersons-message" class="text-center p-6 border rounded-lg bg-gray-50 hidden">
                             <i class="fas fa-user-tie text-gray-300 text-3xl mb-3"></i>
-                            <p class="text-gray-500 text-sm mb-2">No chairpersons found.</p>
-                            <p class="text-xs text-gray-400">Please add chairpersons in the Panel Assignment section first.</p>
+                            <p class="text-gray-500 text-sm mb-2">No chairpersons found for this program.</p>
                         </div>
-                        <?php endif; ?>
                     </div>
                     
                     <!-- Edit Members Panel Content -->
                     <div class="panel-content" data-tab="edit_member">
-                        <?php 
-                        $members = array_filter($accepted_panel_members, function($member) {
-                            return $member['role'] === 'member';
-                        });
-                        if (!empty($members)): ?>
-                        <div class="grid grid-cols-1 gap-2 max-h-64 overflow-y-scroll p-2 border rounded-lg bg-gray-50">
-                            <?php foreach ($members as $panel_member): ?>
-                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all">
-                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>" class="edit-panel-member mr-3 rounded text-primary focus:ring-primary" data-id="<?php echo $panel_member['id']; ?>">
+                        <div class="grid grid-cols-1 gap-2 max-h-64 overflow-y-scroll p-2 border rounded-lg bg-gray-50" id="edit-members-list">
+                            <?php 
+                            $members = array_filter($accepted_panel_members, function($member) {
+                                return $member['role'] === 'member';
+                            });
+                            foreach ($members as $panel_member): ?>
+                            <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all edit-panel-member-item" data-program="<?php echo strtolower($panel_member['program']); ?>">
+                                <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|member" class="edit-panel-member mr-3 rounded text-primary focus:ring-primary" data-id="<?php echo $panel_member['id']; ?>">
                                 <div class="flex-1">
                                     <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
                                     <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
-                                    <?php if (!empty($panel_member['specialization'])): ?>
                                     <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
-                                    <?php endif; ?>
                                 </div>
                             </label>
                             <?php endforeach; ?>
                         </div>
                         <p class="text-xs text-gray-500 mt-2">Select panel members for this defense schedule.</p>
-                        <?php else: ?>
-                        <div class="text-center p-6 border rounded-lg bg-gray-50">
+                        <div id="edit-no-members-message" class="text-center p-6 border rounded-lg bg-gray-50 hidden">
                             <i class="fas fa-users text-gray-300 text-3xl mb-3"></i>
-                            <p class="text-gray-500 text-sm mb-2">No panel members found.</p>
-                            <p class="text-xs text-gray-400">Please add panel members in the Panel Assignment section first.</p>
+                            <p class="text-gray-500 text-sm mb-2">No panel members found for this program.</p>
                         </div>
-                        <?php endif; ?>
                     </div>
-                    
                 </div>
                 </div>
                 
@@ -2366,6 +2392,11 @@ function populateEditForm(schedule) {
         document.getElementById('edit_start_time').value = schedule.start_time || '';
         document.getElementById('edit_end_time').value = schedule.end_time || '';
         
+        // Filter panel members by group's program
+        if (schedule.group_id) {
+            filterEditPanelMembersByGroup(schedule.group_id);
+        }
+        
         // Set current time slot and populate available slots
         if (schedule.start_time && schedule.end_time) {
             const currentSlot = `${schedule.start_time}|${schedule.end_time}`;
@@ -2404,16 +2435,7 @@ function populateEditForm(schedule) {
     }
 }
 
-/* ========= PANEL TABS ========= */
-function switchEditPanelTab(tabName) {
-    document.querySelectorAll('.panel-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.tab === tabName);
-    });
 
-    document.querySelectorAll('.panel-content').forEach(content => {
-        content.classList.toggle('active', content.dataset.tab === tabName);
-    });
-}
 
 /* ========= VIEW UPCOMING DEFENSE ========= */
 function viewUpcomingDefense(defense) {
@@ -2557,6 +2579,10 @@ function scheduleFinalDefense(groupId, parentDefenseId, groupName, proposalTitle
     document.getElementById('selected_group_display').textContent = groupName + ' - ' + proposalTitle;
     document.getElementById('redefense_reason_div').classList.add('hidden');
     document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Schedule Final Defense';
+    
+    // Filter panel members by group's program
+    filterPanelMembersByGroup(groupId);
+    
     toggleModal();
 }
 
@@ -2567,6 +2593,10 @@ function scheduleRedefense(groupId, parentDefenseId, groupName, proposalTitle) {
     document.getElementById('selected_group_display').textContent = groupName + ' - ' + proposalTitle;
     document.getElementById('redefense_reason_div').classList.remove('hidden');
     document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-redo text-white text-sm"></i></div>Schedule Redefense';
+    
+    // Filter panel members by group's program
+    filterPanelMembersByGroup(groupId);
+    
     toggleModal();
 }
 
@@ -2577,7 +2607,125 @@ function scheduleDefenseForGroup(groupId, groupName, proposalTitle) {
     document.getElementById('selected_group_display').textContent = groupName + ' - ' + proposalTitle;
     document.getElementById('redefense_reason_div').classList.add('hidden');
     document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-calendar-plus text-white text-sm"></i></div>Schedule Defense';
+    
+    // Filter panel members by group's program
+    filterPanelMembersByGroup(groupId);
+    
     toggleModal();
+}
+
+/* ========= PANEL MEMBER FILTERING ========= */
+// Groups and their programs data from PHP
+const groupsPrograms = <?php echo json_encode($groups_programs); ?>;
+
+function filterPanelMembersByGroup(groupId) {
+    const groupProgram = groupsPrograms[groupId];
+    if (!groupProgram) return;
+    
+    // Filter chairpersons - only show those with matching program or general
+    const chairpersonItems = document.querySelectorAll('#chairperson-list .panel-member-item');
+    let visibleChairpersons = 0;
+    
+    chairpersonItems.forEach(item => {
+        const itemProgram = item.getAttribute('data-program');
+        if (itemProgram === groupProgram || itemProgram === 'general') {
+            item.style.display = 'block';
+            visibleChairpersons++;
+        } else {
+            item.style.display = 'none';
+            // Uncheck hidden items
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (checkbox) checkbox.checked = false;
+        }
+    });
+    
+    // Show/hide no chairpersons message
+    const noChairpersonsMsg = document.getElementById('no-chairpersons-message');
+    if (visibleChairpersons === 0) {
+        noChairpersonsMsg.classList.remove('hidden');
+    } else {
+        noChairpersonsMsg.classList.add('hidden');
+    }
+    
+    // Filter members - only show those with matching program or general
+    const memberItems = document.querySelectorAll('#members-list .panel-member-item');
+    let visibleMembers = 0;
+    
+    memberItems.forEach(item => {
+        const itemProgram = item.getAttribute('data-program');
+        if (itemProgram === groupProgram || itemProgram === 'general') {
+            item.style.display = 'block';
+            visibleMembers++;
+        } else {
+            item.style.display = 'none';
+            // Uncheck hidden items
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (checkbox) checkbox.checked = false;
+        }
+    });
+    
+    // Show/hide no members message
+    const noMembersMsg = document.getElementById('no-members-message');
+    if (visibleMembers === 0) {
+        noMembersMsg.classList.remove('hidden');
+    } else {
+        noMembersMsg.classList.add('hidden');
+    }
+}
+
+function filterEditPanelMembersByGroup(groupId) {
+    const groupProgram = groupsPrograms[groupId];
+    if (!groupProgram) return;
+    
+    // Filter edit chairpersons - only show those with matching program or general
+    const editChairpersonItems = document.querySelectorAll('#edit-chairperson-list .edit-panel-member-item');
+    let visibleEditChairpersons = 0;
+    
+    editChairpersonItems.forEach(item => {
+        const itemProgram = item.getAttribute('data-program');
+        if (itemProgram === groupProgram || itemProgram === 'general') {
+            item.style.display = 'block';
+            visibleEditChairpersons++;
+        } else {
+            item.style.display = 'none';
+            // Uncheck hidden items
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (checkbox) checkbox.checked = false;
+        }
+    });
+    
+    // Show/hide no chairpersons message
+    const editNoChairpersonsMsg = document.getElementById('edit-no-chairpersons-message');
+    if (visibleEditChairpersons === 0) {
+        editNoChairpersonsMsg.classList.remove('hidden');
+    } else {
+        editNoChairpersonsMsg.classList.add('hidden');
+    }
+    
+    // Filter edit members - only show those with matching program or general
+    const editMemberItems = document.querySelectorAll('#edit-members-list .edit-panel-member-item');
+    let visibleEditMembers = 0;
+    
+    editMemberItems.forEach(item => {
+        const itemProgram = item.getAttribute('data-program');
+        if (itemProgram === groupProgram || itemProgram === 'general') {
+            item.style.display = 'block';
+            visibleEditMembers++;
+        } else {
+            item.style.display = 'none';
+            // Uncheck hidden items
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (checkbox) checkbox.checked = false;
+        }
+    });
+    
+    // Show/hide no members message
+    const editNoMembersMsg = document.getElementById('edit-no-members-message');
+    if (visibleEditMembers === 0) {
+        editNoMembersMsg.classList.remove('hidden');
+    } else {
+        editNoMembersMsg.classList.add('hidden');
+    }
 }
 
 /* ========= INIT ========= */

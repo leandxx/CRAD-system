@@ -1,6 +1,7 @@
 <?php
 session_start();
 include('../includes/connection.php'); // Your DB connection
+include('../includes/notification-helper.php');
 date_default_timezone_set('Asia/Manila'); // Set your timezone
 
 // Initialize variables

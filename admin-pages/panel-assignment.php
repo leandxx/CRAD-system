@@ -282,11 +282,19 @@ if (isset($_GET['edit_id'])) {
 
 // Define bachelor programs
 $programs = [
-    'bsit' => 'BS Information Technology',
-    'bscs' => 'BS Computer Science',
-    'bsis' => 'BS Information Systems',
-    'bsemc' => 'BS Entertainment and Multimedia Computing',
-    'general' => 'General (All Programs)'
+    'bsit' => 'BSIT - BS Information Technology',
+    'bshm' => 'BSHM - BS Hospitality Management',
+    'bsoa' => 'BSOA - BS Office Administration',
+    'bsba' => 'BSBA - BS Business Administration',
+    'bscrim' => 'BSCrim - BS Criminology',
+    'beed' => 'BEEd - Bachelor of Elementary Education',
+    'bsed' => 'BSEd - Bachelor of Secondary Education',
+    'bsce' => 'BSCpE - BS Computer Engineering',
+    'bstm' => 'BSTM - BS Tourism Management',
+    'bsentrep' => 'BSEntrep - BS Entrepreneurship',
+    'bsais' => 'BSAIS - BS Accounting Information System',
+    'bspsych' => 'BSPsych - BS Psychology',
+    'blis' => 'BLIS - BL Information Science'
 ];
 
 // Get all panel members grouped by program
@@ -813,41 +821,78 @@ while ($row = $program_stats_result->fetch_assoc()) {
     </div>
 </div>
 
-            <!-- Program Overview -->
-            <div class="bg-white rounded-2xl p-6 mb-8 shadow-lg border border-gray-100">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-bold text-gray-800 flex items-center">
-                        <i class="fas fa-chart-pie text-indigo-600 mr-3"></i>
-                        Program Distribution
-                    </h2>
+           <!-- Program Overview -->
+<div class="bg-white rounded-2xl p-6 mb-8 shadow-lg border border-gray-100">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+            <i class="fas fa-chart-pie text-indigo-600 mr-3"></i>
+            Program Distribution
+        </h2>
+    </div>
+    
+    <div id="programGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <?php 
+        $i = 0;
+        foreach ($programs as $program_key => $program_name): 
+            $member_count = isset($panel_members_by_program[$program_key]) ? count($panel_members_by_program[$program_key]) : 0;
+            $program_stats_data = $program_stats[$program_key] ?? ['pending' => 0, 'accepted' => 0, 'rejected' => 0];
+            $hiddenClass = ($i >= 5) ? "hidden" : ""; // hide after 5
+        ?>
+        <div class="program-card text-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors <?php echo $hiddenClass; ?>">
+            <div class="text-2xl font-bold text-gray-800 mb-1"><?php echo $member_count; ?></div>
+            <div class="text-sm font-medium text-gray-600 mb-3"><?php echo $program_name; ?></div>
+            <div class="space-y-1">
+                <div class="flex items-center justify-center text-xs">
+                    <span class="w-2 h-2 bg-orange-400 rounded-full mr-1"></span>
+                    <span class="text-orange-600"><?php echo $program_stats_data['pending']; ?> Pending</span>
                 </div>
-                
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <?php foreach ($programs as $program_key => $program_name): 
-                        $member_count = isset($panel_members_by_program[$program_key]) ? count($panel_members_by_program[$program_key]) : 0;
-                        $program_stats_data = $program_stats[$program_key] ?? ['pending' => 0, 'accepted' => 0, 'rejected' => 0];
-                    ?>
-                    <div class="text-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                        <div class="text-2xl font-bold text-gray-800 mb-1"><?php echo $member_count; ?></div>
-                        <div class="text-sm font-medium text-gray-600 mb-3"><?php echo $program_name; ?></div>
-                        <div class="space-y-1">
-                            <div class="flex items-center justify-center text-xs">
-                                <span class="w-2 h-2 bg-orange-400 rounded-full mr-1"></span>
-                                <span class="text-orange-600"><?php echo $program_stats_data['pending']; ?> Pending</span>
-                            </div>
-                            <div class="flex items-center justify-center text-xs">
-                                <span class="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
-                                <span class="text-green-600"><?php echo $program_stats_data['accepted']; ?> Accepted</span>
-                            </div>
-                            <div class="flex items-center justify-center text-xs">
-                                <span class="w-2 h-2 bg-red-400 rounded-full mr-1"></span>
-                                <span class="text-red-600"><?php echo $program_stats_data['rejected']; ?> Rejected</span>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
+                <div class="flex items-center justify-center text-xs">
+                    <span class="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
+                    <span class="text-green-600"><?php echo $program_stats_data['accepted']; ?> Accepted</span>
+                </div>
+                <div class="flex items-center justify-center text-xs">
+                    <span class="w-2 h-2 bg-red-400 rounded-full mr-1"></span>
+                    <span class="text-red-600"><?php echo $program_stats_data['rejected']; ?> Rejected</span>
                 </div>
             </div>
+        </div>
+        <?php 
+            $i++;
+        endforeach; 
+        ?>
+    </div>
+
+    <?php if (count($programs) > 5): ?>
+    <div class="text-center mt-4">
+        <button id="togglePrograms" type="button" class="text-indigo-600 font-medium hover:underline text-sm">
+            View All
+        </button>
+    </div>
+    <?php endif; ?>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const toggleBtn = document.getElementById("togglePrograms");
+    const cards = document.querySelectorAll("#programGrid .program-card");
+
+    if (!toggleBtn) return;
+
+    let expanded = false;
+
+    toggleBtn.addEventListener("click", () => {
+        expanded = !expanded;
+        cards.forEach((card, index) => {
+            if (expanded) {
+                card.classList.remove("hidden");
+            } else if (index >= 5) {
+                card.classList.add("hidden");
+            }
+        });
+        toggleBtn.textContent = expanded ? "View Less" : "View All";
+    });
+});
+</script>
 
             <!-- Panel Members by Program -->
             <div class="bg-gradient-to-br from-white via-purple-50 to-indigo-100 rounded-2xl p-6 mb-8 animate-scale-in shadow-xl border-0">
@@ -1042,34 +1087,27 @@ while ($row = $program_stats_result->fetch_assoc()) {
                     <!-- Panel Members Selection -->
                     <div>
                         <label class="block text-gray-700 font-medium mb-2 text-sm required">Select Panel Members</label>
-                        <div class="bg-white border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto custom-scrollbar-green">
-                            <?php foreach ($panel_members_by_program as $program => $members): ?>
-                            <?php if (!empty($members)): ?>
-                            <div class="mb-3">
-                                <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 flex items-center">
-                                    <i class="fas fa-graduation-cap mr-2"></i>
-                                    <?php echo $programs[$program]; ?>
-                                </h4>
-                                <div class="space-y-1 ml-4">
-                                    <?php foreach ($members as $member): ?>
-                                    <label class="flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
-                                        <input type="checkbox" name="panel_ids[]" value="<?php echo $member['id']; ?>" 
-                                               class="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-3">
-                                        <div class="flex-1">
-                                            <div class="text-sm font-medium text-gray-900">
-                                                <?php echo $member['first_name'] . ' ' . $member['last_name']; ?>
-                                            </div>
-                                            <div class="text-xs text-gray-500">
-                                                <?php echo $member['email']; ?> • <?php echo $member['specialization']; ?>
-                                            </div>
-                                        </div>
-                                    </label>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- LEFT SIDE: Program Dropdown -->
+                            <div>
+                                <label for="programSelect" class="block text-sm font-medium text-gray-600 mb-2">Choose Program</label>
+                                <select id="programSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm">
+                                    <option value="">-- Select Program --</option>
+                                    <?php foreach ($programs as $programKey => $programName): ?>
+                                        <option value="<?php echo $programKey; ?>"><?php echo $programName; ?></option>
                                     <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- RIGHT SIDE: Members -->
+                            <div>
+                                <div id="membersContainer" class="bg-white border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto custom-scrollbar-green">
+                                    <p class="text-xs text-gray-500">Select a program to view its members</p>
                                 </div>
                             </div>
-                            <?php endif; ?>
-                            <?php endforeach; ?>
                         </div>
+
                         <p class="text-xs text-gray-500 mt-2">Select multiple panel members to send invitations</p>
                     </div>
 
@@ -1382,6 +1420,38 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('preview-message').innerHTML = this.value.replace(/\n/g, '<br>');
         });
     }
+
+      // Panel members data from PHP
+    const panelMembersByProgram = <?php echo json_encode($panel_members_by_program); ?>;
+    
+    const programSelect = document.getElementById("programSelect");
+    const membersContainer = document.getElementById("membersContainer");
+
+    programSelect.addEventListener("change", function() {
+        const selectedProgram = this.value;
+        membersContainer.innerHTML = "";
+
+        if (selectedProgram && panelMembersByProgram[selectedProgram]) {
+            const members = panelMembersByProgram[selectedProgram];
+            members.forEach(member => {
+                const label = document.createElement("label");
+                label.className = "flex items-center p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors";
+
+                label.innerHTML = `
+                    <input type="checkbox" name="panel_ids[]" value="${member.id}" 
+                        class="rounded border-gray-300 text-green-600 focus:ring-green-500 mr-3">
+                    <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900">${member.first_name} ${member.last_name}</div>
+                        <div class="text-xs text-gray-500">${member.email} • ${member.specialization}</div>
+                    </div>
+                `;
+
+                membersContainer.appendChild(label);
+            });
+        } else {
+            membersContainer.innerHTML = `<p class="text-xs text-gray-500">No members available for this program.</p>`;
+        }
+    });
 </script>
 </body>
 </html>

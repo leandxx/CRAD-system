@@ -1,5 +1,6 @@
 <?php
 include('../includes/connection.php');
+include('../includes/notification-helper.php');
 session_start();
 
 if (!isset($_SESSION['user_id'])) {

@@ -11,6 +11,21 @@ $pending_proposals = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM 
 $total_faculty = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM faculty"))[0];
 $total_clusters = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM clusters"))[0];
 
+// Calculate real statistics
+$students_last_month = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM student_profiles WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)"))[0] ?? 0;
+$students_prev_month = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM student_profiles WHERE created_at >= DATE_SUB(NOW(), INTERVAL 2 MONTH) AND created_at < DATE_SUB(NOW(), INTERVAL 1 MONTH)"))[0] ?? 1;
+$student_growth = $students_prev_month > 0 ? round((($students_last_month - $students_prev_month) / $students_prev_month) * 100) : ($students_last_month > 0 ? 100 : 0);
+
+$proposals_today = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM proposals WHERE DATE(submitted_at) = CURDATE()"))[0] ?? 0;
+$completed_proposals = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM proposals WHERE status = 'Completed'"))[0];
+$proposal_progress = $total_proposals > 0 ? round(($completed_proposals / $total_proposals) * 100) : 0;
+
+$overdue_proposals = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM proposals p WHERE p.status = 'Pending' AND p.submitted_at < DATE_SUB(NOW(), INTERVAL 7 DAY)"))[0] ?? 0;
+$pending_progress = $total_proposals > 0 ? round(($pending_proposals / $total_proposals) * 100) : 0;
+
+$active_groups = $total_groups; // All groups are considered active
+$group_progress = $total_groups > 0 ? round(($active_groups / max($total_groups, 1)) * 100) : 0;
+
 // Recent activities
 $recent_students = mysqli_query($conn, "SELECT full_name, program, id FROM student_profiles ORDER BY id DESC LIMIT 3");
 $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals ORDER BY id DESC LIMIT 3");
@@ -28,76 +43,28 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
-        @keyframes slideInUp {
-            from { 
-                transform: translateY(40px); 
-                opacity: 0; 
-            }
-            to { 
-                transform: translateY(0); 
-                opacity: 1; 
-            }
-        }
-        @keyframes fadeIn {
-            from { 
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to { 
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        @keyframes scaleIn {
-            from { 
-                transform: scale(0.9) translateY(20px); 
-                opacity: 0; 
-            }
-            to { 
-                transform: scale(1) translateY(0); 
-                opacity: 1; 
-            }
-        }
-        @keyframes slideInLeft {
-            from {
-                transform: translateX(-30px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
         
-        .animate-slide-up { 
-            animation: slideInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1); 
-        }
-        .animate-fade-in { 
-            animation: fadeIn 1s cubic-bezier(0.4, 0, 0.2, 1); 
-        }
-        .animate-scale-in { 
-            animation: scaleIn 0.7s cubic-bezier(0.4, 0, 0.2, 1); 
-        }
-        .animate-slide-left {
-            animation: slideInLeft 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        body {
+            background: #ffffff;
         }
         
-        /* Staggered animation delays */
-        .animate-slide-up:nth-child(1) { animation-delay: 0.1s; }
-        .animate-slide-up:nth-child(2) { animation-delay: 0.2s; }
-        .animate-slide-up:nth-child(3) { animation-delay: 0.3s; }
-        .animate-slide-up:nth-child(4) { animation-delay: 0.4s; }
-        
-        .stats-card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
-            backdrop-filter: blur(15px);
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.4);
-            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.12);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: slideInUp 0.8s ease-out;
             position: relative;
             overflow: hidden;
         }
-        .stats-card::before {
+        
+        .glass-card::before {
             content: '';
             position: absolute;
             top: 0;
@@ -107,21 +74,27 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
             background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
             transition: left 0.6s;
         }
-        .stats-card:hover::before {
+        
+        .glass-card:hover::before {
             left: 100%;
         }
-        .stats-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-            border-color: rgba(255, 255, 255, 0.6);
+        
+        .glass-card:hover {
+            transform: translateY(-8px) scale(1.01);
+            box-shadow: 0 35px 70px rgba(0, 0, 0, 0.18);
         }
-
-        .action-card {
+        
+        .quick-access-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
         }
-        .action-card::after {
+        
+        .quick-access-card::after {
             content: '';
             position: absolute;
             top: 0;
@@ -131,35 +104,56 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
             background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
             transition: left 0.6s;
         }
-        .action-card:hover::after {
+        
+        .quick-access-card:hover::after {
             left: 100%;
         }
-        .action-card:hover {
-            transform: translateY(-6px) scale(1.03);
-            box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.2);
+        
+        .quick-access-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
         }
-        .activity-card {
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        .activity-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.6s;
+        
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        .activity-card:hover::before {
-            left: 100%;
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        .activity-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 15px 30px -8px rgba(0, 0, 0, 0.15);
+        
+        .animate-fade-in {
+            animation: fadeIn 1s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        
+        .animate-delay-1 { animation-delay: 0.2s; }
+        .animate-delay-2 { animation-delay: 0.4s; }
+        .animate-delay-3 { animation-delay: 0.6s; }
         
         /* Enhanced gradient effects */
         .gradient-blue {
@@ -183,20 +177,13 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
             box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
         }
         
-        /* Pulse animation for status indicators */
-        @keyframes pulse-glow {
-            0%, 100% { 
-                opacity: 1;
-                transform: scale(1);
-            }
-            50% { 
-                opacity: 0.8;
-                transform: scale(1.05);
-            }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
         
-        .pulse-glow {
-            animation: pulse-glow 2s ease-in-out infinite;
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
         }
     </style>
     <script>
@@ -228,7 +215,7 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
         <?php include('../includes/admin-sidebar.php'); ?>
         
             <!-- Main content area -->
-                <main class="flex-1 overflow-y-auto p-4 lg:p-8">
+                <main class="flex-1 overflow-y-auto p-4 lg:p-8 hide-scrollbar">
     <!-- Welcome Section -->
     <div class="mb-8 animate-fade-in">
         <div class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 rounded-2xl p-8 text-white shadow-2xl">
@@ -250,8 +237,8 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
     </div>
 
     <!-- Stats Overview -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 animate-slide-up">
-        <div class="stats-card p-6 group">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 animate-fade-in">
+        <div class="glass-card rounded-2xl p-6 group">
             <div class="flex items-center justify-between">
                 <div class="flex-1">
                     <div class="flex items-center mb-2">
@@ -262,17 +249,19 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
                     </div>
                     <h3 class="text-4xl font-bold text-gray-800 mb-3"><?= $total_students ?></h3>
                     <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="gradient-blue h-2 rounded-full transition-all duration-1000" style="width: 85%"></div>
+                        <div class="gradient-blue h-2 rounded-full transition-all duration-1000" style="width: <?= min(100, max(10, ($total_students / 50) * 100)) ?>%"></div>
                     </div>
                 </div>
             </div>
             <div class="flex items-center justify-between mt-4">
-                <p class="text-green-600 text-sm font-semibold"><i class="fas fa-arrow-up mr-1"></i> 12% increase</p>
+                <p class="<?= $student_growth >= 0 ? 'text-green-600' : 'text-red-600' ?> text-sm font-semibold">
+                    <i class="fas fa-arrow-<?= $student_growth >= 0 ? 'up' : 'down' ?> mr-1"></i> <?= abs($student_growth) ?>% <?= $student_growth >= 0 ? 'increase' : 'decrease' ?>
+                </p>
                 <span class="text-xs text-gray-500">vs last month</span>
             </div>
         </div>
 
-        <div class="stats-card p-6 group">
+        <div class="glass-card rounded-2xl p-6 group animate-delay-1">
             <div class="flex items-center justify-between">
                 <div class="flex-1">
                     <div class="flex items-center mb-2">
@@ -283,17 +272,17 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
                     </div>
                     <h3 class="text-4xl font-bold text-gray-800 mb-3"><?= $total_proposals ?></h3>
                     <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="gradient-purple h-2 rounded-full transition-all duration-1000" style="width: 70%"></div>
+                        <div class="gradient-purple h-2 rounded-full transition-all duration-1000" style="width: <?= $proposal_progress ?>%"></div>
                     </div>
                 </div>
             </div>
             <div class="flex items-center justify-between mt-4">
-                <p class="text-green-600 text-sm font-semibold"><i class="fas fa-plus mr-1"></i> 5 new today</p>
+                <p class="text-green-600 text-sm font-semibold"><i class="fas fa-plus mr-1"></i> <?= $proposals_today ?> new today</p>
                 <span class="text-xs text-gray-500">submissions</span>
             </div>
         </div>
 
-        <div class="stats-card p-6 group">
+        <div class="glass-card rounded-2xl p-6 group animate-delay-2">
             <div class="flex items-center justify-between">
                 <div class="flex-1">
                     <div class="flex items-center mb-2">
@@ -304,17 +293,17 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
                     </div>
                     <h3 class="text-4xl font-bold text-gray-800 mb-3"><?= $pending_proposals ?></h3>
                     <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="gradient-yellow h-2 rounded-full transition-all duration-1000" style="width: 45%"></div>
+                        <div class="gradient-yellow h-2 rounded-full transition-all duration-1000" style="width: <?= $pending_progress ?>%"></div>
                     </div>
                 </div>
             </div>
             <div class="flex items-center justify-between mt-4">
-                <p class="text-red-600 text-sm font-semibold"><i class="fas fa-exclamation-triangle mr-1"></i> 2 overdue</p>
+                <p class="text-red-600 text-sm font-semibold"><i class="fas fa-exclamation-triangle mr-1"></i> <?= $overdue_proposals ?> overdue</p>
                 <span class="text-xs text-gray-500">need attention</span>
             </div>
         </div>
 
-        <div class="stats-card p-6 group">
+        <div class="glass-card rounded-2xl p-6 group animate-delay-3">
             <div class="flex items-center justify-between">
                 <div class="flex-1">
                     <div class="flex items-center mb-2">
@@ -325,7 +314,7 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
                     </div>
                     <h3 class="text-4xl font-bold text-gray-800 mb-3"><?= $total_groups ?></h3>
                     <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="gradient-green h-2 rounded-full transition-all duration-1000" style="width: 90%"></div>
+                        <div class="gradient-green h-2 rounded-full transition-all duration-1000" style="width: <?= $group_progress ?>%"></div>
                     </div>
                 </div>
             </div>
@@ -354,7 +343,7 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
             </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <a href="admin-pages/admin-timeline.php" class="action-card stats-card p-8 text-center group relative overflow-hidden">
+            <a href="admin-pages/admin-timeline.php" class="quick-access-card rounded-2xl p-8 text-center group relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full -mr-10 -mt-10"></div>
                 <div class="gradient-blue p-5 rounded-2xl mb-6 mx-auto w-fit group-hover:scale-110 transition-all duration-300 shadow-lg">
                     <i class="fas fa-calendar-week text-white text-2xl"></i>
@@ -366,7 +355,7 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
                     <i class="fas fa-arrow-right ml-2 text-xs group-hover:translate-x-1 transition-transform"></i>
                 </div>
             </a>
-            <a href="admin-pages/admin-defense.php" class="action-card stats-card p-8 text-center group relative overflow-hidden">
+            <a href="admin-pages/admin-defense.php" class="quick-access-card rounded-2xl p-8 text-center group relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full -mr-10 -mt-10"></div>
                 <div class="gradient-purple p-5 rounded-2xl mb-6 mx-auto w-fit group-hover:scale-110 transition-all duration-300 shadow-lg">
                     <i class="fas fa-chalkboard-teacher text-white text-2xl"></i>
@@ -378,7 +367,7 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
                     <i class="fas fa-arrow-right ml-2 text-xs group-hover:translate-x-1 transition-transform"></i>
                 </div>
             </a>
-            <a href="admin-pages/panel-assignment.php" class="action-card stats-card p-8 text-center group relative overflow-hidden">
+            <a href="admin-pages/panel-assignment.php" class="quick-access-card rounded-2xl p-8 text-center group relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-500/10 to-transparent rounded-full -mr-10 -mt-10"></div>
                 <div class="gradient-green p-5 rounded-2xl mb-6 mx-auto w-fit group-hover:scale-110 transition-all duration-300 shadow-lg">
                     <i class="fas fa-user-friends text-white text-2xl"></i>
@@ -390,7 +379,7 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
                     <i class="fas fa-arrow-right ml-2 text-xs group-hover:translate-x-1 transition-transform"></i>
                 </div>
             </a>
-            <a href="admin-pages/adviser-assignment.php" class="action-card stats-card p-8 text-center group relative overflow-hidden">
+            <a href="admin-pages/adviser-assignment.php" class="quick-access-card rounded-2xl p-8 text-center group relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-red-500/10 to-transparent rounded-full -mr-10 -mt-10"></div>
                 <div class="gradient-red p-5 rounded-2xl mb-6 mx-auto w-fit group-hover:scale-110 transition-all duration-300 shadow-lg">
                     <i class="fas fa-user-graduate text-white text-2xl"></i>
@@ -406,9 +395,9 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
     </div>
 
     <!-- Activity Dashboard -->
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10 animate-scale-in">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10 animate-fade-in">
         <!-- Recent Activity -->
-        <div class="xl:col-span-2 activity-card stats-card p-8">
+        <div class="xl:col-span-2 glass-card rounded-2xl p-8">
             <div class="flex justify-between items-center mb-8">
                 <div class="flex items-center">
                     <div class="gradient-blue p-3 rounded-xl mr-4 shadow-lg">
@@ -453,7 +442,7 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
         </div>
 
         <!-- Recent Proposals -->
-        <div class="activity-card stats-card p-8">
+        <div class="glass-card rounded-2xl p-8">
             <div class="flex justify-between items-center mb-8">
                 <div class="flex items-center">
                     <div class="gradient-purple p-3 rounded-xl mr-4 shadow-lg">

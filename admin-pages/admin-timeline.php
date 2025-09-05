@@ -1482,20 +1482,24 @@ $isoDeadline = $current_milestone
       }
     });
 
-    // --- Countdown (uses ISO 8601 to avoid timezone parse issues) ---
+    // --- Enhanced Countdown System ---
     const ISO_DEADLINE = <?= $isoDeadline ? json_encode($isoDeadline) : 'null' ?>;
+    let countdownInterval;
+    let lastSecond = -1;
 
-    function setBannerGradient(distance){
+    function setBannerGradient(distance, isExpired = false){
       const banner = document.getElementById('countdown-banner');
-      banner.style.background = '';
       
       if (distance === null) {
         banner.style.background = 'linear-gradient(135deg, rgba(107, 114, 128, 0.95) 0%, rgba(75, 85, 99, 0.95) 100%)';
         return;
       }
-      if (distance < 0) {
+      
+      if (isExpired) {
+        banner.style.background = 'linear-gradient(135deg, rgba(75, 85, 99, 0.95) 0%, rgba(55, 65, 81, 0.95) 100%)';
         return;
       }
+      
       if (distance < 24*60*60*1000) {
         banner.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%)';
       } else if (distance < 3*24*60*60*1000) {
@@ -1507,36 +1511,81 @@ $isoDeadline = $current_milestone
       }
     }
 
+    function addCountdownAnimation(element, newValue) {
+      if (element.textContent !== newValue) {
+        element.style.transform = 'scale(1.1)';
+        element.style.color = '#fbbf24';
+        setTimeout(() => {
+          element.textContent = newValue;
+          element.style.transform = 'scale(1)';
+          element.style.color = '';
+        }, 150);
+      }
+    }
+
     function updateAdminCountdown(){
       if(!ISO_DEADLINE){
         ['days','hours','minutes','seconds'].forEach(k=>{
-          document.getElementById(`admin-countdown-${k}`).textContent = '00';
+          const element = document.getElementById(`admin-countdown-${k}`);
+          if (element) element.textContent = '00';
         });
         setBannerGradient(null);
         return;
       }
+      
       const deadline = new Date(ISO_DEADLINE).getTime();
       const now = Date.now();
       const distance = deadline - now;
+
+      if (distance < 0) {
+        // Expired
+        ['days','hours','minutes','seconds'].forEach(k=>{
+          const element = document.getElementById(`admin-countdown-${k}`);
+          if (element) element.textContent = '00';
+        });
+        setBannerGradient(distance, true);
+        
+        // Update banner text to show expired
+        const bannerText = document.querySelector('#countdown-banner p');
+        if (bannerText && !bannerText.textContent.includes('EXPIRED')) {
+          bannerText.innerHTML = '<span class="font-semibold text-red-200">MILESTONE EXPIRED</span><br><span class="text-sm">This phase has ended</span>';
+        }
+        
+        setTimeout(() => location.reload(), 2000);
+        return;
+      }
 
       const days = Math.floor(distance/(1000*60*60*24));
       const hours = Math.floor((distance%(1000*60*60*24))/(1000*60*60));
       const minutes = Math.floor((distance%(1000*60*60))/(1000*60));
       const seconds = Math.floor((distance%(1000*60))/1000);
 
-      document.getElementById("admin-countdown-days").textContent = String(Math.max(0,days)).padStart(2,'0');
-      document.getElementById("admin-countdown-hours").textContent = String(Math.max(0,hours)).padStart(2,'0');
-      document.getElementById("admin-countdown-minutes").textContent = String(Math.max(0,minutes)).padStart(2,'0');
-      document.getElementById("admin-countdown-seconds").textContent = String(Math.max(0,seconds)).padStart(2,'0');
+      // Animate changes
+      const currentSecond = seconds;
+      if (lastSecond !== currentSecond) {
+        addCountdownAnimation(document.getElementById("admin-countdown-seconds"), String(seconds).padStart(2,'0'));
+        lastSecond = currentSecond;
+        
+        // Add pulse effect for last 10 seconds
+        if (distance < 10000) {
+          document.getElementById('countdown-banner').style.animation = 'pulse 0.5s ease-in-out';
+          setTimeout(() => {
+            document.getElementById('countdown-banner').style.animation = '';
+          }, 500);
+        }
+      }
+      
+      document.getElementById("admin-countdown-days").textContent = String(days).padStart(2,'0');
+      document.getElementById("admin-countdown-hours").textContent = String(hours).padStart(2,'0');
+      document.getElementById("admin-countdown-minutes").textContent = String(minutes).padStart(2,'0');
 
       setBannerGradient(distance);
-
-      if (distance < 0) {
-        // Add a small delay before reload to ensure the milestone is marked as completed
-        setTimeout(() => {
-            location.reload();
-        }, 1000);
-        return;
+      
+      // Add urgency effects
+      if (distance < 60000) { // Last minute
+        document.getElementById('countdown-banner').classList.add('animate-pulse');
+      } else {
+        document.getElementById('countdown-banner').classList.remove('animate-pulse');
       }
     }
 
@@ -1978,9 +2027,9 @@ $isoDeadline = $current_milestone
         theme: "material_blue"
       });
 
-      // Countdown every second
+      // Enhanced countdown with smooth updates
       updateAdminCountdown();
-      setInterval(updateAdminCountdown, 1000);
+      countdownInterval = setInterval(updateAdminCountdown, 1000);
       
       // Add loading to form submissions
       document.querySelectorAll('form').forEach(form => {
@@ -1991,6 +2040,21 @@ $isoDeadline = $current_milestone
       
       // Auto-hide loading after page load
       setTimeout(hideLoading, 500);
+      
+      // Add smooth transitions to countdown elements
+      ['days','hours','minutes','seconds'].forEach(k=>{
+        const element = document.getElementById(`admin-countdown-${k}`);
+        if (element) {
+          element.style.transition = 'all 0.3s ease';
+        }
+      });
+    });
+    
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
     });
   </script>
 </body>

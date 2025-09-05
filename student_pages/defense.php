@@ -77,7 +77,7 @@ if ($has_group) {
             $defense_schedule = $temp_schedule;
             
             // Fetch panel members for this specific defense only
-            $panel_query = "SELECT pm.first_name, pm.last_name, dp.role
+            $panel_query = "SELECT pm.first_name, pm.last_name, pm.role
                            FROM defense_panel dp
                            JOIN panel_members pm ON dp.faculty_id = pm.id
                            WHERE dp.defense_id = '{$defense_schedule['id']}'";
@@ -542,33 +542,11 @@ if ($has_group) {
                                 <h3 class="font-medium text-gray-600 text-sm mb-2">Panel Members</h3>
                                 <div class="space-y-3">
                                     <?php 
-                                    // Separate chairpersons and members
-                                    $chairpersons = array_filter($panel_members, function($panel) {
-                                        return strtolower(trim($panel['role'])) === 'chairperson';
-                                    });
-                                    $members = array_filter($panel_members, function($panel) {
-                                        return strtolower(trim($panel['role'])) === 'member';
-                                    });
-                                    
-                                    // Display chairpersons first
-                                    foreach ($chairpersons as $panel): 
-                                    ?>
-                                    <div class="flex items-center">
-                                        <div class="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 text-xs font-semibold mr-3 shadow-sm">
-                                            <?php echo strtoupper($panel['initials']); ?>
-                                        </div>
-                                        <div>
-                                            <p class="text-gray-900 font-medium text-sm"><?php echo $panel['name']; ?></p>
-                                            <p class="text-yellow-600 text-xs font-semibold">Chairperson</p>
-                                        </div>
-                                    </div>
-                                    <?php endforeach; ?>
-                                    
-                                    <?php 
-                                    // Display members
-                                    foreach ($members as $panel): 
+                                    // Display all panel members with same design
+                                    foreach ($panel_members as $panel): 
                                         $colors = ['blue', 'purple', 'green', 'indigo'];
                                         $color = $colors[array_rand($colors)];
+                                        $role_display = strtolower(trim($panel['role'])) === 'chairperson' ? 'Chairperson' : 'Member';
                                     ?>
                                     <div class="flex items-center">
                                         <div class="w-8 h-8 rounded-full bg-<?php echo $color; ?>-100 flex items-center justify-center text-<?php echo $color; ?>-700 text-xs font-semibold mr-3 shadow-sm">
@@ -576,7 +554,7 @@ if ($has_group) {
                                         </div>
                                         <div>
                                             <p class="text-gray-900 font-medium text-sm"><?php echo $panel['name']; ?></p>
-                                            <p class="text-gray-600 text-xs">Member</p>
+                                            <p class="text-gray-600 text-xs"><?php echo $role_display; ?></p>
                                         </div>
                                     </div>
                                     <?php endforeach; ?>

@@ -1,6 +1,7 @@
 <?php
 session_start();
 include('../includes/connection.php'); // Your DB connection
+include('../includes/notification-helper.php');
 ?>
 
 <!DOCTYPE html>

@@ -1,5 +1,6 @@
 <?php
 include('../includes/connection.php');
+include('../includes/notification-helper.php');
 session_start();
 
 // Debug: Check what's in the session
@@ -365,11 +366,19 @@ $profile_check->close();
                                     required
                                 >
                                    <option value="">Select Program</option>
-                                    <option value="BSCS" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSCS') ? 'selected' : ''; ?>>BSCS - Computer Science</option>
-                                    <option value="BSBA" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSBA') ? 'selected' : ''; ?>>BSBA - Business Administration</option>
-                                    <option value="BSED" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSED') ? 'selected' : ''; ?>>BSED - Education</option>
-                                    <option value="BSIT" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSIT') ? 'selected' : ''; ?>>BSIT - Information Technology</option>
-                                    <option value="BSCRIM" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSCRIM') ? 'selected' : ''; ?>>BSCRIM - Criminology</option>
+                                    <option value="BS Information Technology" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Information Technology') ? 'selected' : ''; ?>>BS Information Technology (BSIT)</option>
+                                    <option value="BS Hospitality Management" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Hospitality Management') ? 'selected' : ''; ?>>BS Hospitality Management (BSHM)</option>
+                                    <option value="BS Office Administration" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Office Administration') ? 'selected' : ''; ?>>BS Office Administration (BSOA)</option>
+                                    <option value="BS Business Administration" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Business Administration') ? 'selected' : ''; ?>>BS Business Administration (BSBA)</option>
+                                    <option value="BS Criminology" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Criminology') ? 'selected' : ''; ?>>BS Criminology (BSCRIM)</option>
+                                    <option value="Bachelor of Elementary Education" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'Bachelor of Elementary Education') ? 'selected' : ''; ?>>Bachelor of Elementary Education (BEED)</option>
+                                    <option value="Bachelor of Secondary Education" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'Bachelor of Secondary Education') ? 'selected' : ''; ?>>Bachelor of Secondary Education (BSED)</option>
+                                    <option value="BS Computer Engineering" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Computer Engineering') ? 'selected' : ''; ?>>BS Computer Engineering (BSCE)</option>
+                                    <option value="BS Tourism Management" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Tourism Management') ? 'selected' : ''; ?>>BS Tourism Management (BSTM)</option>
+                                    <option value="BS Entrepreneurship" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Entrepreneurship') ? 'selected' : ''; ?>>BS Entrepreneurship (BSE)</option>
+                                    <option value="BS Accounting Information System" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Accounting Information System') ? 'selected' : ''; ?>>BS Accounting Information System (BSAIS)</option>
+                                    <option value="BS Psychology" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Psychology') ? 'selected' : ''; ?>>BS Psychology (BSPSYCH)</option>
+                                    <option value="BL Information Science" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BL Information Science') ? 'selected' : ''; ?>>BL Information Science (BLIS)</option>
                                 </select>
                             </div>
                             

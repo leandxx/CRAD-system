@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $school_year = $start_year . '-' . ($start_year + 1);
         
         $capacity = (int) $_POST['capacity'];
-        $programs = ['BSCS', 'BSBA', 'BSED', 'BSIT', 'BSCRIM'];
+        $programs = ['BSIT','BSHM','BSOA', 'BSBA', 'BSED', 'BSIT', 'BSCRIM','BEED','BSED','BSCpE','BSTM','BSEntrep','BSAIS','BSPsych','BLIS',];
         
         foreach ($programs as $program) {
             for ($i = 41001; $i <= 41010; $i++) {
@@ -723,11 +723,19 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                 <div class="flex gap-3">
                                     <select id="programFilter" class="border-2 border-gray-200 text-gray-700 py-3 px-4 rounded-xl text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
                                         <option value="">All Programs</option>
-                                        <option value="BSCS">BSCS - Computer Science</option>
-                                        <option value="BSBA">BSBA - Business Administration</option>
-                                        <option value="BSED">BSED - Education</option>
                                         <option value="BSIT">BSIT - Information Technology</option>
+                                        <option value="BSHM">BSHM - Hospitality Management</option>
+                                        <option value="BSOA">BSOA - Office Administration</option>
+                                        <option value="BSBA">BSBA - Business Administration</option>
                                         <option value="BSCRIM">BSCRIM - Criminology</option>
+                                        <option value="BEED">BEED - Elementary Education</option>
+                                        <option value="BSED">BSED - Secondary Education</option>
+                                        <option value="BSCpE">BSCpE - Computer Engineering</option>
+                                        <option value="BSTM">BSTM - Tourism Management</option>
+                                        <option value="BSEntrep">BSEntrep - Entrepreneurship</option>
+                                        <option value="BSAIS">BSAIS - Accounting Information System</option>
+                                        <option value="BSPsych">BSPysch - Psychology</option>
+                                        <option value="BLIS">BLIS - Information Science</option>
                                     </select>
                                     <button class="gradient-green text-white font-semibold py-3 px-6 rounded-xl flex items-center transition-all duration-300 hover:shadow-lg hover:scale-105" data-bs-toggle="modal" data-bs-target="#bulkCreateModal">
                                         <i class="fas fa-magic mr-2"></i>Auto Generate
@@ -904,11 +912,19 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                 <div class="flex gap-3">
                                     <select id="departmentFilter" class="border-2 border-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm font-medium focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all">
                                         <option value="">All Departments</option>
-                                        <option value="Computer Science">Computer Science</option>
                                         <option value="Information Technology">Information Technology</option>
+                                        <option value="Hospitality Management">Hospitality Management</option>
+                                        <option value="Office Administration">Office Administration</option>
                                         <option value="Business Administration">Business Administration</option>
-                                        <option value="Education">Education</option>
                                         <option value="Criminology">Criminology</option>
+                                        <option value="Elementary Education">Elementary Education</option>
+                                        <option value="Secondary Education">Secondary Education</option>
+                                        <option value="Computer Engineering">Computer Engineering</option>
+                                        <option value="Tourism Management">Tourism Management</option>
+                                        <option value="Entrepreneurship">Entrepreneurship</option>
+                                        <option value="Accounting Information System">Accounting Information System</option>
+                                        <option value="Psychology">Psychology</option>
+                                        <option value="Information Science">Information Science</option>
                                     </select>
                                     <button class="gradient-purple text-white font-semibold py-2 px-4 rounded-lg flex items-center transition-all duration-300 hover:shadow-lg hover:scale-105" data-bs-toggle="modal" data-bs-target="#createFacultyModal">
                                         <i class="fas fa-plus mr-2"></i>Add Faculty
@@ -996,84 +1012,116 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
         </main>
     </div>
     
-    <!-- Modals -->
-    <!-- Bulk Create Clusters Modal -->
-    <div class="modal fade" id="bulkCreateModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content bg-gradient-to-br from-white via-green-50 to-emerald-100 border-0 shadow-2xl rounded-2xl overflow-hidden">
-                <form method="POST">
-                    <div class="modal-header bg-gradient-to-r from-green-600 to-emerald-700 text-white p-6 border-0">
-                        <h5 class="modal-title font-bold text-xl flex items-center">
-                            <div class="bg-white/20 p-2 rounded-lg mr-3">
-                                <i class="fas fa-magic text-white"></i>
+        <!-- Modals -->
+        <!-- Bulk Create Clusters Modal -->
+        <div class="modal fade" id="bulkCreateModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content bg-gradient-to-br from-white via-green-50 to-emerald-100 border-0 shadow-2xl rounded-2xl overflow-hidden">
+                    <form method="POST">
+                        <div class="modal-header bg-gradient-to-r from-green-600 to-emerald-700 text-white p-6 border-0">
+                            <h5 class="modal-title font-bold text-xl flex items-center">
+                                <div class="bg-white/20 p-2 rounded-lg mr-3">
+                                    <i class="fas fa-magic text-white"></i>
+                                </div>
+                                Auto Generate All Clusters
+                            </h5>
+                            <button type="button" class="btn-close text-white hover:bg-white/20 rounded-lg p-2 transition-all" data-bs-dismiss="modal">×</button>
+                        </div>
+                        <div class="modal-body p-6 space-y-6">
+                            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/40">
+                                <p class="text-gray-700 mb-4 font-medium">This will create clusters 41001-41010 for all programs:</p>
+                                <div class="grid grid-cols-1 gap-2 mb-4">
+                                    <div class="flex items-center p-2 bg-indigo-50 rounded-lg">
+                                        <i class="fas fa-server text-indigo-600 mr-3"></i>
+                                        <span class="text-gray-700">BSIT - Information Technology (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-pink-50 rounded-lg">
+                                        <i class="fas fa-hotel text-pink-600 mr-3"></i>
+                                        <span class="text-gray-700">BSHM - Hospitality Management (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-orange-50 rounded-lg">
+                                        <i class="fas fa-file-alt text-orange-600 mr-3"></i>
+                                        <span class="text-gray-700">BSOA - Office Administration (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-purple-50 rounded-lg">
+                                        <i class="fas fa-briefcase text-purple-600 mr-3"></i>
+                                        <span class="text-gray-700">BSBA - Business Administration (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-red-50 rounded-lg">
+                                        <i class="fas fa-shield-alt text-red-600 mr-3"></i>
+                                        <span class="text-gray-700">BSCRIM - Criminology (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-yellow-50 rounded-lg">
+                                        <i class="fas fa-graduation-cap text-yellow-600 mr-3"></i>
+                                        <span class="text-gray-700">BEED - Elementary Education (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-blue-50 rounded-lg">
+                                        <i class="fas fa-chalkboard-teacher text-blue-600 mr-3"></i>
+                                        <span class="text-gray-700">BSED - Secondary Education (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-green-50 rounded-lg">
+                                        <i class="fas fa-microchip text-green-600 mr-3"></i>
+                                        <span class="text-gray-700">BSCpE - Computer Engineering (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-teal-50 rounded-lg">
+                                        <i class="fas fa-umbrella-beach text-teal-600 mr-3"></i>
+                                        <span class="text-gray-700">BSTM - Tourism Management (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-cyan-50 rounded-lg">
+                                        <i class="fas fa-store text-cyan-600 mr-3"></i>
+                                        <span class="text-gray-700">BSEntrep - Entrepreneurship (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-gray-50 rounded-lg">
+                                        <i class="fas fa-calculator text-gray-600 mr-3"></i>
+                                        <span class="text-gray-700">BSAIS - Accounting Information System (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-lime-50 rounded-lg">
+                                        <i class="fas fa-brain text-lime-600 mr-3"></i>
+                                        <span class="text-gray-700">BSPsych - Psychology (10 clusters)</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-indigo-50 rounded-lg">
+                                        <i class="fas fa-book text-indigo-600 mr-3"></i>
+                                        <span class="text-gray-700">BLIS - Information Science (10 clusters)</span>
+                                    </div>
+                                </div>
+                                <div class="bg-green-100 border border-green-200 rounded-lg p-3">
+                                    <p class="text-green-800 font-semibold text-center">Total: 130 clusters will be created</p>
+                                </div>
                             </div>
-                            Auto Generate All Clusters
-                        </h5>
-                        <button type="button" class="btn-close text-white hover:bg-white/20 rounded-lg p-2 transition-all" data-bs-dismiss="modal">×</button>
-                    </div>
-                    <div class="modal-body p-6 space-y-6">
-                        <div class="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/40">
-                            <p class="text-gray-700 mb-4 font-medium">This will create clusters 41001-41010 for all programs:</p>
-                            <div class="grid grid-cols-1 gap-2 mb-4">
-                                <div class="flex items-center p-2 bg-blue-50 rounded-lg">
-                                    <i class="fas fa-laptop-code text-blue-600 mr-3"></i>
-                                    <span class="text-gray-700">BSCS - Computer Science (10 clusters)</span>
+                            <div class="space-y-4">
+                                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                    <div class="flex items-center mb-2">
+                                        <i class="fas fa-calendar-alt text-blue-600 mr-2"></i>
+                                        <span class="text-blue-800 font-semibold">School Year (Auto-Generated)</span>
+                                    </div>
+                                    <p class="text-blue-700 text-sm">
+                                        <?php 
+                                        $current_year = date('Y');
+                                        $current_month = date('n');
+                                        $start_year = ($current_month <= 6) ? $current_year - 1 : $current_year;
+                                        $auto_school_year = $start_year . '-' . ($start_year + 1);
+                                        echo "Clusters will be created for Academic Year: <strong>$auto_school_year</strong>";
+                                        ?>
+                                    </p>
                                 </div>
-                                <div class="flex items-center p-2 bg-purple-50 rounded-lg">
-                                    <i class="fas fa-briefcase text-purple-600 mr-3"></i>
-                                    <span class="text-gray-700">BSBA - Business Administration (10 clusters)</span>
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Capacity per Cluster</label>
+                                    <input type="number" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all" name="capacity" min="5" step="5" value="25" required>
+                                    <p class="text-gray-500 text-sm mt-2 flex items-center">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        Must be a multiple of 5 (each group has 5 students)
+                                    </p>
                                 </div>
-                                <div class="flex items-center p-2 bg-yellow-50 rounded-lg">
-                                    <i class="fas fa-graduation-cap text-yellow-600 mr-3"></i>
-                                    <span class="text-gray-700">BSED - Education (10 clusters)</span>
-                                </div>
-                                <div class="flex items-center p-2 bg-indigo-50 rounded-lg">
-                                    <i class="fas fa-server text-indigo-600 mr-3"></i>
-                                    <span class="text-gray-700">BSIT - Information Technology (10 clusters)</span>
-                                </div>
-                                <div class="flex items-center p-2 bg-red-50 rounded-lg">
-                                    <i class="fas fa-shield-alt text-red-600 mr-3"></i>
-                                    <span class="text-gray-700">BSCRIM - Criminology (10 clusters)</span>
-                                </div>
-                            </div>
-                            <div class="bg-green-100 border border-green-200 rounded-lg p-3">
-                                <p class="text-green-800 font-semibold text-center">Total: 50 clusters will be created</p>
                             </div>
                         </div>
-                        <div class="space-y-4">
-                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                                <div class="flex items-center mb-2">
-                                    <i class="fas fa-calendar-alt text-blue-600 mr-2"></i>
-                                    <span class="text-blue-800 font-semibold">School Year (Auto-Generated)</span>
-                                </div>
-                                <p class="text-blue-700 text-sm">
-                                    <?php 
-                                    $current_year = date('Y');
-                                    $current_month = date('n');
-                                    $start_year = ($current_month <= 6) ? $current_year - 1 : $current_year;
-                                    $auto_school_year = $start_year . '-' . ($start_year + 1);
-                                    echo "Clusters will be created for Academic Year: <strong>$auto_school_year</strong>";
-                                    ?>
-                                </p>
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 font-medium mb-2">Capacity per Cluster</label>
-                                <input type="number" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all" name="capacity" min="5" step="5" value="25" required>
-                                <p class="text-gray-500 text-sm mt-2 flex items-center">
-                                    <i class="fas fa-info-circle mr-2"></i>
-                                    Must be a multiple of 5 (each group has 5 students)
-                                </p>
-                            </div>
+                        <div class="modal-footer bg-white/80 backdrop-blur-sm p-6 border-0 space-x-3">
+                            <button type="button" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" name="bulk_create" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-lg" onclick="return confirm('Create 130 clusters for all programs?')">Generate All Clusters</button>
                         </div>
-                    </div>
-                    <div class="modal-footer bg-white/80 backdrop-blur-sm p-6 border-0 space-x-3">
-                        <button type="button" class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="bulk_create" class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-lg" onclick="return confirm('Create 50 clusters for all programs?')">Generate All Clusters</button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
-    </div>
 
     <!-- Create Cluster Modal -->
     <div class="modal fade" id="createClusterModal" tabindex="-1">
@@ -1094,11 +1142,19 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             <label class="block text-gray-700 font-medium mb-2">Program</label>
                             <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" name="program" required>
                                 <option value="">-- Select Program --</option>
-                                <option value="BSCS">BSCS - Computer Science</option>
-                                <option value="BSBA">BSBA - Business Administration</option>
-                                <option value="BSED">BSED - Education</option>
-                                <option value="BSIT">BSIT - Information Technology</option>
-                                <option value="BSCRIM">BSCRIM - Criminology</option>
+                                        <option value="BSIT">BSIT - Information Technology</option>
+                                        <option value="BSHM">BSHM - Hospitality Management</option>
+                                        <option value="BSOA">BSOA - Office Administration</option>
+                                        <option value="BSBA">BSBA - Business Administration</option>
+                                        <option value="BSCRIM">BSCRIM - Criminology</option>
+                                        <option value="BEED">BEED - Elementary Education</option>
+                                        <option value="BSED">BSED - Secondary Education</option>
+                                        <option value="BSCpE">BSCpE - Computer Engineering</option>
+                                        <option value="BSTM">BSTM - Tourism Management</option>
+                                        <option value="BSEntrep">BSEntrep - Entrepreneurship</option>
+                                        <option value="BSAIS">BSAIS - Accounting Information System</option>
+                                        <option value="BSPsych">BSPysch - Psychology</option>
+                                        <option value="BLIS">BLIS - Information Science</option>
                             </select>
                         </div>
                         <div>
@@ -1431,11 +1487,19 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             <label class="block text-gray-700 font-medium mb-2">Program</label>
                             <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" name="department" required>
                                 <option value="">-- Select Program --</option>
-                                <option value="Computer Science">Computer Science</option>
-                                <option value="Information Technology">Information Technology</option>
-                                <option value="Business Administration">Business Administration</option>
-                                <option value="Education">Education</option>
-                                <option value="Criminology">Criminology</option>
+                                        <option value="Information Technology">Information Technology</option>
+                                        <option value="Hospitality Management">Hospitality Management</option>
+                                        <option value="Office Administration">Office Administration</option>
+                                        <option value="Business Administration">Business Administration</option>
+                                        <option value="Criminology">Criminology</option>
+                                        <option value="Elementary Education">Elementary Education</option>
+                                        <option value="Secondary Education">Secondary Education</option>
+                                        <option value="Computer Engineering">Computer Engineering</option>
+                                        <option value="Tourism Management">Tourism Management</option>
+                                        <option value="Entrepreneurship">Entrepreneurship</option>
+                                        <option value="Accounting Information System">Accounting Information System</option>
+                                        <option value="Psychology">Psychology</option>
+                                        <option value="Information Science">Information Science</option>
                             </select>
                         </div>
                         <div>
@@ -1480,11 +1544,19 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             <label class="block text-gray-700 font-medium mb-2">Program</label>
                             <select class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" name="department" id="edit_department" required>
                                 <option value="">-- Select Program --</option>
-                                <option value="Computer Science">Computer Science</option>
-                                <option value="Information Technology">Information Technology</option>
-                                <option value="Business Administration">Business Administration</option>
-                                <option value="Education">Education</option>
-                                <option value="Criminology">Criminology</option>
+                                        <option value="Information Technology">Information Technology</option>
+                                        <option value="Hospitality Management">Hospitality Management</option>
+                                        <option value="Office Administration">Office Administration</option>
+                                        <option value="Business Administration">Business Administration</option>
+                                        <option value="Criminology">Criminology</option>
+                                        <option value="Elementary Education">Elementary Education</option>
+                                        <option value="Secondary Education">Secondary Education</option>
+                                        <option value="Computer Engineering">Computer Engineering</option>
+                                        <option value="Tourism Management">Tourism Management</option>
+                                        <option value="Entrepreneurship">Entrepreneurship</option>
+                                        <option value="Accounting Information System">Accounting Information System</option>
+                                        <option value="Psychology">Psychology</option>
+                                        <option value="Information Science">Information Science</option>
                             </select>
                         </div>
                         <div>
@@ -1768,11 +1840,19 @@ document.addEventListener('click', function(e) {
                 const optionProgram = option.getAttribute('data-program');
                 // Match program with department
                 const programMatch = 
-                    (clusterProgram === 'BSCS' && optionProgram === 'Information Technology') ||
                     (clusterProgram === 'BSIT' && optionProgram === 'Information Technology') ||
+                    (clusterProgram === 'BSHM' && optionProgram === 'Hospitality Management') ||
+                    (clusterProgram === 'BSOA' && optionProgram === 'Office Administration') ||
                     (clusterProgram === 'BSBA' && optionProgram === 'Business Administration') ||
-                    (clusterProgram === 'BSED' && optionProgram === 'Education') ||
-                    (clusterProgram === 'BSCRIM' && optionProgram === 'Criminology');
+                    (clusterProgram === 'BSCRIM' && optionProgram === 'Criminology') ||
+                    (clusterProgram === 'BEED' && optionProgram === 'Elementary Education') ||
+                    (clusterProgram === 'BSED' && optionProgram === 'Secondary Education') ||
+                    (clusterProgram === 'BSCpE' && optionProgram === 'Computer Engineering') ||
+                    (clusterProgram === 'BSTM' && optionProgram === 'Tourism Management') ||
+                    (clusterProgram === 'BSEntrep' && optionProgram === 'Entrepreneurship') ||
+                    (clusterProgram === 'BSAIS' && optionProgram === 'Accounting Information System') ||
+                    (clusterProgram === 'BSPsych' && optionProgram === 'Psychology') ||
+                    (clusterProgram === 'BLIS' && optionProgram === 'Information Science');
                 option.style.display = programMatch ? 'block' : 'none';
             }
         });
@@ -1806,10 +1886,19 @@ document.addEventListener('click', function(e) {
                 const optionProgram = option.getAttribute('data-program');
                 // Show clusters from matching programs
                 const programMatch = 
-                    (facultyDept === 'Information Technology' && (optionProgram === 'BSCS' || optionProgram === 'BSIT')) ||
+                    (facultyDept === 'Information Technology' && (optionProgram === 'BSIT')) ||
+                    (facultyDept === 'Hospitality Management' && optionProgram === 'BSHM') ||
+                    (facultyDept === 'Office Administration' && optionProgram === 'BSOA') ||
                     (facultyDept === 'Business Administration' && optionProgram === 'BSBA') ||
-                    (facultyDept === 'Education' && optionProgram === 'BSED') ||
-                    (facultyDept === 'Criminology' && optionProgram === 'BSCRIM');
+                    (facultyDept === 'Criminology' && optionProgram === 'BSCRIM') ||
+                    (facultyDept === 'Elementary Education' && optionProgram === 'BEED') ||
+                    (facultyDept === 'Secondary Education' && optionProgram === 'BSED') ||
+                    (facultyDept === 'Computer Engineering' && optionProgram === 'BSCpE') ||
+                    (facultyDept === 'Tourism Management' && optionProgram === 'BSTM') ||
+                    (facultyDept === 'Entrepreneurship' && optionProgram === 'BSEntrep') ||
+                    (facultyDept === 'Accounting Information System' && optionProgram === 'BSAIS') ||
+                    (facultyDept === 'Psychology' && optionProgram === 'BSPsych') ||
+                    (facultyDept === 'Information Science' && optionProgram === 'BLIS');
                 option.style.display = programMatch ? 'block' : 'none';
             }
         });

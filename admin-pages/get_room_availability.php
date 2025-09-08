@@ -12,7 +12,7 @@ try {
 
     $date = mysqli_real_escape_string($conn, $_POST['date']);
 
-    $rooms_query = "SELECT id, room_name, building, capacity FROM rooms ORDER BY building, room_name";
+    $rooms_query = "SELECT id, room_name, building FROM rooms ORDER BY building, room_name";
     $rooms_result = mysqli_query($conn, $rooms_query);
 
     if (!$rooms_result) {

@@ -10,6 +10,16 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
+// Ensure payments.review_feedback column exists for storing admin feedback
+$check_col_sql = "SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments' AND COLUMN_NAME = 'review_feedback'";
+$check_col_res = mysqli_query($conn, $check_col_sql);
+if ($check_col_res) {
+    $col_info = mysqli_fetch_assoc($check_col_res);
+    if ((int)$col_info['cnt'] === 0) {
+        @mysqli_query($conn, "ALTER TABLE payments ADD COLUMN review_feedback TEXT NULL AFTER admin_approved");
+    }
+}
+
 // Get user's program information
 $user_query = "SELECT u.*, sp.program FROM user_tbl u 
                JOIN student_profiles sp ON u.user_id = sp.user_id 
@@ -69,8 +79,28 @@ if ($has_group) {
     $has_final_defense_payment = mysqli_num_rows($final_defense_result) > 0;
     $final_defense_data = mysqli_fetch_assoc($final_defense_result);
     
-    // For proposal submission, only research forum payment is required
+    // For proposal submission, only research forum payment is required (approved only)
     $has_paid = $has_research_forum_payment;
+
+    // Fetch latest payment rows for status display (none/pending/approved/rejected)
+    $rf_row = null; $rf_status = 'none';
+    $pre_row = null; $pre_status = 'none';
+    $final_row = null; $final_status = 'none';
+    
+    $rf_latest_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = 'research_forum' ORDER BY p.payment_date DESC LIMIT 1";
+    $rf_latest_r = mysqli_query($conn, $rf_latest_q);
+    if ($rf_latest_r && mysqli_num_rows($rf_latest_r) > 0) { $rf_row = mysqli_fetch_assoc($rf_latest_r); $rf_status = $rf_row['status']; }
+    
+    $pre_latest_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = 'pre_oral_defense' ORDER BY p.payment_date DESC LIMIT 1";
+    $pre_latest_r = mysqli_query($conn, $pre_latest_q);
+    if ($pre_latest_r && mysqli_num_rows($pre_latest_r) > 0) { $pre_row = mysqli_fetch_assoc($pre_latest_r); $pre_status = $pre_row['status']; }
+    
+    $final_latest_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = 'final_defense' ORDER BY p.payment_date DESC LIMIT 1";
+    $final_latest_r = mysqli_query($conn, $final_latest_q);
+    if ($final_latest_r && mysqli_num_rows($final_latest_r) > 0) { $final_row = mysqli_fetch_assoc($final_latest_r); $final_status = $final_row['status']; }
+    
+    // Gate proposal submission strictly on approved research forum payment
+    $can_submit_proposal = ($rf_status === 'approved');
     
     // Handle join code generation
     if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_join_code'])) {
@@ -386,9 +416,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                     
                     // Update existing payment for all group members
+                    // Reset status to pending for review, clear admin flags and feedback on update
                     $update_query = "UPDATE payments p 
                                     JOIN group_members gm ON p.student_id = gm.student_id 
-                                    SET p.image_receipts = '$image_receipts_json', p.payment_date = NOW() 
+                                    SET p.image_receipts = '$image_receipts_json', p.payment_date = NOW(), p.status = 'pending', p.admin_approved = 0, p.review_feedback = NULL 
                                     WHERE gm.group_id = '$group_id' AND p.payment_type = '$payment_type'";
                     mysqli_query($conn, $update_query);
                     $success_message = "Group payment receipt images updated successfully!";
@@ -400,7 +431,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     while ($member = mysqli_fetch_assoc($members_result)) {
                         $member_id = $member['student_id'];
                         $payment_query = "INSERT INTO payments (student_id, payment_type, amount, image_receipts, status, payment_date) 
-                                         VALUES ('$member_id', '$payment_type', '$payment_amount', '$image_receipts_json', 'approved', NOW())";
+                                         VALUES ('$member_id', '$payment_type', '$payment_amount', '$image_receipts_json', 'pending', NOW())";
                         mysqli_query($conn, $payment_query);
                     }
                     $success_message = "Group payment receipt images uploaded successfully!";
@@ -867,30 +898,35 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             <div class="stats-card bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
                                 <h3 class="font-semibold text-blue-800 text-sm uppercase tracking-wide">Payment Status</h3>
                                 <div class="mt-2 space-y-2">
+<?php
+function renderStatusBadge($status) {
+    if ($status === 'approved') return '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>';
+    if ($status === 'rejected') return '<span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">Rejected</span>';
+    if ($status === 'pending') return '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending Review</span>';
+    return '<span class="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">No Attachment</span>';
+}
+?>
                                     <div class="flex items-center justify-between">
                                         <span class="text-xs text-gray-600">Research Forum:</span>
-                                        <?php if ($has_research_forum_payment): ?>
-                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>
-                                        <?php else: ?>
-                                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending</span>
-                                        <?php endif; ?>
+                                        <?php echo renderStatusBadge($rf_status); ?>
                                     </div>
+                                    <?php if ($rf_status === 'rejected' && !empty($rf_row['review_feedback'])): ?>
+                                        <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($rf_row['review_feedback']); ?></div>
+                                    <?php endif; ?>
                                     <div class="flex items-center justify-between">
                                         <span class="text-xs text-gray-600">Pre-Oral Defense:</span>
-                                        <?php if ($has_pre_oral_payment): ?>
-                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>
-                                        <?php else: ?>
-                                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending</span>
-                                        <?php endif; ?>
+                                        <?php echo renderStatusBadge($pre_status); ?>
                                     </div>
+                                    <?php if ($pre_status === 'rejected' && !empty($pre_row['review_feedback'])): ?>
+                                        <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($pre_row['review_feedback']); ?></div>
+                                    <?php endif; ?>
                                     <div class="flex items-center justify-between">
                                         <span class="text-xs text-gray-600">Final Defense:</span>
-                                        <?php if ($has_final_defense_payment): ?>
-                                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>
-                                        <?php else: ?>
-                                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending</span>
-                                        <?php endif; ?>
+                                        <?php echo renderStatusBadge($final_status); ?>
                                     </div>
+                                    <?php if ($final_status === 'rejected' && !empty($final_row['review_feedback'])): ?>
+                                        <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($final_row['review_feedback']); ?></div>
+                                    <?php endif; ?>
                                 </div>
                                 <button onclick="toggleModal('paymentModal')" class="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center justify-center">
                                     <i class="fas fa-upload mr-2"></i> Upload Receipt
@@ -1100,13 +1136,13 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             </div>
                         <?php endif; ?>
                         
-                        <?php if (!$has_research_forum_payment): ?>
+                        <?php if ($rf_status !== 'approved'): ?>
                             <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-6 backdrop-filter backdrop-blur-sm">
                                 <div class="flex items-start">
                                     <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-3"></i>
                                     <div>
                                         <h3 class="font-semibold text-yellow-800">Research Forum Payment Required</h3>
-                                        <p class="text-yellow-700">Team leader needs to upload the group's Research Forum payment receipt before you can submit a proposal.</p>
+                                        <p class="text-yellow-700">Team leader needs to upload and get the group's Research Forum payment receipt approved before you can submit a proposal.</p>
                                         <button onclick="toggleModal('paymentModal')" class="mt-3 bg-primary-600 text-white px-4 py-2 rounded-lg">
                                             <i class="fas fa-upload mr-2"></i> Upload Receipt
                                         </button>
@@ -1115,12 +1151,12 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             </div>
                         <?php endif; ?>
                         
-                        <form action="/CRAD-system/student_pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo !$has_research_forum_payment ? 'onsubmit="return false;"' : ''; ?>>
+                        <form action="/CRAD-system/student_pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo !$can_submit_proposal ? 'onsubmit="return false;"' : ''; ?>>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Title</label>
                                 <input type="text" name="title" required 
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                                    <?php echo !$has_research_forum_payment ? 'disabled' : ''; ?>
+                                    <?php echo !$can_submit_proposal ? 'disabled' : ''; ?>
                                     value="<?php echo $has_proposal ? $proposal['title'] : ''; ?>">
                             </div>
                             
@@ -1128,7 +1164,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <textarea name="description" rows="3" 
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                                    <?php echo !$has_research_forum_payment ? 'disabled' : ''; ?>
+                                    <?php echo !$can_submit_proposal ? 'disabled' : ''; ?>
                                 ><?php echo $has_proposal ? $proposal['description'] : ''; ?></textarea>
                             </div>
                             
@@ -1156,8 +1192,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             
                             <div class="pt-4">
                                 <button type="submit" name="<?php echo $has_proposal ? 'update_proposal' : 'submit_proposal'; ?>" 
-                                    class="enhanced-button bg-gradient-to-r from-primary-600 to-secondary-600 text-white px-6 py-3 rounded-lg hover:shadow-md transition flex items-center justify-center font-medium
-                                    <?php echo !$has_research_forum_payment ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'; ?>">
+                                    class="enhanced-button bg-gradient-to-r from-primary-600 to-secondary-600 text-white px-6 py-3 rounded-lg hover:shadow-md transition flex items-center justify-center font-medium <?php echo !$can_submit_proposal ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'; ?>">
                                     <i class="fas fa-<?php echo $has_proposal ? 'edit' : 'paper-plane'; ?> mr-2"></i> 
                                     <?php echo $has_proposal ? 'Update Proposal' : 'Submit Proposal'; ?>
                                 </button>
@@ -1381,21 +1416,27 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
             
             // Payment data from PHP
             const paymentData = {
-                'research_forum': <?php echo json_encode($research_forum_data); ?>,
-                'pre_oral_defense': <?php echo json_encode($pre_oral_data); ?>,
-                'final_defense': <?php echo json_encode($final_defense_data); ?>
+                'research_forum': <?php echo json_encode($rf_row); ?>,
+                'pre_oral_defense': <?php echo json_encode($pre_row); ?>,
+                'final_defense': <?php echo json_encode($final_row); ?>
             };
             
             currentImagesGrid.innerHTML = '';
             
             if (paymentType && paymentData[paymentType] && paymentData[paymentType].image_receipts) {
                 const images = JSON.parse(paymentData[paymentType].image_receipts);
+                const reviewMap = paymentData[paymentType].image_review ? JSON.parse(paymentData[paymentType].image_review) : {};
                 existingImagesDiv.classList.remove('hidden');
                 uploadButtonText.textContent = 'Update Images';
                 
                 images.forEach((imagePath, index) => {
                     // Convert path to web-accessible format
                     const webPath = imagePath.replace('../assets/', '/CRAD-system/assets/');
+                    const rv = reviewMap && reviewMap[index] ? reviewMap[index] : null;
+                    const statusBadge = rv ? (rv.status === 'approved' 
+                        ? '<span class="bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full">Approved</span>' 
+                        : '<span class="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">Rejected</span>') : '';
+                    const feedbackText = rv && rv.feedback ? rv.feedback : '';
                     const imageDiv = document.createElement('div');
                     imageDiv.className = 'relative cursor-pointer hover:opacity-80 transition';
                     imageDiv.onclick = () => viewImage(webPath, `Receipt ${index + 1}`);
@@ -1404,6 +1445,8 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                         <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg">
                             Receipt ${index + 1}
                         </div>
+                        <div class="absolute top-1 left-1">${statusBadge}</div>
+                        ${feedbackText ? `<div class="absolute top-1 right-1 bg-white bg-opacity-90 text-[10px] text-red-700 px-1.5 py-0.5 rounded shadow">${feedbackText}</div>` : ''}
                         <div class="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1">
                             <i class="fas fa-eye text-xs"></i>
                         </div>
@@ -1414,6 +1457,24 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                 existingImagesDiv.classList.add('hidden');
                 uploadButtonText.textContent = 'Upload Images';
             }
+
+            // Update payment status badges on student side when all images approved
+            try {
+                if (paymentType === 'research_forum' && paymentData[paymentType]) {
+                    const reviewMap = paymentData[paymentType].image_review ? JSON.parse(paymentData[paymentType].image_review) : {};
+                    const images = paymentData[paymentType].image_receipts ? JSON.parse(paymentData[paymentType].image_receipts) : [];
+                    let allApproved = images.length > 0;
+                    let anyRejected = false;
+                    images.forEach((_, idx) => {
+                        if (!reviewMap[idx] || reviewMap[idx].status !== 'approved') {
+                            allApproved = false;
+                            if (reviewMap[idx] && reviewMap[idx].status === 'rejected') anyRejected = true;
+                        }
+                    });
+                    // Locate the Payment Status card RF badge and update
+                    const statusCard = document.querySelector('.stats-card .text-blue-800');
+                }
+            } catch (e) {}
         }
     </script>
 </body>

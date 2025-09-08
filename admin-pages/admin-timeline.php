@@ -36,6 +36,161 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
+    // AJAX: per-image review update
+    if (isset($_POST['ajax_update_image_review'])) {
+        header('Content-Type: application/json');
+        $proposal_id = (int)($_POST['proposal_id'] ?? 0);
+        $payment_type = $_POST['payment_type'] ?? '';
+        $image_index = (int)($_POST['image_index'] ?? -1);
+        $decision = $_POST['decision'] ?? '';
+        $feedback = trim($_POST['feedback'] ?? '');
+
+        if (!$proposal_id || $image_index < 0 || !in_array($payment_type, ['research_forum','pre_oral_defense','final_defense']) || !in_array($decision, ['approved','rejected'])) {
+            echo json_encode(['ok' => false, 'error' => 'Invalid parameters']);
+            exit();
+        }
+
+        // Ensure image_review column exists
+        $conn->query("CREATE TABLE IF NOT EXISTS _tmp_check (id INT PRIMARY KEY) ENGINE=InnoDB"); // no-op to ensure permissions
+        $colCheck = $conn->query("SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments' AND COLUMN_NAME = 'image_review'");
+        if ($colCheck && ($colRow = $colCheck->fetch_assoc()) && (int)$colRow['cnt'] === 0) {
+            @$conn->query("ALTER TABLE payments ADD COLUMN image_review TEXT NULL AFTER image_receipts");
+        }
+
+        // Get group_id -> student_id rows
+        $stmt = $conn->prepare("SELECT group_id FROM proposals WHERE id = ?");
+        $stmt->bind_param("i", $proposal_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res->fetch_assoc();
+        $stmt->close();
+        if (!$row) { echo json_encode(['ok'=>false,'error'=>'Proposal not found']); exit(); }
+        $group_id = (int)$row['group_id'];
+
+        // Find the representative payment row (first member)
+        $sql = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = ? ORDER BY p.payment_date DESC LIMIT 1";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("is", $group_id, $payment_type);
+        $stmt->execute();
+        $pRes = $stmt->get_result();
+        $payment = $pRes->fetch_assoc();
+        $stmt->close();
+        if (!$payment) { echo json_encode(['ok'=>false,'error'=>'Payment not found']); exit(); }
+
+        $images = [];
+        if (!empty($payment['image_receipts'])) {
+            $images = json_decode($payment['image_receipts'], true) ?: [];
+        }
+        if (!isset($images[$image_index])) { echo json_encode(['ok'=>false,'error'=>'Image index out of bounds']); exit(); }
+
+        $review = [];
+        if (!empty($payment['image_review'])) {
+            $review = json_decode($payment['image_review'], true) ?: [];
+        }
+        $review[$image_index] = [ 'status' => $decision, 'feedback' => $feedback, 'updated_at' => date('c') ];
+
+        // Compute overall status from per-image review
+        $new_status = 'pending';
+        if (!empty($images)) {
+            $allApproved = true;
+            $anyRejected = false;
+            foreach ($images as $idx => $_) {
+                if (!isset($review[$idx])) { $allApproved = false; }
+                else if ($review[$idx]['status'] === 'rejected') { $anyRejected = true; $allApproved = false; }
+                else if ($review[$idx]['status'] !== 'approved') { $allApproved = false; }
+            }
+            if ($anyRejected) $new_status = 'rejected';
+            else if ($allApproved) $new_status = 'approved';
+            else $new_status = 'pending';
+        }
+
+        // Persist review JSON and overall status to ALL group members for consistency
+        $new_review_json = json_encode($review);
+        $sql = "UPDATE payments p JOIN group_members gm ON p.student_id = gm.student_id SET p.image_review = ?, p.status = ?, p.admin_approved = IF(?='approved',1,0) WHERE gm.group_id = ? AND p.payment_type = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("sssis", $new_review_json, $new_status, $new_status, $group_id, $payment_type);
+        $stmt->execute();
+        $stmt->close();
+
+        echo json_encode(['ok'=>true,'review'=>$review,'status'=>$new_status]);
+        exit();
+    }
+
+    // Approve payment receipt
+    if (isset($_POST['approve_payment'])) {
+        $proposal_id = (int)($_POST['proposal_id'] ?? 0);
+        $payment_type = $_POST['payment_type'] ?? 'research_forum';
+
+        // Ensure review_feedback column exists
+        $colCheck = $conn->query("SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments' AND COLUMN_NAME = 'review_feedback'");
+        if ($colCheck && ($colRow = $colCheck->fetch_assoc()) && (int)$colRow['cnt'] === 0) {
+            @$conn->query("ALTER TABLE payments ADD COLUMN review_feedback TEXT NULL AFTER admin_approved");
+        }
+
+        // Get group_id from proposal
+        $stmt = $conn->prepare("SELECT group_id FROM proposals WHERE id = ?");
+        $stmt->bind_param("i", $proposal_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res->fetch_assoc();
+        $stmt->close();
+
+        if ($row) {
+            $group_id = (int)$row['group_id'];
+            // Approve all matching payments for the group
+            $sql = "UPDATE payments p JOIN group_members gm ON p.student_id = gm.student_id SET p.status = 'approved', p.admin_approved = 1, p.review_feedback = NULL WHERE gm.group_id = ? AND p.payment_type = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("is", $group_id, $payment_type);
+            $stmt->execute();
+            $stmt->close();
+
+            $_SESSION['success_message'] = ucfirst(str_replace('_',' ', $payment_type)) . " receipt approved.";
+        } else {
+            $_SESSION['error_message'] = "Unable to approve: proposal not found.";
+        }
+
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit();
+    }
+
+    // Reject payment receipt with feedback
+    if (isset($_POST['reject_payment'])) {
+        $proposal_id = (int)($_POST['proposal_id'] ?? 0);
+        $payment_type = $_POST['payment_type'] ?? 'research_forum';
+        $feedback = trim($_POST['feedback'] ?? '');
+
+        // Ensure review_feedback column exists
+        $colCheck = $conn->query("SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments' AND COLUMN_NAME = 'review_feedback'");
+        if ($colCheck && ($colRow = $colCheck->fetch_assoc()) && (int)$colRow['cnt'] === 0) {
+            @$conn->query("ALTER TABLE payments ADD COLUMN review_feedback TEXT NULL AFTER admin_approved");
+        }
+
+        // Get group_id from proposal
+        $stmt = $conn->prepare("SELECT group_id FROM proposals WHERE id = ?");
+        $stmt->bind_param("i", $proposal_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res->fetch_assoc();
+        $stmt->close();
+
+        if ($row) {
+            $group_id = (int)$row['group_id'];
+            // Reject all matching payments for the group with feedback
+            $sql = "UPDATE payments p JOIN group_members gm ON p.student_id = gm.student_id SET p.status = 'rejected', p.admin_approved = 0, p.review_feedback = ? WHERE gm.group_id = ? AND p.payment_type = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("sis", $feedback, $group_id, $payment_type);
+            $stmt->execute();
+            $stmt->close();
+
+            $_SESSION['success_message'] = ucfirst(str_replace('_',' ', $payment_type)) . " receipt rejected with feedback.";
+        } else {
+            $_SESSION['error_message'] = "Unable to reject: proposal not found.";
+        }
+
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit();
+    }
+
     // Update timeline
     if (isset($_POST['update_timeline'])) {
         $timeline_id = (int)($_POST['timeline_id'] ?? 0);
@@ -287,7 +442,8 @@ function checkGroupPaymentStatus($conn, $group_id) {
         'has_pre_oral_payment' => false, 
         'has_final_defense_payment' => false,
         'payment_details' => [],
-        'payment_images' => []
+        'payment_images' => [],
+        'payment_image_review' => []
     ];
     
     if ($members_result->num_rows > 0) {
@@ -301,17 +457,29 @@ function checkGroupPaymentStatus($conn, $group_id) {
         $stmt->execute();
         $research_result = $stmt->get_result();
         $payment_status['has_research_forum_payment'] = $research_result->num_rows > 0;
-        if ($research_result->num_rows > 0) {
-            $payment_data = $research_result->fetch_assoc();
+        // Always show latest uploaded images (any status) for admin review
+        $rf_latest_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'research_forum' ORDER BY payment_date DESC LIMIT 1";
+        $stmt = $conn->prepare($rf_latest_query);
+        $stmt->bind_param("i", $student_id);
+        $stmt->execute();
+        $rf_latest = $stmt->get_result();
+        if ($rf_latest->num_rows > 0) {
+            $payment_data = $rf_latest->fetch_assoc();
             if (!empty($payment_data['image_receipts'])) {
                 $images = json_decode($payment_data['image_receipts'], true);
                 if (is_array($images)) {
-                    // Convert to web root paths
                     $web_paths = array_map(function($path) {
                         $filename = basename($path);
                         return '/CRAD-system/assets/uploads/receipts/' . $filename;
                     }, $images);
                     $payment_status['payment_images']['research_forum'] = $web_paths;
+                }
+            }
+            // Include per-image review statuses if available
+            if (!empty($payment_data['image_review'])) {
+                $review = json_decode($payment_data['image_review'], true);
+                if (is_array($review)) {
+                    $payment_status['payment_image_review']['research_forum'] = $review;
                 }
             }
         }
@@ -324,17 +492,28 @@ function checkGroupPaymentStatus($conn, $group_id) {
         $stmt->execute();
         $pre_oral_result = $stmt->get_result();
         $payment_status['has_pre_oral_payment'] = $pre_oral_result->num_rows > 0;
-        if ($pre_oral_result->num_rows > 0) {
-            $payment_data = $pre_oral_result->fetch_assoc();
+        // Always show latest uploaded images (any status)
+        $pre_latest_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'pre_oral_defense' ORDER BY payment_date DESC LIMIT 1";
+        $stmt = $conn->prepare($pre_latest_query);
+        $stmt->bind_param("i", $student_id);
+        $stmt->execute();
+        $pre_latest = $stmt->get_result();
+        if ($pre_latest->num_rows > 0) {
+            $payment_data = $pre_latest->fetch_assoc();
             if (!empty($payment_data['image_receipts'])) {
                 $images = json_decode($payment_data['image_receipts'], true);
                 if (is_array($images)) {
-                    // Convert to web root paths
                     $web_paths = array_map(function($path) {
                         $filename = basename($path);
                         return '/CRAD-system/assets/uploads/receipts/' . $filename;
                     }, $images);
                     $payment_status['payment_images']['pre_oral_defense'] = $web_paths;
+                }
+            }
+            if (!empty($payment_data['image_review'])) {
+                $review = json_decode($payment_data['image_review'], true);
+                if (is_array($review)) {
+                    $payment_status['payment_image_review']['pre_oral_defense'] = $review;
                 }
             }
         }
@@ -347,17 +526,28 @@ function checkGroupPaymentStatus($conn, $group_id) {
         $stmt->execute();
         $final_result = $stmt->get_result();
         $payment_status['has_final_defense_payment'] = $final_result->num_rows > 0;
-        if ($final_result->num_rows > 0) {
-            $payment_data = $final_result->fetch_assoc();
+        // Always show latest uploaded images (any status)
+        $final_latest_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'final_defense' ORDER BY payment_date DESC LIMIT 1";
+        $stmt = $conn->prepare($final_latest_query);
+        $stmt->bind_param("i", $student_id);
+        $stmt->execute();
+        $final_latest = $stmt->get_result();
+        if ($final_latest->num_rows > 0) {
+            $payment_data = $final_latest->fetch_assoc();
             if (!empty($payment_data['image_receipts'])) {
                 $images = json_decode($payment_data['image_receipts'], true);
                 if (is_array($images)) {
-                    // Convert to web root paths
                     $web_paths = array_map(function($path) {
                         $filename = basename($path);
                         return '/CRAD-system/assets/uploads/receipts/' . $filename;
                     }, $images);
                     $payment_status['payment_images']['final_defense'] = $web_paths;
+                }
+            }
+            if (!empty($payment_data['image_review'])) {
+                $review = json_decode($payment_data['image_review'], true);
+                if (is_array($review)) {
+                    $payment_status['payment_image_review']['final_defense'] = $review;
                 }
             }
         }
@@ -1090,7 +1280,11 @@ $isoDeadline = $current_milestone
               <i class="fas fa-credit-card text-purple-500 mr-3 mt-1 w-4"></i>
               <div class="flex-1">
                 <p class="text-xs text-gray-600 font-medium uppercase tracking-wide mb-2">Research Forum Payment</p>
-                <?php if ($has_paid): ?>
+                <?php
+                  $payment_status = $proposal['payment_status'];
+                  $rfPaid = $payment_status['has_research_forum_payment'];
+                ?>
+                <?php if ($rfPaid): ?>
                   <div class="flex items-center justify-between">
                     <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
                       <i class="fas fa-check-circle mr-1"></i>Paid & Verified
@@ -1099,12 +1293,13 @@ $isoDeadline = $current_milestone
                   </div>
                 <?php else: ?>
                   <div class="flex items-center justify-between">
-                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                      <i class="fas fa-exclamation-circle mr-1"></i>Payment Required
+                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
+                      <i class="fas fa-hourglass-half mr-1"></i>Pending / No Attachment
                     </span>
-                    <span class="text-xs text-red-600 font-medium">For proposal approval</span>
+                    <span class="text-xs text-yellow-700 font-medium">Awaiting approval</span>
                   </div>
                 <?php endif; ?>
+                
               </div>
             </div>
           </div>
@@ -1114,10 +1309,6 @@ $isoDeadline = $current_milestone
             <?php if ($proposal['status'] === 'Completed'): ?>
               <button type="button" onclick='openRevertModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)' class="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Revert Approval">
                 <i class="fas fa-undo mr-1"></i>Revert
-              </button>
-            <?php elseif (!$has_paid): ?>
-              <button disabled class="flex-1 bg-gradient-to-r from-red-400 to-red-600 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center cursor-not-allowed opacity-75" title="Payment Required">
-                <i class="fas fa-times mr-1"></i>Payment Required
               </button>
             <?php else: ?>
               <button type="button" onclick='openProposalReviewModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)' class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Review Proposal">
@@ -1359,8 +1550,9 @@ $isoDeadline = $current_milestone
                     </div>
 
                     <div class="flex justify-center mt-6">
-                        <button type="button" onclick="openApprovalModal()" class="bg-green-100 hover:bg-green-200 text-green-700 px-6 py-2 rounded-lg text-sm font-medium transition-all" id="approvalButton">
-                            <i class="fas fa-check mr-2"></i>Approve Proposal
+                        <button type="button" onclick="openApprovalModal()" id="approvalButton" class="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2 mx-auto">
+                            <i class="fas fa-check"></i>
+                            <span>Approve Proposal</span>
                         </button>
                     </div>
                 </form>
@@ -1730,6 +1922,12 @@ $isoDeadline = $current_milestone
       document.getElementById('review_proposal_title').value = proposal.title;
       document.getElementById('review_proposal_description').value = proposal.description;
       document.getElementById('review_proposal_download').href = proposal.file_path;
+      // Set proposal id for approve/reject forms inside modal
+      const pid = proposal.id;
+      const pidInput1 = document.getElementById('modal_payment_proposal_id');
+      const pidInput2 = document.getElementById('modal_reject_proposal_id');
+      if (pidInput1) pidInput1.value = pid;
+      if (pidInput2) pidInput2.value = pid;
       
       // Set current status
       let statusText = 'Pending';
@@ -1768,16 +1966,16 @@ $isoDeadline = $current_milestone
       const approvalButton = document.getElementById('approvalButton');
       
       if (proposal.status === 'Completed') {
-        approvalButton.textContent = '🔄 Revert Approval';
-        approvalButton.className = 'bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md w-full font-semibold';
+        approvalButton.textContent = 'Revert Approval';
+        approvalButton.className = 'px-8 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 mx-auto';
         approvalButton.onclick = function() { openRevertModal(); };
       } else if (!proposal.payment_status?.has_research_forum_payment) {
-        approvalButton.textContent = '❌ Payment Required';
-        approvalButton.className = 'bg-red-500 text-white px-4 py-2 rounded-md w-full font-semibold cursor-not-allowed';
+        approvalButton.textContent = 'Payment Required';
+        approvalButton.className = 'px-8 py-3 bg-red-500 text-white rounded-xl font-semibold shadow-none opacity-80 cursor-not-allowed mx-auto';
         approvalButton.disabled = true;
       } else {
-        approvalButton.textContent = '✅ Approve Proposal';
-        approvalButton.className = 'bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md w-full font-semibold';
+        approvalButton.textContent = 'Approve Proposal';
+        approvalButton.className = 'px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 mx-auto';
         approvalButton.disabled = false;
         approvalButton.onclick = function() { openApprovalModal(); };
       }
@@ -1890,6 +2088,7 @@ $isoDeadline = $current_milestone
       imagesContainer.innerHTML = '';
       
       const paymentImages = proposal.payment_status?.payment_images || {};
+      const paymentImageReview = proposal.payment_status?.payment_image_review || {};
       
       if (Object.keys(paymentImages).length === 0) {
         imagesContainer.innerHTML = '<p class="text-gray-500 text-sm">No payment receipt images uploaded.</p>';
@@ -1952,6 +2151,22 @@ $isoDeadline = $current_milestone
                   ${index + 1}
                 </div>
               </div>
+              <div class="mt-2 flex items-center gap-2">
+                <button type="button" class="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onclick="reviewImage('${paymentType}', ${proposal.id}, ${index}, 'approved')">
+                  <i class="fas fa-check mr-1"></i>Approve
+                </button>
+                <button type="button" class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="showRejectPanel('${paymentType}', ${proposal.id}, ${index})">
+                  <i class="fas fa-times mr-1"></i>Reject
+                </button>
+                <span class="text-xs ml-auto" id="img-status-${paymentType}-${index}"></span>
+              </div>
+              <div id="reject-panel-${paymentType}-${index}" class="mt-2 hidden">
+                <div class="flex items-center gap-2">
+                  <input type="text" id="reject-reason-${paymentType}-${index}" class="flex-1 px-2 py-1 border rounded text-xs" placeholder="Reason (e.g., blurry image)" />
+                  <button type="button" class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="submitRejectPanel('${paymentType}', ${proposal.id}, ${index})">Confirm</button>
+                  <button type="button" class="px-2 py-1 text-xs rounded bg-gray-300 text-gray-800 hover:bg-gray-400" onclick="cancelRejectPanel('${paymentType}', ${index})">Cancel</button>
+                </div>
+              </div>
             `;
             imagesGrid.appendChild(imageDiv);
           });
@@ -1959,8 +2174,79 @@ $isoDeadline = $current_milestone
           sectionDiv.appendChild(headerDiv);
           sectionDiv.appendChild(imagesGrid);
           imagesContainer.appendChild(sectionDiv);
+          // Apply existing per-image statuses
+          const reviewMap = paymentImageReview[paymentType] || {};
+          images.forEach((_, index) => {
+            const statusElId = `img-status-${paymentType}-${index}`;
+            const statusEl = document.getElementById(statusElId);
+            const rv = reviewMap[index];
+            if (statusEl && rv) {
+              const tag = rv.status === 'approved' ? '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded">Approved</span>' : '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded">Rejected</span>';
+              const fb = rv.feedback ? `<span class="text-gray-600 ml-2">${rv.feedback}</span>` : '';
+              statusEl.innerHTML = tag + fb;
+            }
+          });
         }
       });
+    }
+
+    // AJAX helpers for per-image review
+    async function reviewImage(paymentType, proposalId, imageIndex, decision, feedback = '') {
+      try {
+        const form = new FormData();
+        form.append('ajax_update_image_review', '1');
+        form.append('proposal_id', String(proposalId));
+        form.append('payment_type', paymentType);
+        form.append('image_index', String(imageIndex));
+        form.append('decision', decision);
+        form.append('feedback', feedback);
+        const resp = await fetch(window.location.href, { method: 'POST', body: form });
+        const data = await resp.json();
+        if (!data.ok) { alert(data.error || 'Failed to update'); return; }
+        const statusEl = document.getElementById(`img-status-${paymentType}-${imageIndex}`);
+        if (statusEl) {
+          const tag = decision === 'approved' ? '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded">Approved</span>' : '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded">Rejected</span>';
+          const fb = feedback ? `<span class=\"text-gray-600 ml-2\">${feedback}</span>` : '';
+          statusEl.innerHTML = tag + fb;
+        }
+        // Update summary badges without full refresh
+        try {
+          if (paymentType === 'research_forum') {
+            const summary = document.getElementById('paymentStatusSummary');
+            if (summary && data.status) {
+              // Simple refresh of the summary by re-opening the modal data state
+              // Re-run the summary and images builder using current proposal object
+              // Note: We don't have a live proposal object update; so minimally tweak the badge text
+              const badges = summary.querySelectorAll('div');
+              badges.forEach(div => {
+                if (div.textContent && div.textContent.includes('Research Forum')) {
+                  const right = div.querySelector('span.text-lg');
+                  if (right) right.textContent = (data.status === 'approved') ? '✓ PAID' : (data.status === 'rejected' ? '✗ NOT PAID' : 'PENDING');
+                }
+              });
+            }
+          }
+        } catch (e) {}
+      } catch (e) {
+        alert('Network error');
+      }
+    }
+
+    function showRejectPanel(paymentType, proposalId, imageIndex) {
+      const pane = document.getElementById(`reject-panel-${paymentType}-${imageIndex}`);
+      if (pane) pane.classList.remove('hidden');
+    }
+
+    function cancelRejectPanel(paymentType, imageIndex) {
+      const pane = document.getElementById(`reject-panel-${paymentType}-${imageIndex}`);
+      if (pane) pane.classList.add('hidden');
+    }
+
+    function submitRejectPanel(paymentType, proposalId, imageIndex) {
+      const input = document.getElementById(`reject-reason-${paymentType}-${imageIndex}`);
+      const reason = input ? input.value : '';
+      reviewImage(paymentType, proposalId, imageIndex, 'rejected', reason || '');
+      cancelRejectPanel(paymentType, imageIndex);
     }
     
     // Open image in modal

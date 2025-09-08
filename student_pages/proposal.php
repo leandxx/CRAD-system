@@ -47,18 +47,27 @@ if ($has_group) {
         $proposal = mysqli_fetch_assoc($proposal_result);
     }
     
-    // Check payment status for each type
-    $research_forum_query = "SELECT * FROM payments WHERE student_id = '$user_id' AND payment_type = 'research_forum' AND status = 'approved'";
+    // Check payment status for each type (check any group member's payment)
+    $research_forum_query = "SELECT p.* FROM payments p 
+                            JOIN group_members gm ON p.student_id = gm.student_id 
+                            WHERE gm.group_id = '$group_id' AND p.payment_type = 'research_forum' AND p.status = 'approved' LIMIT 1";
     $research_forum_result = mysqli_query($conn, $research_forum_query);
     $has_research_forum_payment = mysqli_num_rows($research_forum_result) > 0;
+    $research_forum_data = mysqli_fetch_assoc($research_forum_result);
     
-    $pre_oral_query = "SELECT * FROM payments WHERE student_id = '$user_id' AND payment_type = 'pre_oral_defense' AND status = 'approved'";
+    $pre_oral_query = "SELECT p.* FROM payments p 
+                      JOIN group_members gm ON p.student_id = gm.student_id 
+                      WHERE gm.group_id = '$group_id' AND p.payment_type = 'pre_oral_defense' AND p.status = 'approved' LIMIT 1";
     $pre_oral_result = mysqli_query($conn, $pre_oral_query);
     $has_pre_oral_payment = mysqli_num_rows($pre_oral_result) > 0;
+    $pre_oral_data = mysqli_fetch_assoc($pre_oral_result);
     
-    $final_defense_query = "SELECT * FROM payments WHERE student_id = '$user_id' AND payment_type = 'final_defense' AND status = 'approved'";
+    $final_defense_query = "SELECT p.* FROM payments p 
+                           JOIN group_members gm ON p.student_id = gm.student_id 
+                           WHERE gm.group_id = '$group_id' AND p.payment_type = 'final_defense' AND p.status = 'approved' LIMIT 1";
     $final_defense_result = mysqli_query($conn, $final_defense_query);
     $has_final_defense_payment = mysqli_num_rows($final_defense_result) > 0;
+    $final_defense_data = mysqli_fetch_assoc($final_defense_result);
     
     // For proposal submission, only research forum payment is required
     $has_paid = $has_research_forum_payment;
@@ -311,6 +320,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             mkdir($target_dir, 0777, true);
         }
         
+        // Check if group already has payment for this type
+        $existing_payment_query = "SELECT p.* FROM payments p 
+                                  JOIN group_members gm ON p.student_id = gm.student_id 
+                                  WHERE gm.group_id = '$group_id' AND p.payment_type = '$payment_type' LIMIT 1";
+        $existing_result = mysqli_query($conn, $existing_payment_query);
+        $existing_payment = mysqli_fetch_assoc($existing_result);
+        
         // Validate file uploads (multiple images)
         if (!isset($_FILES['payment_images']) || empty($_FILES['payment_images']['name'][0])) {
             $error_message = "Please select at least one image receipt to upload.";
@@ -356,19 +372,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (empty($error_message) && !empty($uploaded_files)) {
                 $image_receipts_json = json_encode($uploaded_files);
                 
-                // Get all group members
-                $members_query = "SELECT student_id FROM group_members WHERE group_id = '$group_id'";
-                $members_result = mysqli_query($conn, $members_query);
-                
-                // Insert payment for each group member
-                while ($member = mysqli_fetch_assoc($members_result)) {
-                    $member_id = $member['student_id'];
-                    $payment_query = "INSERT INTO payments (student_id, payment_type, amount, image_receipts, status, payment_date) 
-                                     VALUES ('$member_id', '$payment_type', '$payment_amount', '$image_receipts_json', 'approved', NOW())";
-                    mysqli_query($conn, $payment_query);
+                if ($existing_payment) {
+                    // Delete old image files
+                    if ($existing_payment['image_receipts']) {
+                        $old_images = json_decode($existing_payment['image_receipts'], true);
+                        if ($old_images) {
+                            foreach ($old_images as $old_image) {
+                                if (file_exists($old_image)) {
+                                    unlink($old_image);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Update existing payment for all group members
+                    $update_query = "UPDATE payments p 
+                                    JOIN group_members gm ON p.student_id = gm.student_id 
+                                    SET p.image_receipts = '$image_receipts_json', p.payment_date = NOW() 
+                                    WHERE gm.group_id = '$group_id' AND p.payment_type = '$payment_type'";
+                    mysqli_query($conn, $update_query);
+                    $success_message = "Group payment receipt images updated successfully!";
+                } else {
+                    // Create new payment for all group members
+                    $members_query = "SELECT student_id FROM group_members WHERE group_id = '$group_id'";
+                    $members_result = mysqli_query($conn, $members_query);
+                    
+                    while ($member = mysqli_fetch_assoc($members_result)) {
+                        $member_id = $member['student_id'];
+                        $payment_query = "INSERT INTO payments (student_id, payment_type, amount, image_receipts, status, payment_date) 
+                                         VALUES ('$member_id', '$payment_type', '$payment_amount', '$image_receipts_json', 'approved', NOW())";
+                        mysqli_query($conn, $payment_query);
+                    }
+                    $success_message = "Group payment receipt images uploaded successfully!";
                 }
                 
-                $success_message = "Group payment receipt images uploaded successfully!";
                 header("Location: ../student_pages/proposal.php");
                 exit();
             }
@@ -1191,9 +1228,9 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
 
     <!-- Payment Upload Modal -->
     <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
-        <div class="enhanced-modal rounded-lg shadow-xl w-full max-w-md">
+        <div class="enhanced-modal rounded-lg shadow-xl w-full max-w-lg">
             <div class="border-b px-6 py-4 flex justify-between items-center">
-                <h3 class="text-xl font-semibold text-gray-800">Upload Group Payment Receipt</h3>
+                <h3 class="text-xl font-semibold text-gray-800">Manage Group Payment Receipt</h3>
                 <button onclick="toggleModal('paymentModal')" class="text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times"></i>
                 </button>
@@ -1201,39 +1238,73 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
             <form method="POST" enctype="multipart/form-data" class="px-6 py-4">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
-                    <select name="payment_type" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                    <select name="payment_type" id="paymentTypeSelect" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" onchange="showExistingImages()">
                         <option value="">Select payment type</option>
-                        <?php if (!$has_research_forum_payment): ?>
-                            <option value="research_forum">Research Forum</option>
-                        <?php endif; ?>
-                        <?php if (!$has_pre_oral_payment): ?>
-                            <option value="pre_oral_defense">Pre-Oral Defense</option>
-                        <?php endif; ?>
-                        <?php if (!$has_final_defense_payment): ?>
-                            <option value="final_defense">Final Defense</option>
-                        <?php endif; ?>
+                        <option value="research_forum">Research Forum <?php echo $has_research_forum_payment ? '(Uploaded)' : ''; ?></option>
+                        <option value="pre_oral_defense">Pre-Oral Defense <?php echo $has_pre_oral_payment ? '(Uploaded)' : ''; ?></option>
+                        <option value="final_defense">Final Defense <?php echo $has_final_defense_payment ? '(Uploaded)' : ''; ?></option>
                     </select>
                 </div>
+                
+                <!-- Existing Images Display -->
+                <div id="existingImages" class="mb-4 hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Current Images</label>
+                    <div id="currentImagesGrid" class="grid grid-cols-2 gap-2 mb-3"></div>
+                </div>
+                
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Receipt Images</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Update Payment Receipt Images</label>
+                    
+                    <!-- Important Notice -->
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                        <div class="flex items-start">
+                            <i class="fas fa-exclamation-triangle text-yellow-500 mt-0.5 mr-2"></i>
+                            <div class="text-sm text-yellow-800">
+                                <p class="font-medium mb-1">Important Requirements:</p>
+                                <ul class="list-disc list-inside space-y-1 text-xs">
+                                    <li>Images must be <strong>clear and readable</strong></li>
+                                    <li>Upload a <strong>collage receipt</strong> showing all group members' payments</li>
+                                    <li>Ensure all text and amounts are visible</li>
+                                    <li>Avoid blurry or dark images</li>
+                                    <li><strong>No edited or manipulated images</strong> - receipts will be verified by CRAD</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="mt-1">
                         <label class="cursor-pointer bg-white border-2 border-dashed border-gray-300 rounded-lg px-4 py-6 flex flex-col items-center hover:bg-gray-50 transition w-full">
                             <i class="fas fa-images text-blue-500 text-2xl mb-2"></i>
-                            <span class="text-sm font-medium text-gray-700">Choose Image Files</span>
+                            <span class="text-sm font-medium text-gray-700">Choose New Image Files</span>
                             <span class="text-xs text-gray-500 mt-1">JPG, PNG, GIF (Max 5MB each)</span>
                             <input type="file" name="payment_images[]" accept="image/*" multiple required class="hidden" onchange="updateImagePreview(this)">
                         </label>
                     </div>
                     <div id="imagePreview" class="mt-3 grid grid-cols-2 gap-2 hidden"></div>
-                    <p class="text-sm text-gray-500 mt-2">Upload images of the group's collective payment receipt. You can select multiple images. This will apply to all group members.</p>
+                    <p class="text-sm text-gray-500 mt-2">Upload new images to replace existing ones. All group members will see the updated images.</p>
                 </div>
                 <div class="flex justify-end space-x-3 pt-4">
                     <button type="button" onclick="toggleModal('paymentModal')" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancel</button>
                     <button type="submit" name="upload_payment" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
-                        <i class="fas fa-upload mr-2"></i>Upload Images
+                        <i class="fas fa-upload mr-2"></i><span id="uploadButtonText">Upload Images</span>
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Image View Modal -->
+    <div id="imageViewModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center p-4 z-50" onclick="closeImageModal()">
+        <div class="max-w-4xl max-h-full bg-white rounded-lg overflow-hidden" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 id="modalTitle" class="text-lg font-semibold text-gray-800">Receipt Image</h3>
+                <button onclick="closeImageModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <img id="modalImage" src="" alt="Receipt" class="max-w-full max-h-96 mx-auto rounded-lg">
+            </div>
         </div>
     </div>
 
@@ -1282,6 +1353,66 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                 });
             } else {
                 previewContainer.classList.add('hidden');
+            }
+        }
+        
+        function viewImage(imageSrc, title) {
+            const modal = document.getElementById('imageViewModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalTitle = document.getElementById('modalTitle');
+            
+            modalImage.src = imageSrc;
+            modalTitle.textContent = title;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        
+        function closeImageModal() {
+            const modal = document.getElementById('imageViewModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        
+        function showExistingImages() {
+            const paymentType = document.getElementById('paymentTypeSelect').value;
+            const existingImagesDiv = document.getElementById('existingImages');
+            const currentImagesGrid = document.getElementById('currentImagesGrid');
+            const uploadButtonText = document.getElementById('uploadButtonText');
+            
+            // Payment data from PHP
+            const paymentData = {
+                'research_forum': <?php echo json_encode($research_forum_data); ?>,
+                'pre_oral_defense': <?php echo json_encode($pre_oral_data); ?>,
+                'final_defense': <?php echo json_encode($final_defense_data); ?>
+            };
+            
+            currentImagesGrid.innerHTML = '';
+            
+            if (paymentType && paymentData[paymentType] && paymentData[paymentType].image_receipts) {
+                const images = JSON.parse(paymentData[paymentType].image_receipts);
+                existingImagesDiv.classList.remove('hidden');
+                uploadButtonText.textContent = 'Update Images';
+                
+                images.forEach((imagePath, index) => {
+                    // Convert path to web-accessible format
+                    const webPath = imagePath.replace('../assets/', '/CRAD-system/assets/');
+                    const imageDiv = document.createElement('div');
+                    imageDiv.className = 'relative cursor-pointer hover:opacity-80 transition';
+                    imageDiv.onclick = () => viewImage(webPath, `Receipt ${index + 1}`);
+                    imageDiv.innerHTML = `
+                        <img src="${webPath}" class="w-full h-20 object-cover rounded-lg border" alt="Receipt ${index + 1}">
+                        <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg">
+                            Receipt ${index + 1}
+                        </div>
+                        <div class="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1">
+                            <i class="fas fa-eye text-xs"></i>
+                        </div>
+                    `;
+                    currentImagesGrid.appendChild(imageDiv);
+                });
+            } else {
+                existingImagesDiv.classList.add('hidden');
+                uploadButtonText.textContent = 'Upload Images';
             }
         }
     </script>

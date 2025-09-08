@@ -286,7 +286,8 @@ function checkGroupPaymentStatus($conn, $group_id) {
         'has_research_forum_payment' => false,
         'has_pre_oral_payment' => false, 
         'has_final_defense_payment' => false,
-        'payment_details' => []
+        'payment_details' => [],
+        'payment_images' => []
     ];
     
     if ($members_result->num_rows > 0) {
@@ -300,6 +301,20 @@ function checkGroupPaymentStatus($conn, $group_id) {
         $stmt->execute();
         $research_result = $stmt->get_result();
         $payment_status['has_research_forum_payment'] = $research_result->num_rows > 0;
+        if ($research_result->num_rows > 0) {
+            $payment_data = $research_result->fetch_assoc();
+            if (!empty($payment_data['image_receipts'])) {
+                $images = json_decode($payment_data['image_receipts'], true);
+                if (is_array($images)) {
+                    // Convert to web root paths
+                    $web_paths = array_map(function($path) {
+                        $filename = basename($path);
+                        return '/CRAD-system/assets/uploads/receipts/' . $filename;
+                    }, $images);
+                    $payment_status['payment_images']['research_forum'] = $web_paths;
+                }
+            }
+        }
         $stmt->close();
         
         // Check for pre-oral defense payment
@@ -309,6 +324,20 @@ function checkGroupPaymentStatus($conn, $group_id) {
         $stmt->execute();
         $pre_oral_result = $stmt->get_result();
         $payment_status['has_pre_oral_payment'] = $pre_oral_result->num_rows > 0;
+        if ($pre_oral_result->num_rows > 0) {
+            $payment_data = $pre_oral_result->fetch_assoc();
+            if (!empty($payment_data['image_receipts'])) {
+                $images = json_decode($payment_data['image_receipts'], true);
+                if (is_array($images)) {
+                    // Convert to web root paths
+                    $web_paths = array_map(function($path) {
+                        $filename = basename($path);
+                        return '/CRAD-system/assets/uploads/receipts/' . $filename;
+                    }, $images);
+                    $payment_status['payment_images']['pre_oral_defense'] = $web_paths;
+                }
+            }
+        }
         $stmt->close();
         
         // Check for final defense payment
@@ -318,6 +347,20 @@ function checkGroupPaymentStatus($conn, $group_id) {
         $stmt->execute();
         $final_result = $stmt->get_result();
         $payment_status['has_final_defense_payment'] = $final_result->num_rows > 0;
+        if ($final_result->num_rows > 0) {
+            $payment_data = $final_result->fetch_assoc();
+            if (!empty($payment_data['image_receipts'])) {
+                $images = json_decode($payment_data['image_receipts'], true);
+                if (is_array($images)) {
+                    // Convert to web root paths
+                    $web_paths = array_map(function($path) {
+                        $filename = basename($path);
+                        return '/CRAD-system/assets/uploads/receipts/' . $filename;
+                    }, $images);
+                    $payment_status['payment_images']['final_defense'] = $web_paths;
+                }
+            }
+        }
         $stmt->close();
     }
     
@@ -1046,15 +1089,21 @@ $isoDeadline = $current_milestone
             <div class="flex items-start">
               <i class="fas fa-credit-card text-purple-500 mr-3 mt-1 w-4"></i>
               <div class="flex-1">
-                <p class="text-xs text-gray-600 font-medium uppercase tracking-wide mb-1">Payment Status</p>
+                <p class="text-xs text-gray-600 font-medium uppercase tracking-wide mb-2">Research Forum Payment</p>
                 <?php if ($has_paid): ?>
-                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                    <i class="fas fa-check-circle mr-1"></i>Verified
-                  </span>
+                  <div class="flex items-center justify-between">
+                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                      <i class="fas fa-check-circle mr-1"></i>Paid & Verified
+                    </span>
+                    <span class="text-xs text-green-600 font-medium">Receipt uploaded</span>
+                  </div>
                 <?php else: ?>
-                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                    <i class="fas fa-times-circle mr-1"></i>Required
-                  </span>
+                  <div class="flex items-center justify-between">
+                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                      <i class="fas fa-exclamation-circle mr-1"></i>Payment Required
+                    </span>
+                    <span class="text-xs text-red-600 font-medium">For proposal approval</span>
+                  </div>
                 <?php endif; ?>
               </div>
             </div>
@@ -1284,9 +1333,28 @@ $isoDeadline = $current_milestone
                     </div>
 
                     <div class="mb-6">
-                        <label class="block text-gray-700 text-sm font-medium mb-2">Payment Status</label>
-                        <div id="paymentStatusSummary" class="space-y-2">
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-credit-card text-blue-600 text-xl mr-3"></i>
+                            <div>
+                                <h4 class="text-lg font-bold text-gray-800">Payment Status Overview</h4>
+                                <p class="text-sm text-gray-600">Review all payment requirements and receipts</p>
+                            </div>
+                        </div>
+                        <div id="paymentStatusSummary" class="space-y-3">
                             <!-- Payment status will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-images text-purple-600 text-xl mr-3"></i>
+                            <div>
+                                <h4 class="text-lg font-bold text-gray-800">Payment Receipt Images</h4>
+                                <p class="text-sm text-gray-600">Click on any image to view in full size</p>
+                            </div>
+                        </div>
+                        <div id="paymentImagesContainer" class="space-y-4">
+                            <!-- Payment images will be populated by JavaScript -->
                         </div>
                     </div>
 
@@ -1755,31 +1823,191 @@ $isoDeadline = $current_milestone
       summaryDiv.innerHTML = '';
       
       const paymentTypes = [
-        { key: 'has_research_forum_payment', label: 'Research Forum', required: true },
-        { key: 'has_pre_oral_payment', label: 'Pre-Oral Defense', required: false },
-        { key: 'has_final_defense_payment', label: 'Final Defense', required: false }
+        { 
+          key: 'has_research_forum_payment', 
+          label: 'Research Forum', 
+          description: 'Required for proposal submission',
+          required: true, 
+          imageKey: 'research_forum',
+          color: 'blue'
+        },
+        { 
+          key: 'has_pre_oral_payment', 
+          label: 'Pre-Oral Defense', 
+          description: 'Required for pre-oral defense',
+          required: false, 
+          imageKey: 'pre_oral_defense',
+          color: 'purple'
+        },
+        { 
+          key: 'has_final_defense_payment', 
+          label: 'Final Defense', 
+          description: 'Required for final defense',
+          required: false, 
+          imageKey: 'final_defense',
+          color: 'green'
+        }
       ];
       
       paymentTypes.forEach(payment => {
         const isPaid = proposal.payment_status?.[payment.key] || false;
         const paymentEl = document.createElement('div');
-        paymentEl.className = 'flex items-center justify-between py-2 px-3 rounded-md';
-        paymentEl.style.backgroundColor = isPaid ? '#f0fdf4' : '#fef2f2';
-        paymentEl.className += ' border border-gray-200';
+        
+        const bgColor = isPaid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
+        paymentEl.className = `flex items-center justify-between p-4 rounded-xl border-2 ${bgColor} transition-all hover:shadow-md`;
         
         paymentEl.innerHTML = `
           <div class="flex items-center">
-            <i class="fas ${isPaid ? 'fa-check-circle text-green-600' : 'fa-times-circle text-red-600'} mr-2"></i>
-            <span class="${isPaid ? 'text-green-800 font-medium' : 'text-red-800'}">${payment.label}</span>
-            ${payment.required ? '<span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">Required</span>' : ''}
+            <div class="${isPaid ? 'bg-green-500' : 'bg-red-500'} p-2 rounded-full mr-4">
+              <i class="fas ${isPaid ? 'fa-check' : 'fa-times'} text-white text-sm"></i>
+            </div>
+            <div>
+              <div class="flex items-center">
+                <span class="${isPaid ? 'text-green-800' : 'text-red-800'} font-bold text-lg">${payment.label}</span>
+                ${payment.required ? '<span class="ml-2 text-xs bg-red-500 text-white px-2 py-1 rounded-full font-bold">REQUIRED</span>' : '<span class="ml-2 text-xs bg-gray-400 text-white px-2 py-1 rounded-full">Optional</span>'}
+              </div>
+              <p class="text-sm ${isPaid ? 'text-green-600' : 'text-red-600'} mt-1">${payment.description}</p>
+            </div>
           </div>
-          <span class="text-xs font-medium ${isPaid ? 'text-green-700' : 'text-red-700'}">
-            ${isPaid ? 'PAID' : 'NOT PAID'}
-          </span>
+          <div class="text-right">
+            <span class="text-lg font-bold ${isPaid ? 'text-green-700' : 'text-red-700'}">
+              ${isPaid ? '✓ PAID' : '✗ NOT PAID'}
+            </span>
+            ${isPaid ? '<p class="text-xs text-green-600 mt-1">Receipt uploaded</p>' : '<p class="text-xs text-red-600 mt-1">Payment required</p>'}
+          </div>
         `;
         
         summaryDiv.appendChild(paymentEl);
       });
+      
+      // Update payment images
+      updatePaymentImages(proposal);
+    }
+    
+    // Update payment images display
+    function updatePaymentImages(proposal) {
+      const imagesContainer = document.getElementById('paymentImagesContainer');
+      imagesContainer.innerHTML = '';
+      
+      const paymentImages = proposal.payment_status?.payment_images || {};
+      
+      if (Object.keys(paymentImages).length === 0) {
+        imagesContainer.innerHTML = '<p class="text-gray-500 text-sm">No payment receipt images uploaded.</p>';
+        return;
+      }
+      
+      const paymentTypeLabels = {
+        'research_forum': 'Research Forum',
+        'pre_oral_defense': 'Pre-Oral Defense', 
+        'final_defense': 'Final Defense'
+      };
+      
+      const paymentTypeColors = {
+        'research_forum': 'bg-blue-100 text-blue-800 border-blue-200',
+        'pre_oral_defense': 'bg-purple-100 text-purple-800 border-purple-200',
+        'final_defense': 'bg-green-100 text-green-800 border-green-200'
+      };
+      
+      Object.keys(paymentImages).forEach(paymentType => {
+        const images = paymentImages[paymentType];
+        if (images && images.length > 0) {
+          const sectionDiv = document.createElement('div');
+          sectionDiv.className = `border-2 rounded-xl p-4 ${paymentTypeColors[paymentType] || 'border-gray-200'}`;
+          
+          const headerDiv = document.createElement('div');
+          headerDiv.className = 'flex items-center justify-between mb-3';
+          headerDiv.innerHTML = `
+            <div class="flex items-center">
+              <i class="fas fa-receipt text-lg mr-3"></i>
+              <div>
+                <h4 class="font-bold text-lg">${paymentTypeLabels[paymentType] || paymentType}</h4>
+                <p class="text-sm opacity-75">Payment Receipt Images</p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class="bg-white bg-opacity-50 text-xs font-bold px-3 py-1 rounded-full">
+                ${images.length} image${images.length > 1 ? 's' : ''}
+              </span>
+              <span class="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                <i class="fas fa-check mr-1"></i>PAID
+              </span>
+            </div>
+          `;
+          
+          const imagesGrid = document.createElement('div');
+          imagesGrid.className = 'grid grid-cols-2 md:grid-cols-3 gap-3';
+          
+          images.forEach((imagePath, index) => {
+            const imageDiv = document.createElement('div');
+            imageDiv.className = 'relative group cursor-pointer';
+            imageDiv.innerHTML = `
+              <div class="relative overflow-hidden rounded-lg border-2 border-white shadow-md hover:shadow-lg transition-all cursor-pointer"
+                   onclick="openImageModal('${imagePath}', '${paymentTypeLabels[paymentType]}')">
+                <img src="${imagePath}" alt="${paymentTypeLabels[paymentType]} Receipt ${index + 1}" 
+                     class="w-full h-28 object-cover hover:scale-105 transition-transform duration-300 pointer-events-none">
+                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center pointer-events-none">
+                  <i class="fas fa-search-plus text-white text-xl opacity-0 group-hover:opacity-100 transition-all"></i>
+                </div>
+                <div class="absolute top-2 left-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded-full pointer-events-none">
+                  ${index + 1}
+                </div>
+              </div>
+            `;
+            imagesGrid.appendChild(imageDiv);
+          });
+          
+          sectionDiv.appendChild(headerDiv);
+          sectionDiv.appendChild(imagesGrid);
+          imagesContainer.appendChild(sectionDiv);
+        }
+      });
+    }
+    
+    // Open image in modal
+    function openImageModal(imagePath, paymentType = 'Payment Receipt') {
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50';
+      modal.innerHTML = `
+        <div class="relative max-w-5xl max-h-full p-6">
+          <div class="bg-white rounded-t-xl p-4 mb-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                <i class="fas fa-receipt text-blue-600 text-xl mr-3"></i>
+                <div>
+                  <h3 class="font-bold text-lg text-gray-800">${paymentType}</h3>
+                  <p class="text-sm text-gray-600">Payment Receipt Image</p>
+                </div>
+              </div>
+              <button onclick="this.closest('.fixed').remove()" 
+                      class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-full transition-all">
+                <i class="fas fa-times text-lg"></i>
+              </button>
+            </div>
+          </div>
+          <div class="bg-white rounded-b-xl p-4">
+            <img src="${imagePath}" alt="${paymentType} Receipt" 
+                 class="max-w-full max-h-[70vh] object-contain mx-auto rounded-lg shadow-lg">
+          </div>
+        </div>
+      `;
+      
+      // Close on backdrop click
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          modal.remove();
+        }
+      });
+      
+      // Close on ESC key
+      const escHandler = function(e) {
+        if (e.key === 'Escape') {
+          modal.remove();
+          document.removeEventListener('keydown', escHandler);
+        }
+      };
+      document.addEventListener('keydown', escHandler);
+      
+      document.body.appendChild(modal);
     }
 
     // Global remove handler (works for both modals)
@@ -1814,6 +2042,8 @@ $isoDeadline = $current_milestone
     window.openApprovalModal = openApprovalModal;
     window.updateApprovalButton = updateApprovalButton;
     window.updatePaymentStatusSummary = updatePaymentStatusSummary;
+    window.updatePaymentImages = updatePaymentImages;
+    window.openImageModal = openImageModal;
     window.toggleModal = toggleModal;
 
     // Add new milestone in edit modal

@@ -82,6 +82,9 @@ if ($has_group) {
     // For proposal submission, only research forum payment is required (approved only)
     $has_paid = $has_research_forum_payment;
 
+    // Visibility: Final Defense only appears if admin opens it for this group
+    $final_defense_open = ($has_proposal && isset($proposal['final_defense_open']) && (int)$proposal['final_defense_open'] === 1);
+
     // Fetch latest payment rows for status display (none/pending/approved/rejected)
     $rf_row = null; $rf_status = 'none';
     $pre_row = null; $pre_status = 'none';
@@ -920,12 +923,14 @@ function renderStatusBadge($status) {
                                     <?php if ($pre_status === 'rejected' && !empty($pre_row['review_feedback'])): ?>
                                         <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($pre_row['review_feedback']); ?></div>
                                     <?php endif; ?>
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-xs text-gray-600">Final Defense:</span>
-                                        <?php echo renderStatusBadge($final_status); ?>
-                                    </div>
-                                    <?php if ($final_status === 'rejected' && !empty($final_row['review_feedback'])): ?>
-                                        <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($final_row['review_feedback']); ?></div>
+                                    <?php if ($final_defense_open): ?>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs text-gray-600">Final Defense:</span>
+                                            <?php echo renderStatusBadge($final_status); ?>
+                                        </div>
+                                        <?php if ($final_status === 'rejected' && !empty($final_row['review_feedback'])): ?>
+                                            <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($final_row['review_feedback']); ?></div>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                                 <button onclick="toggleModal('paymentModal')" class="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center justify-center">

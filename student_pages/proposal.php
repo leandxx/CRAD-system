@@ -311,41 +311,66 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             mkdir($target_dir, 0777, true);
         }
         
-        // Validate file upload
-        if (!isset($_FILES['payment_receipt']) || $_FILES['payment_receipt']['error'] !== UPLOAD_ERR_OK) {
-            $error_message = "Please select a valid PDF receipt to upload.";
+        // Validate file uploads (multiple images)
+        if (!isset($_FILES['payment_images']) || empty($_FILES['payment_images']['name'][0])) {
+            $error_message = "Please select at least one image receipt to upload.";
         } else {
-            $file_info = $_FILES['payment_receipt'];
-            $file_extension = strtolower(pathinfo($file_info['name'], PATHINFO_EXTENSION));
+            $uploaded_files = [];
+            $allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
+            $max_file_size = 5 * 1024 * 1024; // 5MB limit
             
-            // Validate file type
-            if ($file_extension !== 'pdf') {
-                $error_message = "Only PDF files are allowed for receipts.";
-            } elseif ($file_info['size'] > 5 * 1024 * 1024) { // 5MB limit
-                $error_message = "Receipt file size must be less than 5MB.";
-            } else {
-                $original_name = $file_info['name'];
-                $target_file = $target_dir . $original_name;
-                
-                if (move_uploaded_file($file_info['tmp_name'], $target_file)) {
-                    // Get all group members
-                    $members_query = "SELECT student_id FROM group_members WHERE group_id = '$group_id'";
-                    $members_result = mysqli_query($conn, $members_query);
+            // Process each uploaded file
+            for ($i = 0; $i < count($_FILES['payment_images']['name']); $i++) {
+                if ($_FILES['payment_images']['error'][$i] === UPLOAD_ERR_OK) {
+                    $file_name = $_FILES['payment_images']['name'][$i];
+                    $file_tmp = $_FILES['payment_images']['tmp_name'][$i];
+                    $file_size = $_FILES['payment_images']['size'][$i];
+                    $file_extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
                     
-                    // Insert payment for each group member
-                    while ($member = mysqli_fetch_assoc($members_result)) {
-                        $member_id = $member['student_id'];
-                        $payment_query = "INSERT INTO payments (student_id, payment_type, amount, pdf_receipt, status, payment_date) 
-                                         VALUES ('$member_id', '$payment_type', '$payment_amount', '$target_file', 'approved', NOW())";
-                        mysqli_query($conn, $payment_query);
+                    // Validate file type
+                    if (!in_array($file_extension, $allowed_types)) {
+                        $error_message = "Only JPG, JPEG, PNG, and GIF images are allowed.";
+                        break;
                     }
                     
-                    $success_message = "Group payment receipt uploaded successfully!";
-                    header("Location: ../student_pages/proposal.php");
-                    exit();
-                } else {
-                    $error_message = "Error uploading receipt file. Please try again.";
+                    // Validate file size
+                    if ($file_size > $max_file_size) {
+                        $error_message = "Each image must be less than 5MB.";
+                        break;
+                    }
+                    
+                    // Generate unique filename
+                    $unique_name = time() . '_' . $i . '_' . $file_name;
+                    $target_file = $target_dir . $unique_name;
+                    
+                    if (move_uploaded_file($file_tmp, $target_file)) {
+                        $uploaded_files[] = $target_file;
+                    } else {
+                        $error_message = "Error uploading file: " . $file_name;
+                        break;
+                    }
                 }
+            }
+            
+            // If all files uploaded successfully
+            if (empty($error_message) && !empty($uploaded_files)) {
+                $image_receipts_json = json_encode($uploaded_files);
+                
+                // Get all group members
+                $members_query = "SELECT student_id FROM group_members WHERE group_id = '$group_id'";
+                $members_result = mysqli_query($conn, $members_query);
+                
+                // Insert payment for each group member
+                while ($member = mysqli_fetch_assoc($members_result)) {
+                    $member_id = $member['student_id'];
+                    $payment_query = "INSERT INTO payments (student_id, payment_type, amount, image_receipts, status, payment_date) 
+                                     VALUES ('$member_id', '$payment_type', '$payment_amount', '$image_receipts_json', 'approved', NOW())";
+                    mysqli_query($conn, $payment_query);
+                }
+                
+                $success_message = "Group payment receipt images uploaded successfully!";
+                header("Location: ../student_pages/proposal.php");
+                exit();
             }
         }
     }
@@ -1190,20 +1215,22 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                     </select>
                 </div>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Receipt (PDF only)</label>
-                    <div class="mt-1 flex items-center">
-                        <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center hover:bg-gray-50 transition w-full">
-                            <i class="fas fa-file-pdf text-red-500 mr-2"></i>
-                            <span class="text-sm font-medium">Choose PDF File</span>
-                            <input type="file" name="payment_receipt" accept=".pdf" required class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Receipt Images</label>
+                    <div class="mt-1">
+                        <label class="cursor-pointer bg-white border-2 border-dashed border-gray-300 rounded-lg px-4 py-6 flex flex-col items-center hover:bg-gray-50 transition w-full">
+                            <i class="fas fa-images text-blue-500 text-2xl mb-2"></i>
+                            <span class="text-sm font-medium text-gray-700">Choose Image Files</span>
+                            <span class="text-xs text-gray-500 mt-1">JPG, PNG, GIF (Max 5MB each)</span>
+                            <input type="file" name="payment_images[]" accept="image/*" multiple required class="hidden" onchange="updateImagePreview(this)">
                         </label>
                     </div>
-                    <p class="text-sm text-gray-500 mt-1">Upload the group's collective payment receipt in PDF format. This will apply to all group members.</p>
+                    <div id="imagePreview" class="mt-3 grid grid-cols-2 gap-2 hidden"></div>
+                    <p class="text-sm text-gray-500 mt-2">Upload images of the group's collective payment receipt. You can select multiple images. This will apply to all group members.</p>
                 </div>
                 <div class="flex justify-end space-x-3 pt-4">
                     <button type="button" onclick="toggleModal('paymentModal')" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">Cancel</button>
                     <button type="submit" name="upload_payment" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
-                        <i class="fas fa-upload mr-2"></i>Upload Receipt
+                        <i class="fas fa-upload mr-2"></i>Upload Images
                     </button>
                 </div>
             </form>
@@ -1226,6 +1253,35 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                 fileNameSpan.textContent = 'No file chosen';
                 fileNameSpan.classList.remove('text-green-600', 'font-medium');
                 fileNameSpan.classList.add('text-gray-500');
+            }
+        }
+        
+        function updateImagePreview(input) {
+            const previewContainer = document.getElementById('imagePreview');
+            previewContainer.innerHTML = '';
+            
+            if (input.files && input.files.length > 0) {
+                previewContainer.classList.remove('hidden');
+                
+                Array.from(input.files).forEach((file, index) => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const imageDiv = document.createElement('div');
+                            imageDiv.className = 'relative';
+                            imageDiv.innerHTML = `
+                                <img src="${e.target.result}" class="w-full h-20 object-cover rounded-lg border">
+                                <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg truncate">
+                                    ${file.name}
+                                </div>
+                            `;
+                            previewContainer.appendChild(imageDiv);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            } else {
+                previewContainer.classList.add('hidden');
             }
         }
     </script>

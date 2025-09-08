@@ -914,15 +914,26 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             if (tabName === 'schedules') {
                 document.getElementById('schedulesContent').classList.remove('hidden');
                 document.getElementById('availabilityContent').classList.add('hidden');
+                document.getElementById('confirmationContent').classList.add('hidden');
                 document.getElementById('scheduleCards').classList.remove('hidden');
                 document.getElementById('availabilityCards').classList.add('hidden');
+                document.getElementById('confirmationCards').classList.add('hidden');
             } else if (tabName === 'availability') {
                 document.getElementById('schedulesContent').classList.add('hidden');
                 document.getElementById('availabilityContent').classList.remove('hidden');
+                document.getElementById('confirmationContent').classList.add('hidden');
                 document.getElementById('scheduleCards').classList.add('hidden');
                 document.getElementById('availabilityCards').classList.remove('hidden');
+                document.getElementById('confirmationCards').classList.add('hidden');
                 // Load room availability immediately when tab is clicked
                 checkRoomAvailability();
+            } else if (tabName === 'confirmation') {
+                document.getElementById('schedulesContent').classList.add('hidden');
+                document.getElementById('availabilityContent').classList.add('hidden');
+                document.getElementById('confirmationContent').classList.remove('hidden');
+                document.getElementById('scheduleCards').classList.add('hidden');
+                document.getElementById('availabilityCards').classList.add('hidden');
+                document.getElementById('confirmationCards').classList.remove('hidden');
             }
         }
         
@@ -1369,6 +1380,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <div class="flex border-b border-gray-200">
                         <button onclick="switchMainTab('schedules')" id="schedulesTab" class="main-tab px-6 py-3 font-semibold text-primary border-b-2 border-primary">Defense Schedules</button>
                         <button onclick="switchMainTab('availability')" id="availabilityTab" class="main-tab px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-primary">Room Availability</button>
+                        <button onclick="switchMainTab('confirmation')" id="confirmationTab" class="main-tab px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-primary">Defense Confirmation</button>
                     </div>
                     
                     <!-- Schedules Tab Content -->
@@ -1407,6 +1419,14 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     <i class="fas fa-search mr-2"></i> Check Availability
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                    <div id="confirmationContent" class="main-tab-content hidden">
+                        <div class="flex items-center gap-4">
+                            <div class="gradient-purple p-3 rounded-xl">
+                                <i class="fas fa-check-circle text-white text-xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800">Defense Confirmation</h3>
                         </div>
                     </div>
                 </div>
@@ -1642,106 +1662,109 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
             </div>
 
-            <!-- Completed Defenses Section -->
-            <div class="flex items-center mt-10 mb-6">
-                <div class="gradient-purple p-3 rounded-xl mr-4">
-                    <i class="fas fa-check-circle text-white text-xl"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-gray-800">Completed Defenses</h2>
-            </div>
-            <div class="space-y-6 mb-8 animate-fade-in">
-                <?php foreach ($completed_by_program as $program => $clusters): ?>
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                    <div class="p-4 border-b border-gray-200 cursor-pointer" onclick="toggleCompletedProgram('<?php echo $program; ?>')">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-semibold text-purple-700"><?php echo $program; ?> - Completed</h3>
-                            <i class="fas fa-chevron-down transition-transform" id="completed-icon-<?php echo $program; ?>"></i>
-                        </div>
+              <!-- NEW: Defense Confirmation Cards -->
+            <div id="confirmationCards" class="stats-card rounded-2xl p-8 animate-scale-in hidden">
+                <!-- Completed Defenses Section (moved from below) -->
+                <div class="flex items-center mb-8">
+                    <div class="gradient-purple p-3 rounded-xl mr-4">
+                        <i class="fas fa-check-circle text-white text-xl"></i>
                     </div>
-                    <div class="program-content" id="completed-content-<?php echo $program; ?>" style="display: none;">
-                        <?php foreach ($clusters as $cluster => $schedules): ?>
-                        <div class="border-b border-gray-100 last:border-b-0">
-                            <div class="p-3 bg-purple-50 cursor-pointer" onclick="toggleCompletedCluster('<?php echo $program . '-' . $cluster; ?>')">
-                                <div class="flex items-center justify-between">
-                                    <h4 class="font-medium text-purple-700">Cluster <?php echo $cluster; ?></h4>
-                                    <i class="fas fa-chevron-down transition-transform text-sm" id="completed-icon-<?php echo $program . '-' . $cluster; ?>"></i>
-                                </div>
+                    <h2 class="text-2xl font-bold text-gray-800">Completed Defenses</h2>
+                </div>
+                <div class="space-y-6 mb-8 animate-fade-in">
+                    <?php foreach ($completed_by_program as $program => $clusters): ?>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                        <div class="p-4 border-b border-gray-200 cursor-pointer" onclick="toggleCompletedProgram('<?php echo $program; ?>')">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-purple-700"><?php echo $program; ?> - Completed</h3>
+                                <i class="fas fa-chevron-down transition-transform" id="completed-icon-<?php echo $program; ?>"></i>
                             </div>
-                            <div class="cluster-content" id="completed-content-<?php echo $program . '-' . $cluster; ?>" style="display: none;">
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
-                                    <?php foreach ($schedules as $completed): ?>
-                <div class="defense-card bg-gradient-to-br from-white via-purple-50 to-violet-100 border border-purple-200 rounded-2xl shadow-lg p-6 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full -translate-y-10 translate-x-10"></div>
-                    <div class="absolute bottom-0 left-0 w-16 h-16 bg-violet-400/10 rounded-full translate-y-8 -translate-x-8"></div>
-                    
-                    <div class="relative z-10">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex items-center">
-                                <div class="gradient-purple p-3 rounded-xl mr-3 shadow-lg">
-                                    <i class="fas fa-check-circle text-white text-lg"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-bold text-gray-900 leading-tight"><?php echo $completed['group_name']; ?></h3>
-                                    <p class="text-xs text-purple-600 font-medium"><?php echo $completed['proposal_title']; ?></p>
-                                    <p class="text-xs text-gray-500"><?php echo ucfirst($completed['defense_type']); ?> Defense</p>
-                                </div>
-                            </div>
-                            <span class="bg-gradient-to-r from-purple-400 to-violet-600 text-white px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
-                                <i class="fas fa-check mr-1 text-xs"></i>Completed
-                            </span>
                         </div>
-
-                        <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
-                            <div class="grid grid-cols-1 gap-3">
-                                <div class="flex items-center text-sm">
-                                    <i class="fas fa-calendar text-purple-500 mr-3 w-4"></i>
-                                    <span class="text-gray-700 font-medium"><?php echo date('M j, Y', strtotime($completed['defense_date'])); ?></span>
+                        <div class="program-content" id="completed-content-<?php echo $program; ?>" style="display: none;">
+                            <?php foreach ($clusters as $cluster => $schedules): ?>
+                            <div class="border-b border-gray-100 last:border-b-0">
+                                <div class="p-3 bg-purple-50 cursor-pointer" onclick="toggleCompletedCluster('<?php echo $program . '-' . $cluster; ?>')">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-medium text-purple-700">Cluster <?php echo $cluster; ?></h4>
+                                        <i class="fas fa-chevron-down transition-transform text-sm" id="completed-icon-<?php echo $program . '-' . $cluster; ?>"></i>
+                                    </div>
                                 </div>
-                                <div class="flex items-center text-sm">
-                                    <i class="fas fa-clock text-purple-500 mr-3 w-4"></i>
-                                    <span class="text-gray-700 font-medium">
-                                        <?php echo date('g:i A', strtotime($completed['start_time'])); ?> - 
-                                        <?php echo date('g:i A', strtotime($completed['end_time'])); ?>
+                                <div class="cluster-content" id="completed-content-<?php echo $program . '-' . $cluster; ?>" style="display: none;">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
+                                        <?php foreach ($schedules as $completed): ?>
+                        <div class="defense-card bg-gradient-to-br from-white via-purple-50 to-violet-100 border border-purple-200 rounded-2xl shadow-lg p-6 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full -translate-y-10 translate-x-10"></div>
+                            <div class="absolute bottom-0 left-0 w-16 h-16 bg-violet-400/10 rounded-full translate-y-8 -translate-x-8"></div>
+                            
+                            <div class="relative z-10">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex items-center">
+                                        <div class="gradient-purple p-3 rounded-xl mr-3 shadow-lg">
+                                            <i class="fas fa-check-circle text-white text-lg"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-bold text-gray-900 leading-tight"><?php echo $completed['group_name']; ?></h3>
+                                            <p class="text-xs text-purple-600 font-medium"><?php echo $completed['proposal_title']; ?></p>
+                                            <p class="text-xs text-gray-500"><?php echo ucfirst($completed['defense_type']); ?> Defense</p>
+                                        </div>
+                                    </div>
+                                    <span class="bg-gradient-to-r from-purple-400 to-violet-600 text-white px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
+                                        <i class="fas fa-check mr-1 text-xs"></i>Completed
                                     </span>
                                 </div>
-                                <div class="flex items-center text-sm">
-                                    <i class="fas fa-map-marker-alt text-purple-500 mr-3 w-4"></i>
-                                    <span class="text-gray-700 font-medium"><?php echo $completed['building'] . ' ' . $completed['room_name']; ?></span>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="flex gap-2">
-                            <?php if ($completed['defense_type'] == 'pre_oral'): ?>
-                                <button onclick="scheduleFinalDefense(<?php echo $completed['group_id']; ?>, <?php echo $completed['id']; ?>, '<?php echo addslashes($completed['group_name']); ?>', '<?php echo addslashes($completed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
-                                    <i class="fas fa-arrow-right mr-1"></i>Final Defense
-                                </button>
-                                <button onclick="scheduleRedefense(<?php echo $completed['group_id']; ?>, <?php echo $completed['id']; ?>, '<?php echo addslashes($completed['group_name']); ?>', '<?php echo addslashes($completed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Redefense">
-                                    <i class="fas fa-redo mr-1"></i>Redefense
-                                </button>
-                            <?php else: ?>
-                                <span class="flex-1 bg-gradient-to-r from-green-400 to-green-600 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
-                                    <i class="fas fa-trophy mr-1"></i>Final Completed
-                                </span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-                                    <?php endforeach; ?>
+                                <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+                                    <div class="grid grid-cols-1 gap-3">
+                                        <div class="flex items-center text-sm">
+                                            <i class="fas fa-calendar text-purple-500 mr-3 w-4"></i>
+                                            <span class="text-gray-700 font-medium"><?php echo date('M j, Y', strtotime($completed['defense_date'])); ?></span>
+                                        </div>
+                                        <div class="flex items-center text-sm">
+                                            <i class="fas fa-clock text-purple-500 mr-3 w-4"></i>
+                                            <span class="text-gray-700 font-medium">
+                                                <?php echo date('g:i A', strtotime($completed['start_time'])); ?> - 
+                                                <?php echo date('g:i A', strtotime($completed['end_time'])); ?>
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center text-sm">
+                                            <i class="fas fa-map-marker-alt text-purple-500 mr-3 w-4"></i>
+                                            <span class="text-gray-700 font-medium"><?php echo $completed['building'] . ' ' . $completed['room_name']; ?></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-2">
+                                    <?php if ($completed['defense_type'] == 'pre_oral'): ?>
+                                        <button onclick="scheduleFinalDefense(<?php echo $completed['group_id']; ?>, <?php echo $completed['id']; ?>, '<?php echo addslashes($completed['group_name']); ?>', '<?php echo addslashes($completed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
+                                            <i class="fas fa-arrow-right mr-1"></i>Final Defense
+                                        </button>
+                                        <button onclick="scheduleRedefense(<?php echo $completed['group_id']; ?>, <?php echo $completed['id']; ?>, '<?php echo addslashes($completed['group_name']); ?>', '<?php echo addslashes($completed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Redefense">
+                                            <i class="fas fa-redo mr-1"></i>Redefense
+                                        </button>
+                                    <?php else: ?>
+                                        <span class="flex-1 bg-gradient-to-r from-green-400 to-green-600 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
+                                            <i class="fas fa-trophy mr-1"></i>Final Completed
+                                        </span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
-                        <?php endforeach; ?>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
+                    <?php endforeach; ?>
+                    
+                    <?php if (empty($completed_by_program)): ?>
+                    <div class="bg-white rounded-lg shadow p-8 text-center">
+                        <i class="fas fa-check-circle text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-gray-500">No completed defenses yet</p>
+                    </div>
+                    <?php endif; ?>
                 </div>
-                <?php endforeach; ?>
-                
-                <?php if (empty($completed_by_program)): ?>
-                <div class="bg-white rounded-lg shadow p-8 text-center">
-                    <i class="fas fa-check-circle text-4xl text-gray-400 mb-3"></i>
-                    <p class="text-gray-500">No completed defenses yet</p>
-                </div>
-                <?php endif; ?>
             </div>
 
             <!-- Upcoming Defenses Section -->
@@ -2728,7 +2751,6 @@ function filterEditPanelMembersByGroup(groupId) {
     }
 }
 
-/* ========= INIT ========= */
 document.addEventListener('DOMContentLoaded', () => {
     // Default filters/tabs
     if (typeof filterStatus === 'function') filterStatus('all');

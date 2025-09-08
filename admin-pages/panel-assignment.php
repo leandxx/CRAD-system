@@ -297,7 +297,8 @@ $programs = [
     'blis' => 'BLIS - BL Information Science'
 ];
 
-// Get all panel members grouped by program
+
+// Get all panel members grouped by program, and fetch their defense assignments
 $panel_query = "SELECT * FROM panel_members ORDER BY program, last_name, first_name";
 $panel_result = $conn->query($panel_query);
 $panel_members_by_program = [];
@@ -307,6 +308,21 @@ while ($row = $panel_result->fetch_assoc()) {
     if (!isset($panel_members_by_program[$program])) {
         $panel_members_by_program[$program] = [];
     }
+
+    // Fetch defense assignments for this panel member, including cluster
+    $assignments = [];
+    $defense_panel_query = "SELECT dp.*, ds.defense_date, ds.start_time, ds.end_time, ds.group_id, g.name as group_name, c.cluster as cluster_name
+        FROM defense_panel dp
+        JOIN defense_schedules ds ON dp.defense_id = ds.id
+        JOIN groups g ON ds.group_id = g.id
+        LEFT JOIN clusters c ON g.cluster_id = c.id
+        WHERE dp.faculty_id = " . intval($row['id']) . "
+        ORDER BY ds.defense_date DESC, ds.start_time DESC";
+    $defense_panel_result = $conn->query($defense_panel_query);
+    while ($ap = $defense_panel_result->fetch_assoc()) {
+        $assignments[] = $ap;
+    }
+    $row['defense_assignments'] = $assignments;
     $panel_members_by_program[$program][] = $row;
 }
 
@@ -351,7 +367,7 @@ while ($row = $program_stats_result->fetch_assoc()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Management System</title>
+    <title>Panel Management</title>
     <link rel="icon" href="assets/img/sms-logo.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -896,6 +912,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
             <!-- Panel Members by Program -->
             <div class="bg-gradient-to-br from-white via-purple-50 to-indigo-100 rounded-2xl p-6 mb-8 animate-scale-in shadow-xl border-0">
+                <?php
+                $total_panel_members = 0;
+                foreach ($panel_members_by_program as $members) {
+                    $total_panel_members += count($members);
+                }
+                ?>
+                <?php if ($total_panel_members === 0): ?>
+                <div class="text-center py-8 text-gray-500">
+                    <div class="gradient-bg p-6 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                        <i class="fas fa-users text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">No Panel Members Assigned</h3>
+                    <p class="text-gray-500 mb-6">There are currently no panel members assigned to any program.</p>
+                    <button onclick="openModal('addPanelModal')" class="gradient-blue text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300 font-semibold">
+                        <i class="fas fa-plus mr-2"></i> Add Panel Member
+                    </button>
+                </div>
+                <?php endif; ?>
                 <div class="flex items-center mb-6">
                     <div class="gradient-purple p-3 rounded-xl mr-4">
                         <i class="fas fa-graduation-cap text-white text-xl"></i>
@@ -904,26 +938,109 @@ document.addEventListener("DOMContentLoaded", () => {
                         Panel Members by Program
                     </h2>
                 </div>
-                
-                <div class="flex flex-wrap gap-2 mb-6">
-                    <?php 
-                    $first = true;
-                    foreach ($programs as $program_key => $program_name): 
-                        $member_count = isset($panel_members_by_program[$program_key]) ? count($panel_members_by_program[$program_key]) : 0;
-                    ?>
-                    <button class="program-tab-modern <?php echo $first ? 'active' : ''; ?>" 
-                         data-program="<?php echo $program_key; ?>">
-                        <span class="font-medium"><?php echo $program_name; ?></span>
-                        <span class="ml-2 px-2 py-1 bg-white/30 rounded-full text-xs font-bold">
-                            <?php echo $member_count; ?>
-                        </span>
-                    </button>
-                    <?php 
-                    $first = false;
-                    endforeach; 
-                    ?>
+
+                <!-- Program Dropdown Filter -->
+                <!-- Combined Filters Row -->
+                <div class="flex flex-wrap items-center gap-4 mb-6">
+                    <label for="programDropdown" class="font-medium text-gray-700">Filter by Program:</label>
+                    <select id="programDropdown" class="px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                        <option value="all">All Programs</option>
+                        <?php foreach ($programs as $program_key => $program_name): ?>
+                            <option value="<?php echo $program_key; ?>"><?php echo $program_name; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <div class="gradient-blue p-3 rounded-xl">
+                        <i class="fas fa-calendar-alt text-white text-xl"></i>
+                    </div>
+                    <label for="calendarFilter" class="font-medium text-gray-700">Defense Date:</label>
+                    <input type="date" id="calendarFilter" class="px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all" value="<?php echo date('Y-m-d'); ?>">
+                    <button type="button" onclick="clearCalendarFilter()" class="ml-2 bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300">Clear</button>
+
+
                 </div>
-                
+
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Program dropdown filter
+                    const dropdown = document.getElementById('programDropdown');
+                    dropdown.addEventListener('change', function() {
+                        const selected = this.value;
+                        document.querySelectorAll('.program-content').forEach(content => {
+                            if (selected === 'all') {
+                                content.style.display = '';
+                            } else {
+                                content.style.display = content.id === 'program-' + selected ? '' : 'none';
+                            }
+                        });
+                    });
+
+                    // Calendar filter logic
+                    const calendarInput = document.getElementById('calendarFilter');
+                    calendarInput.addEventListener('change', function() {
+                        const selectedDate = this.value;
+                        document.querySelectorAll('.panel-member-card').forEach(card => {
+                            card.style.display = '';
+                            // Find the assignments list and all defense assignment items
+                            const assignmentList = card.querySelector('ul.list-disc');
+                            const assignmentItems = assignmentList ? assignmentList.querySelectorAll('li') : [];
+                            let hasSchedule = false;
+                            // Remove 'No schedule' if present
+                            let noSched = card.querySelector('.no-schedule-msg');
+                            if (noSched) noSched.remove();
+
+                            if (selectedDate === '') {
+                                // Show all assignments
+                                if (assignmentList) assignmentList.style.display = '';
+                                assignmentItems.forEach(item => { item.style.display = ''; });
+                                // If there are no assignments at all, show 'No schedule'
+                                if (!assignmentList || assignmentItems.length === 0) {
+                                    noSched = document.createElement('div');
+                                    noSched.className = 'pt-2 text-xs text-gray-500 no-schedule-msg';
+                                    noSched.textContent = 'No schedule';
+                                    card.appendChild(noSched);
+                                }
+                            } else {
+                                // Hide all assignments not matching the date
+                                if (assignmentList && assignmentItems.length > 0) {
+                                    assignmentItems.forEach(item => {
+                                        const dateEl = item.querySelector('.defense-date');
+                                        if (dateEl && dateEl.dataset.date === selectedDate) {
+                                            item.style.display = '';
+                                            hasSchedule = true;
+                                        } else {
+                                            item.style.display = 'none';
+                                        }
+                                    });
+                                    assignmentList.style.display = '';
+                                }
+                                // Show 'No schedule' if none match or if there are no assignments at all
+                                if ((!assignmentList || assignmentItems.length === 0) || !hasSchedule) {
+                                    let noSched = card.querySelector('.no-schedule-msg');
+                                    if (noSched) noSched.remove();
+                                    noSched = document.createElement('div');
+                                    noSched.className = 'pt-2 text-xs text-gray-500 no-schedule-msg';
+                                    noSched.textContent = 'No schedule';
+                                    if (assignmentList) {
+                                        assignmentList.parentNode.appendChild(noSched);
+                                    } else {
+                                        card.appendChild(noSched);
+                                    }
+                                }
+                            }
+                        });
+                    });
+
+                });
+                function clearCalendarFilter() {
+                    document.getElementById('calendarFilter').value = '';
+                    document.querySelectorAll('.panel-member-card').forEach(card => {
+                        card.style.display = '';
+                    });
+                }
+                </script>
+
+
                 <!-- Panel Cards by Program -->
                 <?php 
                 $first = true;
@@ -934,18 +1051,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     <?php if (count($members) > 0): ?>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <?php foreach ($members as $row): ?>
-                            <div class="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/40 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                            <div class="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/40 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 panel-member-card">
                                 <div class="flex items-start justify-between mb-3">
                                     <div class="flex items-center">
                                         <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center shadow-md mr-3">
                                             <i class="fas fa-user text-indigo-600"></i>
                                         </div>
                                         <div>
-                                            <h3 class="font-bold text-gray-900 text-sm"><?php echo $row['first_name'] . ' ' . $row['last_name']; ?></h3>
-                                            <span class="text-xs <?php echo $row['program'] . '-badge'; ?> program-badge">
-                                                <?php echo $programs[$row['program']]; ?>
-                                            </span>
-                                        </div>
+                                                <h3 class="font-bold text-gray-900 text-sm"><?php echo $row['first_name'] . ' ' . $row['last_name']; ?></h3>
+                                                <span class="text-xs <?php echo $row['program'] . '-badge'; ?> program-badge">
+                                                    <?php echo $programs[$row['program']]; ?>
+                                                </span>
+                                            </div>
                                     </div>
                                     <div class="flex space-x-1">
                                         <a href="admin-pages/panel-assignment.php?edit_id=<?php echo $row['id']; ?>" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors" title="Edit">
@@ -973,6 +1090,41 @@ document.addEventListener("DOMContentLoaded", () => {
                                             <?php echo ucfirst($row['status']); ?>
                                         </span>
                                     </div>
+                                    <!-- Defense assignments -->
+                                    <?php
+                                    // Get selected date from calendar filter (JS sets display, but PHP can show fallback)
+                                    $selectedDate = isset($_GET['defense_date']) ? $_GET['defense_date'] : '';
+                                    $assignments = $row['defense_assignments'];
+                                    $filteredAssignments = [];
+                                    if (!empty($selectedDate)) {
+                                        foreach ($assignments as $as) {
+                                            if ($as['defense_date'] === $selectedDate) {
+                                                $filteredAssignments[] = $as;
+                                            }
+                                        }
+                                    } else {
+                                        $filteredAssignments = $assignments;
+                                    }
+                                    ?>
+                                    <?php if (!empty($filteredAssignments)): ?>
+                                    <div class="pt-2">
+                                        <span class="text-xs font-semibold text-indigo-700">Defense Assignments:</span>
+                                        <ul class="list-disc ml-5 mt-1 text-xs text-gray-700">
+                                            <?php foreach ($filteredAssignments as $as): ?>
+                                                <li>
+                                                    <span class="font-medium text-gray-900"><?php echo $as['group_name']; ?></span>
+                                                    <?php if (!empty($as['cluster_name'])): ?>
+                                                        <span class="ml-2 px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">Cluster: <?php echo htmlspecialchars($as['cluster_name']); ?></span>
+                                                    <?php endif; ?>
+                                                    on <span class="text-blue-700 defense-date" data-date="<?php echo $as['defense_date']; ?>"><?php echo date('M j, Y', strtotime($as['defense_date'])); ?></span>
+                                                    at <span class="text-blue-700"><?php echo date('g:i A', strtotime($as['start_time'])); ?></span>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                    <?php else: ?>
+                                    <div class="pt-2 text-xs text-gray-500">No schedule</div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             <?php endforeach; ?>
@@ -982,8 +1134,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             <div class="gradient-bg p-6 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
                                 <i class="fas fa-users text-white text-3xl"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-gray-700 mb-2">No Panel Members Found</h3>
-                            <p class="text-gray-500 mb-6">No panel members found for <?php echo $program_name; ?>.</p>
+                            <h3 class="text-lg font-semibold text-gray-700 mb-2">No one is assigned for this program</h3>
+                            <p class="text-gray-500 mb-6">No panel members are currently assigned for <?php echo $program_name; ?>.</p>
                             <button onclick="openModal('addPanelModal')" class="gradient-blue text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300 font-semibold">
                                 <i class="fas fa-plus mr-2"></i> Add Panel Member
                             </button>
@@ -1391,6 +1543,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ===== PROGRAM TABS =====
     document.querySelectorAll('.program-tab-modern').forEach(tab => {
+       
         tab.addEventListener('click', function() {
             document.querySelectorAll('.program-tab-modern').forEach(t => t.classList.remove('active'));
             this.classList.add('active');

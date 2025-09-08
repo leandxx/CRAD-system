@@ -1272,13 +1272,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 })()}
                                 ${hasSchedules ? `
                                     <div class="mt-3 pt-2 border-t border-gray-200">
-                                        <p class="text-xs text-red-600 font-medium mb-1">In Use:</p>
-                                        ${room.schedules.map(schedule => `
-                                            <div class="flex items-center text-xs text-red-600 mb-1">
-                                                <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
-                                                ${schedule.start_time} - ${schedule.end_time} (${schedule.group_name})
-                                            </div>
-                                        `).join('')}
+                                                                            <p class="text-xs text-red-600 font-medium mb-1">In Use:</p>
+                                                                            ${room.schedules.map(schedule => `
+                                                                                <div class="flex items-center text-xs text-red-600 mb-1">
+                                                                                    <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
+                                                                                    ${schedule.program} | ${schedule.cluster} | ${schedule.group_name} | ${schedule.defense_date} | ${schedule.start_time} - ${schedule.end_time}
+                                                                                </div>
+                                                                            `).join('')}
                                     </div>
                                 ` : ''}
                             </div>

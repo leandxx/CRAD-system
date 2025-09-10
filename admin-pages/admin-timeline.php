@@ -676,7 +676,7 @@ $isoDeadline = $current_milestone
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Timeline Submission</title>
+  <title>SMS | Timeline Submission</title>
   <link rel="icon" href="assets/img/sms-logo.png" type="image/png">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

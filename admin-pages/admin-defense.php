@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                   FROM defense_schedules 
                                   WHERE room_id = '$room_id' 
                                   AND defense_date = '$defense_date' 
-                                  AND status = 'scheduled'
+                                  AND status IN ('scheduled', 'passed')
                                   AND (
                                       (start_time <= '$start_time' AND end_time > '$start_time') OR
                                       (start_time < '$end_time' AND end_time >= '$end_time') OR
@@ -141,6 +141,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit();
     }
 
+    if (isset($_POST['mark_passed'])) {
+        $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
+        $update_query = "UPDATE defense_schedules SET status = 'completed' WHERE id = '$defense_id'";
+        if (mysqli_query($conn, $update_query)) {
+            $_SESSION['success_message'] = "Defense marked as passed and completed.";
+        } else {
+            $error_message = "Error updating defense status: " . mysqli_error($conn);
+        }
+        header("Location: admin-defense.php");
+        exit();
+    }
+
+    if (isset($_POST['confirm_defense'])) {
+        $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
+        $update_query = "UPDATE defense_schedules SET status = 'passed' WHERE id = '$defense_id'";
+        if (mysqli_query($conn, $update_query)) {
+            $_SESSION['success_message'] = "Defense confirmed and ready for evaluation.";
+        } else {
+            $error_message = "Error confirming defense: " . mysqli_error($conn);
+        }
+        header("Location: admin-defense.php");
+        exit();
+    }
+
     if (isset($_POST['delete_schedule'])) {
         $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
 
@@ -179,7 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                   FROM defense_schedules 
                                   WHERE room_id = '$room_id' 
                                   AND defense_date = '$defense_date' 
-                                  AND status = 'scheduled'
+                                  AND status IN ('scheduled', 'passed')
                                   AND id != '$defense_id'
                                   AND (
                                       (start_time <= '$start_time' AND end_time > '$start_time') OR
@@ -268,16 +292,23 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
         $panel_members[] = $panel;
     }
 
-    // If defense has finished → mark as completed
+    // If defense has finished → mark as confirmed (ready for evaluation)
     $current_datetime = date('Y-m-d H:i:s');
     $defense_end_datetime = $schedule['defense_date'] . ' ' . $schedule['end_time'];
     
-    if (strtotime($defense_end_datetime) <= strtotime($current_datetime)) {
-        // Update status in database if not already completed
-        if ($schedule['status'] != 'completed') {
-            $update_query = "UPDATE defense_schedules SET status = 'completed' WHERE id = '{$schedule['id']}'";
-            mysqli_query($conn, $update_query);
-            $schedule['status'] = 'completed';
+    // Debug: Check if defense should be confirmed
+    $current_timestamp = strtotime($current_datetime);
+    $defense_end_timestamp = strtotime($defense_end_datetime);
+    $is_past_end_time = $defense_end_timestamp <= $current_timestamp;
+    $is_scheduled = $schedule['status'] == 'scheduled';
+    
+    if ($is_past_end_time && $is_scheduled) {
+        // Update status in database if not already confirmed
+        $update_query = "UPDATE defense_schedules SET status = 'passed' WHERE id = '{$schedule['id']}'";
+        if (mysqli_query($conn, $update_query)) {
+            $schedule['status'] = 'passed';
+            // Optional: Add debug message
+            error_log("Defense {$schedule['id']} automatically moved to passed status");
         }
     }
 
@@ -391,6 +422,28 @@ while ($group = mysqli_fetch_assoc($pending_result)) {
     $pending_by_program[$program][$cluster][] = $group;
 }
 
+// Get passed defenses (ready for evaluation) organized by program and cluster
+$confirmed_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, p.title as proposal_title, r.room_name, r.building,
+                 GROUP_CONCAT(CONCAT(pm.first_name, ' ', pm.last_name) SEPARATOR ', ') as panel_names
+                FROM defense_schedules ds 
+                JOIN groups g ON ds.group_id = g.id 
+                LEFT JOIN clusters c ON g.cluster_id = c.id
+                JOIN proposals p ON g.id = p.group_id 
+                LEFT JOIN rooms r ON ds.room_id = r.id 
+                LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
+                LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
+                WHERE ds.status = 'passed'
+                GROUP BY ds.id
+                ORDER BY g.program, c.cluster, ds.defense_date DESC";
+$confirmed_result = mysqli_query($conn, $confirmed_query);
+$confirmed_by_program = [];
+
+while ($confirmed = mysqli_fetch_assoc($confirmed_result)) {
+    $program = $confirmed['program'] ?: 'Unknown';
+    $cluster = $confirmed['cluster'] ?: 'No Cluster';
+    $confirmed_by_program[$program][$cluster][] = $confirmed;
+}
+
 // Get completed defenses organized by program and cluster
 $completed_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, p.title as proposal_title, r.room_name, r.building,
                  GROUP_CONCAT(CONCAT(pm.first_name, ' ', pm.last_name) SEPARATOR ', ') as panel_names
@@ -401,7 +454,7 @@ $completed_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, p.t
                 LEFT JOIN rooms r ON ds.room_id = r.id 
                 LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
                 LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
-                WHERE ds.status = 'completed' OR CONCAT(ds.defense_date, ' ', ds.end_time) <= NOW()
+                WHERE ds.status = 'completed'
                 GROUP BY ds.id
                 ORDER BY g.program, c.cluster, ds.defense_date DESC";
 $completed_result = mysqli_query($conn, $completed_query);
@@ -416,6 +469,7 @@ while ($completed = mysqli_fetch_assoc($completed_result)) {
 // Get stats for dashboard
 $total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE status IN ('Completed', 'Approved')"));
 $scheduled_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'scheduled'"));
+$confirmed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'passed'"));
 $pending_defenses = $total_proposals - $scheduled_defenses;
 $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'completed'"));
 ?>
@@ -646,652 +700,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             transition: all 0.3s ease;
         }
     </style>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#2563eb',
-                        secondary: '#7c3aed',
-                        success: '#10b981',
-                        warning: '#f59e0b',
-                        danger: '#ef4444'
-                    }
-                }
-            }
-        }
-
-        // ===== MODAL FUNCTIONS =====
-        function openModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.classList.remove('opacity-0', 'pointer-events-none');
-                modal.classList.add('modal-active');
-
-                const modalContent = modal.querySelector('.modal-content');
-                if (modalContent) {
-                    setTimeout(() => {
-                        modalContent.classList.add('modal-content-active');
-                    }, 10);
-                }
-            }
-        }
-
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (!modal) return;
-
-            const modalContent = modal.querySelector('.modal-content');
-            if (modalContent) {
-                modalContent.classList.remove('modal-content-active');
-            }
-
-            setTimeout(() => {
-                modal.classList.remove('modal-active');
-                modal.classList.add('opacity-0', 'pointer-events-none');
-            }, 200);
-        }
-
-        function toggleModal() {
-            const modal = document.getElementById('proposalModal');
-            if (modal.classList.contains('opacity-0')) {
-                openModal('proposalModal');
-            } else {
-                closeModal('proposalModal');
-            }
-        }
-
-        function toggleEditModal() {
-            const modal = document.getElementById('editDefenseModal');
-            if (modal.classList.contains('opacity-0')) {
-                openModal('editDefenseModal');
-            } else {
-                closeModal('editDefenseModal');
-            }
-        }
-        
-        function toggleDetailsModal() {
-            const modal = document.getElementById('detailsModal');
-            if (modal.classList.contains('opacity-0')) {
-                openModal('detailsModal');
-            } else {
-                closeModal('detailsModal');
-            }
-        }
-
-        // ===== CLICK OUTSIDE TO CLOSE =====
-        document.addEventListener('click', function(event) {
-            if (event.target.classList.contains('modal-overlay')) {
-                closeModal(event.target.id);
-            }
-        });
-
-        // ===== ESC KEY TO CLOSE =====
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                document.querySelectorAll('.modal-overlay').forEach(modal => {
-                    if (!modal.classList.contains('opacity-0')) {
-                        closeModal(modal.id);
-                    }
-                });
-            }
-        });
-
-        // ===== DELETE MODAL =====
-        function showDeleteModal(defenseId, groupName) {
-            document.getElementById('defense_id').value = defenseId;
-            openModal('deleteConfirmModal');
-        }
-
-        // Make function globally accessible
-        window.showDeleteModal = showDeleteModal;
-        window.confirmDelete = confirmDelete;
-        window.openModal = openModal;
-        window.closeModal = closeModal;
-        
-        // Function to handle status filtering
-        function filterStatus(status) {
-            const cards = document.querySelectorAll('.defense-card');
-            cards.forEach(card => {
-                if (status === 'all') {
-                    card.classList.remove('hidden');
-                } else {
-                    const cardStatus = card.getAttribute('data-status');
-                    if (cardStatus === status) {
-                        card.classList.remove('hidden');
-                    } else {
-                        card.classList.add('hidden');
-                    }
-                }
-            });
-            
-            // Update active filter button
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                if (btn.getAttribute('data-filter') === status) {
-                    btn.classList.add('bg-primary', 'text-white');
-                    btn.classList.remove('bg-gray-200', 'text-gray-700');
-                } else {
-                    btn.classList.remove('bg-primary', 'text-white');
-                    btn.classList.add('bg-gray-200', 'text-gray-700');
-                }
-            });
-        }
-        
-        // Function to handle search
-        function handleSearch() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const cards = document.querySelectorAll('.defense-card');
-            
-            cards.forEach(card => {
-                const textContent = card.textContent.toLowerCase();
-                if (textContent.includes(searchTerm)) {
-                    card.classList.remove('hidden');
-                } else {
-                    card.classList.add('hidden');
-                }
-            });
-        }
-        
-        // Function to confirm deletion
-        function confirmDelete(defenseId, groupName) {
-            showDeleteModal(defenseId, groupName);
-        }
-        
-        // Function to mark defense as failed
-        function markFailed(defenseId) {
-            if (confirm('Mark this defense as failed? This will allow scheduling a redefense.')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `<input type="hidden" name="defense_id" value="${defenseId}"><input type="hidden" name="mark_failed" value="1">`;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-        
-        // Function to schedule redefense
-        function scheduleRedefense(groupId, parentDefenseId) {
-            document.getElementById('defense_type').value = 'redefense';
-            document.getElementById('parent_defense_id').value = parentDefenseId;
-            document.getElementById('group_id').value = groupId;
-            document.getElementById('group_id').disabled = true;
-            document.getElementById('redefense_reason_div').classList.remove('hidden');
-            document.querySelector('#proposalModal h3').textContent = 'Schedule Redefense';
-            toggleModal();
-        }
-        
-        // Function to view defense details
-        function viewDefenseDetails(defenseId) {
-            // Find the defense schedule by ID
-            const defenseCard = document.querySelector(`.defense-card[data-defense-id="${defenseId}"]`);
-            if (defenseCard) {
-                // Extract details from the card
-                const title = defenseCard.querySelector('h3').textContent;
-                const group = defenseCard.querySelector('.text-gray-500').textContent;
-                const date = defenseCard.querySelector('.fa-calendar').parentNode.textContent.trim();
-                const time = defenseCard.querySelector('.fa-clock').parentNode.textContent.trim();
-                const location = defenseCard.querySelector('.fa-map-marker-alt').parentNode.textContent.trim();
-                const panel = defenseCard.querySelector('.fa-users').parentNode.textContent.trim();
-                const status = defenseCard.querySelector('.px-3').textContent.trim();
-                
-                // Populate the details modal
-                document.getElementById('detailTitle').textContent = title;
-                document.getElementById('detailGroup').textContent = group;
-                document.getElementById('detailDate').textContent = date;
-                document.getElementById('detailTime').textContent = time;
-                document.getElementById('detailLocation').textContent = location;
-                document.getElementById('detailPanel').textContent = panel;
-                document.getElementById('detailStatus').textContent = status;
-                
-                // Set status color
-                const statusElement = document.getElementById('detailStatus');
-                statusElement.className = 'px-3 py-1 text-xs font-medium rounded-full';
-                if (status === 'Completed') {
-                    statusElement.classList.add('bg-green-100', 'text-green-800');
-                } else if (status === 'Cancelled') {
-                    statusElement.classList.add('bg-red-100', 'text-red-800');
-                } else {
-                    statusElement.classList.add('bg-blue-100', 'text-blue-800');
-                }
-                
-                toggleDetailsModal();
-            }
-        }
-        
-        // Function to switch between panel member tabs
-        function switchPanelTab(tabName) {
-            // Update active tab
-            document.querySelectorAll('.panel-tab').forEach(tab => {
-                if (tab.getAttribute('data-tab') === tabName) {
-                    tab.classList.add('active');
-                } else {
-                    tab.classList.remove('active');
-                }
-            });
-            
-            // Show active content
-            document.querySelectorAll('.panel-content').forEach(content => {
-                if (content.getAttribute('data-tab') === tabName) {
-                    content.classList.add('active');
-                } else {
-                    content.classList.remove('active');
-                }
-            });
-        }
-        
-        // Function to switch between edit panel tabs
-        function switchEditPanelTab(tabName) {
-            document.querySelectorAll('.panel-tab').forEach(tab => {
-                if (tab.getAttribute('data-tab') === tabName) {
-                    tab.classList.add('active');
-                } else {
-                    tab.classList.remove('active');
-                }
-            });
-
-            document.querySelectorAll('.panel-content').forEach(content => {
-                if (content.getAttribute('data-tab') === tabName) {
-                    content.classList.add('active');
-                } else {
-                    content.classList.remove('active');
-                }
-            });
-        }
-        
-        // Function to switch between main tabs
-        function switchMainTab(tabName) {
-            // Update active tab
-            document.querySelectorAll('.main-tab').forEach(tab => {
-                if (tab.id === tabName + 'Tab') {
-                    tab.classList.add('text-primary', 'border-primary');
-                    tab.classList.remove('text-gray-500', 'border-transparent');
-                } else {
-                    tab.classList.remove('text-primary', 'border-primary');
-                    tab.classList.add('text-gray-500', 'border-transparent');
-                }
-            });
-            
-            // Show active content
-            if (tabName === 'schedules') {
-                document.getElementById('schedulesContent').classList.remove('hidden');
-                document.getElementById('availabilityContent').classList.add('hidden');
-                document.getElementById('confirmationContent').classList.add('hidden');
-                document.getElementById('scheduleCards').classList.remove('hidden');
-                document.getElementById('availabilityCards').classList.add('hidden');
-                document.getElementById('confirmationCards').classList.add('hidden');
-            } else if (tabName === 'availability') {
-                document.getElementById('schedulesContent').classList.add('hidden');
-                document.getElementById('availabilityContent').classList.remove('hidden');
-                document.getElementById('confirmationContent').classList.add('hidden');
-                document.getElementById('scheduleCards').classList.add('hidden');
-                document.getElementById('availabilityCards').classList.remove('hidden');
-                document.getElementById('confirmationCards').classList.add('hidden');
-                // Load room availability immediately when tab is clicked
-                checkRoomAvailability();
-            } else if (tabName === 'confirmation') {
-                document.getElementById('schedulesContent').classList.add('hidden');
-                document.getElementById('availabilityContent').classList.add('hidden');
-                document.getElementById('confirmationContent').classList.remove('hidden');
-                document.getElementById('scheduleCards').classList.add('hidden');
-                document.getElementById('availabilityCards').classList.add('hidden');
-                document.getElementById('confirmationCards').classList.remove('hidden');
-            }
-        }
-        
-        // Function to validate defense duration (minimum 30 minutes)
-        function validateDefenseDuration() {
-            const startTime = document.getElementById('start_time').value;
-            const endTime = document.getElementById('end_time').value;
-            
-            if (startTime && endTime) {
-                const start = new Date('1970-01-01T' + startTime);
-                const end = new Date('1970-01-01T' + endTime);
-                const duration = (end - start) / (1000 * 60); // minutes
-                
-                if (duration < 30) {
-                    alert('Defense duration must be at least 30 minutes.');
-                    return false;
-                }
-                
-                // Suggest optimal end time if duration is not in 30-minute increments
-                if (duration % 30 !== 0) {
-                    const optimalDuration = Math.ceil(duration / 30) * 30;
-                    const optimalEnd = new Date(start.getTime() + optimalDuration * 60000);
-                    const optimalEndTime = optimalEnd.toTimeString().slice(0, 5);
-                    
-                    if (confirm(`For optimal room usage, consider extending to ${optimalEndTime} (${optimalDuration} minutes total). Update end time?`)) {
-                        document.getElementById('end_time').value = optimalEndTime;
-                    }
-                }
-            }
-            return true;
-        }
-        
-        // Function to populate available time slots
-        function populateTimeSlots() {
-            const roomId = document.getElementById('room_id').value;
-            const date = document.getElementById('defense_date').value;
-            const timeSlotSelect = document.getElementById('time_slot');
-            
-            if (!roomId || !date) {
-                timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
-                return;
-            }
-            
-            timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
-            
-            fetch('admin-pages/get_room_availability.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                const room = data.find(r => r.id == roomId);
-                const slots = generateTimeSlots(room ? room.schedules : []);
-                
-                timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
-                slots.forEach(slot => {
-                    const option = document.createElement('option');
-                    option.value = `${slot.start}|${slot.end}`;
-                    option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
-                    timeSlotSelect.appendChild(option);
-                });
-                
-                if (slots.length === 0) {
-                    timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
-            });
-        }
-        
-        // Function to generate available time slots
-        function generateTimeSlots(schedules) {
-            const slots = [];
-            const workStart = 9 * 60; // 9:00 AM
-            const workEnd = 17 * 60;  // 5:00 PM
-            
-            // Sort schedules by start time
-            schedules.sort((a, b) => {
-                const timeA = timeToMinutes(a.start_time);
-                const timeB = timeToMinutes(b.start_time);
-                return timeA - timeB;
-            });
-            
-            let currentTime = workStart;
-            
-            schedules.forEach(schedule => {
-                const startMinutes = timeToMinutes(schedule.start_time);
-                const endMinutes = timeToMinutes(schedule.end_time);
-                
-                // Add slots before this schedule
-                while (currentTime + 30 <= startMinutes) {
-                    const slotEnd = Math.min(currentTime + 30, startMinutes);
-                    if (slotEnd - currentTime >= 30) {
-                        slots.push({
-                            start: minutesToTime(currentTime),
-                            end: minutesToTime(slotEnd),
-                            duration: slotEnd - currentTime
-                        });
-                    }
-                    currentTime += 30;
-                }
-                currentTime = Math.max(currentTime, endMinutes);
-            });
-            
-            // Add remaining slots after last schedule
-            while (currentTime + 30 <= workEnd) {
-                slots.push({
-                    start: minutesToTime(currentTime),
-                    end: minutesToTime(currentTime + 30),
-                    duration: 30
-                });
-                currentTime += 30;
-            }
-            
-            return slots;
-        }
-        
-        // Helper functions
-        function timeToMinutes(timeStr) {
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            return hours * 60 + minutes;
-        }
-        
-        function minutesToTime(minutes) {
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-        }
-        
-        // Function to populate edit modal time slots
-        function populateEditTimeSlots() {
-            const roomId = document.getElementById('edit_room_id').value;
-            const date = document.getElementById('edit_defense_date').value;
-            const timeSlotSelect = document.getElementById('edit_time_slot');
-            const currentDefenseId = document.getElementById('edit_defense_id').value;
-            
-            if (!roomId || !date) {
-                timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
-                return;
-            }
-            
-            timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
-            
-            fetch('admin-pages/get_room_availability.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}&exclude_defense_id=${encodeURIComponent(currentDefenseId)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                const room = data.find(r => r.id == roomId);
-                const slots = generateTimeSlots(room ? room.schedules : []);
-                
-                timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
-                slots.forEach(slot => {
-                    const option = document.createElement('option');
-                    option.value = `${slot.start}|${slot.end}`;
-                    option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
-                    timeSlotSelect.appendChild(option);
-                });
-                
-                if (slots.length === 0) {
-                    timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
-            });
-        }
-        
-        // Function to update edit modal hidden time inputs
-        function updateEditTimeInputs() {
-            const timeSlot = document.getElementById('edit_time_slot').value;
-            const durationDisplay = document.getElementById('edit_duration_display');
-            
-            if (timeSlot) {
-                const [startTime, endTime] = timeSlot.split('|');
-                document.getElementById('edit_start_time').value = startTime;
-                document.getElementById('edit_end_time').value = endTime;
-                
-                const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
-                durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
-            } else {
-                document.getElementById('edit_start_time').value = '';
-                document.getElementById('edit_end_time').value = '';
-                durationDisplay.textContent = 'No slot selected';
-            }
-        }
-
-        // Function to update hidden time inputs when slot is selected
-        function updateTimeInputs() {
-            const timeSlot = document.getElementById('time_slot').value;
-            const durationDisplay = document.getElementById('duration_display');
-            
-            if (timeSlot) {
-                const [startTime, endTime] = timeSlot.split('|');
-                document.getElementById('start_time').value = startTime;
-                document.getElementById('end_time').value = endTime;
-                
-                const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
-                durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
-            } else {
-                document.getElementById('start_time').value = '';
-                document.getElementById('end_time').value = '';
-                durationDisplay.textContent = 'No slot selected';
-            }
-        }
-
-        // Function to check room availability
-        function checkRoomAvailability() {
-            const selectedDate = document.getElementById('availabilityDate').value;
-            if (!selectedDate) return;
-            
-            // Update selected date display
-            const dateObj = new Date(selectedDate);
-            const formattedDate = dateObj.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
-            });
-            document.getElementById('selectedDate').textContent = formattedDate;
-            
-            // Show loading state
-            document.getElementById('roomAvailabilityGrid').innerHTML = 
-                '<div class="col-span-3 text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i><p class="text-gray-500">Loading room availability...</p></div>';
-            
-            // Fetch room availability via AJAX
-            fetch('admin-pages/get_room_availability.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'date=' + encodeURIComponent(selectedDate)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                displayRoomAvailability(data);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('roomAvailabilityGrid').innerHTML = 
-                    '<div class="col-span-3 text-center py-8"><p class="text-red-500">Error: ' + error.message + '</p></div>';
-            });
-        }
-        
-        // Function to display room availability
-        function displayRoomAvailability(rooms) {
-            const grid = document.getElementById('roomAvailabilityGrid');
-            
-            if (!rooms || rooms.length === 0) {
-                grid.innerHTML = '<div class="col-span-3 text-center py-8"><p class="text-gray-500">No rooms found</p></div>';
-                return;
-            }
-            
-            let html = '';
-            rooms.forEach(room => {
-                const hasSchedules = room.schedules && room.schedules.length > 0;
-                const statusClass = hasSchedules ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
-                
-                let statusText = 'Available all day';
-                if (hasSchedules) {
-                    const firstSchedule = room.schedules[0];
-                    const lastSchedule = room.schedules[room.schedules.length - 1];
-                    statusText = `Available before ${firstSchedule.start_time} and after ${lastSchedule.end_time}`;
-                }
-                
-                const statusIcon = hasSchedules ? 'fa-times-circle' : 'fa-check-circle';
-                
-                const gradientClass = hasSchedules ? 'from-white via-red-50 to-rose-100 border-red-200' : 'from-white via-green-50 to-emerald-100 border-green-200';
-                const iconGradient = hasSchedules ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-green-500 to-emerald-600';
-                
-                html += `
-                    <div class="defense-card bg-gradient-to-br ${gradientClass} border rounded-2xl shadow-lg p-6 relative overflow-hidden">
-                        <!-- Decorative elements -->
-                        <div class="absolute top-0 right-0 w-20 h-20 ${hasSchedules ? 'bg-red-400/10' : 'bg-green-400/10'} rounded-full -translate-y-10 translate-x-10"></div>
-                        <div class="absolute bottom-0 left-0 w-16 h-16 ${hasSchedules ? 'bg-rose-400/10' : 'bg-emerald-400/10'} rounded-full translate-y-8 -translate-x-8"></div>
-                        
-                        <div class="relative z-10">
-                            <!-- Header -->
-                            <div class="flex justify-between items-start mb-4">
-                                <div class="flex items-center">
-                                    <div class="${iconGradient} p-3 rounded-xl mr-3 shadow-lg">
-                                        <i class="fas fa-door-open text-white text-lg"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-lg font-bold text-gray-900 leading-tight">${room.room_name}</h3>
-                                        <p class="text-xs ${hasSchedules ? 'text-red-600' : 'text-green-600'} font-medium">${room.building}</p>
-                                    </div>
-                                </div>
-                                <span class="${statusClass} px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
-                                    <i class="fas ${statusIcon} mr-1 text-xs"></i>${hasSchedules ? 'Occupied' : 'Available'}
-                                </span>
-                            </div>
-
-                            <!-- Details Section -->
-                            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
-                                <div class="flex items-center text-sm mb-2">
-                                    <i class="fas fa-users ${hasSchedules ? 'text-red-500' : 'text-green-500'} mr-3 w-4"></i>
-                                    <span class="text-gray-700 font-medium">Capacity: ${room.capacity || 'N/A'}</span>
-                                </div>
-                                ${(() => {
-                                    const availableSlots = generateTimeSlots(room.schedules || []);
-                                    if (availableSlots.length > 0) {
-                                        return `
-                                            <div class="space-y-1">
-                                                <p class="text-xs text-green-600 font-medium mb-2">Available Slots:</p>
-                                                ${availableSlots.slice(0, 4).map(slot => `
-                                                    <div class="flex items-center text-sm">
-                                                        <i class="fas fa-clock text-green-500 mr-3 w-4"></i>
-                                                        <span class="text-gray-700 font-medium">${slot.start} - ${slot.end} (${slot.duration} min)</span>
-                                                    </div>
-                                                `).join('')}
-                                                ${availableSlots.length > 4 ? `<p class="text-xs text-gray-500">+${availableSlots.length - 4} more slots</p>` : ''}
-                                            </div>
-                                        `;
-                                    } else {
-                                        return `
-                                            <div class="flex items-center text-sm">
-                                                <i class="fas fa-times-circle text-red-500 mr-3 w-4"></i>
-                                                <span class="text-gray-700 font-medium">No available slots</span>
-                                            </div>
-                                        `;
-                                    }
-                                })()}
-                                ${hasSchedules ? `
-                                    <div class="mt-3 pt-2 border-t border-gray-200">
-                                                                            <p class="text-xs text-red-600 font-medium mb-1">In Use:</p>
-                                                                            ${room.schedules.map(schedule => `
-                                                                                <div class="flex items-center text-xs text-red-600 mb-1">
-                                                                                    <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
-                                                                                    ${schedule.program} | ${schedule.cluster} | ${schedule.group_name} | ${schedule.defense_date} | ${schedule.start_time} - ${schedule.end_time}
-                                                                                </div>
-                                                                            `).join('')}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            grid.innerHTML = html;
-        }
-        
-
-    </script>
 </head>
 <body class="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 text-gray-800 font-sans">
 
@@ -1345,6 +753,20 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
 
                 <div class="stats-card p-4 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 rounded-full -translate-y-8 translate-x-8"></div>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="gradient-purple p-2 rounded-lg">
+                            <i class="fas fa-check-circle text-white text-lg"></i>
+                        </div>
+                        <span class="text-xs font-medium text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+                            Passed
+                        </span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800"><?php echo $confirmed_defenses; ?></h3>
+                    <p class="text-xs text-gray-600 font-medium uppercase tracking-wide">Defenses</p>
+                </div>
+
+                <div class="stats-card p-4 relative overflow-hidden">
                     <div class="absolute top-0 right-0 w-16 h-16 bg-orange-500/10 rounded-full -translate-y-8 translate-x-8"></div>
                     <div class="flex items-center justify-between mb-3">
                         <div class="bg-gradient-to-r from-yellow-400 to-orange-500 p-2 rounded-lg">
@@ -1380,7 +802,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <div class="flex border-b border-gray-200">
                         <button onclick="switchMainTab('schedules')" id="schedulesTab" class="main-tab px-6 py-3 font-semibold text-primary border-b-2 border-primary">Defense Schedules</button>
                         <button onclick="switchMainTab('availability')" id="availabilityTab" class="main-tab px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-primary">Room Availability</button>
-                        <button onclick="switchMainTab('confirmation')" id="confirmationTab" class="main-tab px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-primary">Defense Confirmation</button>
+                        <button onclick="switchMainTab('confirmation')" id="confirmationTab" class="main-tab px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-primary">Defense Evaluation</button>
+                        <button onclick="switchMainTab('completed')" id="completedTab" class="main-tab px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-primary">Completed Defenses</button>
                     </div>
                     
                     <!-- Schedules Tab Content -->
@@ -1426,7 +849,16 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                             <div class="gradient-purple p-3 rounded-xl">
                                 <i class="fas fa-check-circle text-white text-xl"></i>
                             </div>
-                            <h3 class="text-xl font-bold text-gray-800">Defense Confirmation</h3>
+                            <h3 class="text-xl font-bold text-gray-800">Defense Evaluation</h3>
+                        </div>
+                    </div>
+                    
+                    <div id="completedContent" class="main-tab-content hidden">
+                        <div class="flex items-center gap-4">
+                            <div class="gradient-green p-3 rounded-xl">
+                                <i class="fas fa-trophy text-white text-xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800">Completed Defenses</h3>
                         </div>
                     </div>
                 </div>
@@ -1540,6 +972,18 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
                             <!-- Actions -->
                             <div class="flex gap-2">
+                                <?php if ($schedule['status'] == 'scheduled'): ?>
+                                    <?php 
+                                    $current_timestamp = strtotime(date('Y-m-d H:i:s'));
+                                    $defense_end_timestamp = strtotime($schedule['defense_date'] . ' ' . $schedule['end_time']);
+                                    $is_past_end_time = $defense_end_timestamp <= $current_timestamp;
+                                    ?>
+                                    <?php if ($is_past_end_time): ?>
+                                        <button onclick="confirmDefense(<?php echo $schedule['id']; ?>)" class="flex-1 bg-gradient-to-r from-purple-400 to-purple-600 hover:from-purple-500 hover:to-purple-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Confirm Defense">
+                                            <i class="fas fa-check-circle mr-1"></i>Confirm
+                                        </button>
+                                    <?php endif; ?>
+                                <?php endif; ?>
                                 <?php if ($schedule['status'] == 'completed'): ?>
                                     <button onclick="markFailed(<?php echo $schedule['id']; ?>)" class="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Failed">
                                         <i class="fas fa-times-circle mr-1"></i>Mark Failed
@@ -1662,36 +1106,35 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
             </div>
 
-              <!-- NEW: Defense Confirmation Cards -->
+              <!-- Defense Confirmation Cards -->
             <div id="confirmationCards" class="stats-card rounded-2xl p-8 animate-scale-in hidden">
-                <!-- Completed Defenses Section (moved from below) -->
-                <div class="flex items-center mb-8">
-                    <div class="gradient-purple p-3 rounded-xl mr-4">
-                        <i class="fas fa-check-circle text-white text-xl"></i>
-                    </div>
-                    <h2 class="text-2xl font-bold text-gray-800">Completed Defenses</h2>
-                </div>
+                        <div class="flex items-center mb-8">
+                            <div class="gradient-purple p-3 rounded-xl mr-4">
+                                <i class="fas fa-check-circle text-white text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800">Defense Evaluation</h2>
+                        </div>
                 <div class="space-y-6 mb-8 animate-fade-in">
-                    <?php foreach ($completed_by_program as $program => $clusters): ?>
+                    <?php foreach ($confirmed_by_program as $program => $clusters): ?>
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                        <div class="p-4 border-b border-gray-200 cursor-pointer" onclick="toggleCompletedProgram('<?php echo $program; ?>')">
+                        <div class="p-4 border-b border-gray-200 cursor-pointer" onclick="toggleConfirmedProgram('<?php echo $program; ?>')">
                             <div class="flex items-center justify-between">
-                                <h3 class="text-lg font-semibold text-purple-700"><?php echo $program; ?> - Completed</h3>
-                                <i class="fas fa-chevron-down transition-transform" id="completed-icon-<?php echo $program; ?>"></i>
+                                <h3 class="text-lg font-semibold text-purple-700"><?php echo $program; ?> - Passed Defenses</h3>
+                                <i class="fas fa-chevron-down transition-transform" id="confirmed-icon-<?php echo $program; ?>"></i>
                             </div>
                         </div>
-                        <div class="program-content" id="completed-content-<?php echo $program; ?>" style="display: none;">
+                        <div class="program-content" id="confirmed-content-<?php echo $program; ?>" style="display: none;">
                             <?php foreach ($clusters as $cluster => $schedules): ?>
                             <div class="border-b border-gray-100 last:border-b-0">
-                                <div class="p-3 bg-purple-50 cursor-pointer" onclick="toggleCompletedCluster('<?php echo $program . '-' . $cluster; ?>')">
+                                <div class="p-3 bg-purple-50 cursor-pointer" onclick="toggleConfirmedCluster('<?php echo $program . '-' . $cluster; ?>')">
                                     <div class="flex items-center justify-between">
                                         <h4 class="font-medium text-purple-700">Cluster <?php echo $cluster; ?></h4>
-                                        <i class="fas fa-chevron-down transition-transform text-sm" id="completed-icon-<?php echo $program . '-' . $cluster; ?>"></i>
+                                        <i class="fas fa-chevron-down transition-transform text-sm" id="confirmed-icon-<?php echo $program . '-' . $cluster; ?>"></i>
                                     </div>
                                 </div>
-                                <div class="cluster-content" id="completed-content-<?php echo $program . '-' . $cluster; ?>" style="display: none;">
+                                <div class="cluster-content" id="confirmed-content-<?php echo $program . '-' . $cluster; ?>" style="display: none;">
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
-                                        <?php foreach ($schedules as $completed): ?>
+                                        <?php foreach ($schedules as $confirmed): ?>
                         <div class="defense-card bg-gradient-to-br from-white via-purple-50 to-violet-100 border border-purple-200 rounded-2xl shadow-lg p-6 relative overflow-hidden">
                             <div class="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full -translate-y-10 translate-x-10"></div>
                             <div class="absolute bottom-0 left-0 w-16 h-16 bg-violet-400/10 rounded-full translate-y-8 -translate-x-8"></div>
@@ -1703,13 +1146,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                             <i class="fas fa-check-circle text-white text-lg"></i>
                                         </div>
                                         <div>
-                                            <h3 class="text-lg font-bold text-gray-900 leading-tight"><?php echo $completed['group_name']; ?></h3>
-                                            <p class="text-xs text-purple-600 font-medium"><?php echo $completed['proposal_title']; ?></p>
-                                            <p class="text-xs text-gray-500"><?php echo ucfirst($completed['defense_type']); ?> Defense</p>
+                                            <h3 class="text-lg font-bold text-gray-900 leading-tight"><?php echo $confirmed['group_name']; ?></h3>
+                                            <p class="text-xs text-purple-600 font-medium"><?php echo $confirmed['proposal_title']; ?></p>
+                                            <p class="text-xs text-gray-500"><?php echo ucfirst($confirmed['defense_type']); ?> Defense</p>
                                         </div>
                                     </div>
                                     <span class="bg-gradient-to-r from-purple-400 to-violet-600 text-white px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
-                                        <i class="fas fa-check mr-1 text-xs"></i>Completed
+                                        <i class="fas fa-check mr-1 text-xs"></i>Passed
                                     </span>
                                 </div>
 
@@ -1717,35 +1160,29 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     <div class="grid grid-cols-1 gap-3">
                                         <div class="flex items-center text-sm">
                                             <i class="fas fa-calendar text-purple-500 mr-3 w-4"></i>
-                                            <span class="text-gray-700 font-medium"><?php echo date('M j, Y', strtotime($completed['defense_date'])); ?></span>
+                                            <span class="text-gray-700 font-medium"><?php echo date('M j, Y', strtotime($confirmed['defense_date'])); ?></span>
                                         </div>
                                         <div class="flex items-center text-sm">
                                             <i class="fas fa-clock text-purple-500 mr-3 w-4"></i>
                                             <span class="text-gray-700 font-medium">
-                                                <?php echo date('g:i A', strtotime($completed['start_time'])); ?> - 
-                                                <?php echo date('g:i A', strtotime($completed['end_time'])); ?>
+                                                <?php echo date('g:i A', strtotime($confirmed['start_time'])); ?> - 
+                                                <?php echo date('g:i A', strtotime($confirmed['end_time'])); ?>
                                             </span>
                                         </div>
                                         <div class="flex items-center text-sm">
                                             <i class="fas fa-map-marker-alt text-purple-500 mr-3 w-4"></i>
-                                            <span class="text-gray-700 font-medium"><?php echo $completed['building'] . ' ' . $completed['room_name']; ?></span>
+                                            <span class="text-gray-700 font-medium"><?php echo $confirmed['building'] . ' ' . $confirmed['room_name']; ?></span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="flex gap-2">
-                                    <?php if ($completed['defense_type'] == 'pre_oral'): ?>
-                                        <button onclick="scheduleFinalDefense(<?php echo $completed['group_id']; ?>, <?php echo $completed['id']; ?>, '<?php echo addslashes($completed['group_name']); ?>', '<?php echo addslashes($completed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
-                                            <i class="fas fa-arrow-right mr-1"></i>Final Defense
-                                        </button>
-                                        <button onclick="scheduleRedefense(<?php echo $completed['group_id']; ?>, <?php echo $completed['id']; ?>, '<?php echo addslashes($completed['group_name']); ?>', '<?php echo addslashes($completed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Redefense">
-                                            <i class="fas fa-redo mr-1"></i>Redefense
-                                        </button>
-                                    <?php else: ?>
-                                        <span class="flex-1 bg-gradient-to-r from-green-400 to-green-600 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
-                                            <i class="fas fa-trophy mr-1"></i>Final Completed
-                                        </span>
-                                    <?php endif; ?>
+                                    <button onclick="markDefensePassed(<?php echo $confirmed['id']; ?>)" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Passed">
+                                        <i class="fas fa-check mr-1"></i>Pass
+                                    </button>
+                                    <button onclick="markDefenseFailed(<?php echo $confirmed['id']; ?>)" class="flex-1 bg-gradient-to-r from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Failed">
+                                        <i class="fas fa-times mr-1"></i>Fail
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1758,9 +1195,111 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                     <?php endforeach; ?>
                     
-                    <?php if (empty($completed_by_program)): ?>
+                    <?php if (empty($confirmed_by_program)): ?>
                     <div class="bg-white rounded-lg shadow p-8 text-center">
                         <i class="fas fa-check-circle text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-gray-500">No passed defenses awaiting evaluation</p>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Completed Defenses Cards -->
+            <div id="completedCards" class="stats-card rounded-2xl p-8 animate-scale-in hidden">
+                <div class="flex items-center mb-8">
+                    <div class="gradient-green p-3 rounded-xl mr-4">
+                        <i class="fas fa-trophy text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">Completed Defenses</h2>
+                </div>
+                
+                <div class="space-y-6 mb-8 animate-fade-in">
+                    <?php foreach ($completed_by_program as $program => $clusters): ?>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                        <div class="p-4 border-b border-gray-200 cursor-pointer" onclick="toggleCompletedProgram('<?php echo $program; ?>')">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-green-700"><?php echo $program; ?> - Completed Defenses</h3>
+                                <i class="fas fa-chevron-down transition-transform" id="completed-icon-<?php echo $program; ?>"></i>
+                            </div>
+                        </div>
+                        <div class="program-content" id="completed-content-<?php echo $program; ?>" style="display: none;">
+                            <?php foreach ($clusters as $cluster => $schedules): ?>
+                            <div class="border-b border-gray-100 last:border-b-0">
+                                <div class="p-3 bg-green-50 cursor-pointer" onclick="toggleCompletedCluster('<?php echo $program . '-' . $cluster; ?>')">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-medium text-green-700">Cluster <?php echo $cluster; ?></h4>
+                                        <i class="fas fa-chevron-down transition-transform text-sm" id="completed-icon-<?php echo $program . '-' . $cluster; ?>"></i>
+                                    </div>
+                                </div>
+                                <div class="cluster-content" id="completed-content-<?php echo $program . '-' . $cluster; ?>" style="display: none;">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
+                                        <?php foreach ($schedules as $completed): ?>
+                                        <div class="defense-card bg-gradient-to-br from-white via-green-50 to-emerald-100 border border-green-200 rounded-2xl shadow-lg p-6 relative overflow-hidden">
+                                            <div class="absolute top-0 right-0 w-20 h-20 bg-green-400/10 rounded-full -translate-y-10 translate-x-10"></div>
+                                            <div class="absolute bottom-0 left-0 w-16 h-16 bg-emerald-400/10 rounded-full translate-y-8 -translate-x-8"></div>
+                                            
+                                            <div class="relative z-10">
+                                                <div class="flex justify-between items-start mb-4">
+                                                    <div class="flex items-center">
+                                                        <div class="gradient-green p-3 rounded-xl mr-3 shadow-lg">
+                                                            <i class="fas fa-trophy text-white text-lg"></i>
+                                                        </div>
+                                                        <div>
+                                                            <h3 class="text-lg font-bold text-gray-900 leading-tight"><?php echo $completed['group_name']; ?></h3>
+                                                            <p class="text-xs text-green-600 font-medium"><?php echo $completed['proposal_title']; ?></p>
+                                                            <p class="text-xs text-gray-500"><?php echo ucfirst($completed['defense_type']); ?> Defense</p>
+                                                        </div>
+                                                    </div>
+                                                    <span class="bg-gradient-to-r from-green-400 to-emerald-600 text-white px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
+                                                        <i class="fas fa-check mr-1 text-xs"></i>Completed
+                                                    </span>
+                                                </div>
+
+                                                <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+                                                    <div class="grid grid-cols-1 gap-3">
+                                                        <div class="flex items-center text-sm">
+                                                            <i class="fas fa-calendar text-green-500 mr-3 w-4"></i>
+                                                            <span class="text-gray-700 font-medium"><?php echo date('M j, Y', strtotime($completed['defense_date'])); ?></span>
+                                                        </div>
+                                                        <div class="flex items-center text-sm">
+                                                            <i class="fas fa-clock text-green-500 mr-3 w-4"></i>
+                                                            <span class="text-gray-700 font-medium">
+                                                                <?php echo date('g:i A', strtotime($completed['start_time'])); ?> - 
+                                                                <?php echo date('g:i A', strtotime($completed['end_time'])); ?>
+                                                            </span>
+                                                        </div>
+                                                        <div class="flex items-center text-sm">
+                                                            <i class="fas fa-map-marker-alt text-green-500 mr-3 w-4"></i>
+                                                            <span class="text-gray-700 font-medium"><?php echo $completed['building'] . ' ' . $completed['room_name']; ?></span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="flex gap-2">
+                                                    <?php if ($completed['defense_type'] == 'pre_oral'): ?>
+                                                        <button onclick="scheduleFinalDefense(<?php echo $completed['group_id']; ?>, <?php echo $completed['id']; ?>, '<?php echo addslashes($completed['group_name']); ?>', '<?php echo addslashes($completed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
+                                                            <i class="fas fa-arrow-right mr-1"></i>Final Defense
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <span class="flex-1 bg-gradient-to-r from-green-400 to-green-600 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
+                                                            <i class="fas fa-trophy mr-1"></i>Final Completed
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                    
+                    <?php if (empty($completed_by_program)): ?>
+                    <div class="bg-white rounded-lg shadow p-8 text-center">
+                        <i class="fas fa-trophy text-4xl text-gray-400 mb-3"></i>
                         <p class="text-gray-500">No completed defenses yet</p>
                     </div>
                     <?php endif; ?>
@@ -2246,6 +1785,667 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     </div>
 </div>
 
+ <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#7c3aed',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444'
+                    }
+                }
+            }
+        }
+
+        // ===== MODAL FUNCTIONS =====
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modal.classList.add('modal-active');
+
+                const modalContent = modal.querySelector('.modal-content');
+                if (modalContent) {
+                    setTimeout(() => {
+                        modalContent.classList.add('modal-content-active');
+                    }, 10);
+                }
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+
+            const modalContent = modal.querySelector('.modal-content');
+            if (modalContent) {
+                modalContent.classList.remove('modal-content-active');
+            }
+
+            setTimeout(() => {
+                modal.classList.remove('modal-active');
+                modal.classList.add('opacity-0', 'pointer-events-none');
+            }, 200);
+        }
+
+        function toggleModal() {
+            const modal = document.getElementById('proposalModal');
+            if (modal.classList.contains('opacity-0')) {
+                openModal('proposalModal');
+            } else {
+                closeModal('proposalModal');
+            }
+        }
+
+        function toggleEditModal() {
+            const modal = document.getElementById('editDefenseModal');
+            if (modal.classList.contains('opacity-0')) {
+                openModal('editDefenseModal');
+            } else {
+                closeModal('editDefenseModal');
+            }
+        }
+        
+        function toggleDetailsModal() {
+            const modal = document.getElementById('detailsModal');
+            if (modal.classList.contains('opacity-0')) {
+                openModal('detailsModal');
+            } else {
+                closeModal('detailsModal');
+            }
+        }
+
+        // ===== CLICK OUTSIDE TO CLOSE =====
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                closeModal(event.target.id);
+            }
+        });
+
+        // ===== ESC KEY TO CLOSE =====
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay').forEach(modal => {
+                    if (!modal.classList.contains('opacity-0')) {
+                        closeModal(modal.id);
+                    }
+                });
+            }
+        });
+
+        // ===== DELETE MODAL =====
+        function showDeleteModal(defenseId, groupName) {
+            document.getElementById('defense_id').value = defenseId;
+            openModal('deleteConfirmModal');
+        }
+
+        // Make function globally accessible
+        window.showDeleteModal = showDeleteModal;
+        window.confirmDelete = confirmDelete;
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+        
+        // Function to handle status filtering
+        function filterStatus(status) {
+            const cards = document.querySelectorAll('.defense-card');
+            cards.forEach(card => {
+                if (status === 'all') {
+                    card.classList.remove('hidden');
+                } else {
+                    const cardStatus = card.getAttribute('data-status');
+                    if (cardStatus === status) {
+                        card.classList.remove('hidden');
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                }
+            });
+            
+            // Update active filter button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.getAttribute('data-filter') === status) {
+                    btn.classList.add('bg-primary', 'text-white');
+                    btn.classList.remove('bg-gray-200', 'text-gray-700');
+                } else {
+                    btn.classList.remove('bg-primary', 'text-white');
+                    btn.classList.add('bg-gray-200', 'text-gray-700');
+                }
+            });
+        }
+        
+        // Function to handle search
+        function handleSearch() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('.defense-card');
+            
+            cards.forEach(card => {
+                const textContent = card.textContent.toLowerCase();
+                if (textContent.includes(searchTerm)) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        }
+        
+        // Function to confirm deletion
+        function confirmDelete(defenseId, groupName) {
+            showDeleteModal(defenseId, groupName);
+        }
+        
+        // Function to mark defense as failed
+        function markFailed(defenseId) {
+            if (confirm('Mark this defense as failed? This will allow scheduling a redefense.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `<input type="hidden" name="defense_id" value="${defenseId}"><input type="hidden" name="mark_failed" value="1">`;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+        
+        // Function to schedule redefense
+        function scheduleRedefense(groupId, parentDefenseId) {
+            document.getElementById('defense_type').value = 'redefense';
+            document.getElementById('parent_defense_id').value = parentDefenseId;
+            document.getElementById('group_id').value = groupId;
+            document.getElementById('group_id').disabled = true;
+            document.getElementById('redefense_reason_div').classList.remove('hidden');
+            document.querySelector('#proposalModal h3').textContent = 'Schedule Redefense';
+            toggleModal();
+        }
+        
+        // Function to view defense details
+        function viewDefenseDetails(defenseId) {
+            // Find the defense schedule by ID
+            const defenseCard = document.querySelector(`.defense-card[data-defense-id="${defenseId}"]`);
+            if (defenseCard) {
+                // Extract details from the card
+                const title = defenseCard.querySelector('h3').textContent;
+                const group = defenseCard.querySelector('.text-gray-500').textContent;
+                const date = defenseCard.querySelector('.fa-calendar').parentNode.textContent.trim();
+                const time = defenseCard.querySelector('.fa-clock').parentNode.textContent.trim();
+                const location = defenseCard.querySelector('.fa-map-marker-alt').parentNode.textContent.trim();
+                const panel = defenseCard.querySelector('.fa-users').parentNode.textContent.trim();
+                const status = defenseCard.querySelector('.px-3').textContent.trim();
+                
+                // Populate the details modal
+                document.getElementById('detailTitle').textContent = title;
+                document.getElementById('detailGroup').textContent = group;
+                document.getElementById('detailDate').textContent = date;
+                document.getElementById('detailTime').textContent = time;
+                document.getElementById('detailLocation').textContent = location;
+                document.getElementById('detailPanel').textContent = panel;
+                document.getElementById('detailStatus').textContent = status;
+                
+                // Set status color
+                const statusElement = document.getElementById('detailStatus');
+                statusElement.className = 'px-3 py-1 text-xs font-medium rounded-full';
+                if (status === 'Completed') {
+                    statusElement.classList.add('bg-green-100', 'text-green-800');
+                } else if (status === 'Cancelled') {
+                    statusElement.classList.add('bg-red-100', 'text-red-800');
+                } else {
+                    statusElement.classList.add('bg-blue-100', 'text-blue-800');
+                }
+                
+                toggleDetailsModal();
+            }
+        }
+        
+        // Function to switch between panel member tabs
+        function switchPanelTab(tabName) {
+            // Update active tab
+            document.querySelectorAll('.panel-tab').forEach(tab => {
+                if (tab.getAttribute('data-tab') === tabName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // Show active content
+            document.querySelectorAll('.panel-content').forEach(content => {
+                if (content.getAttribute('data-tab') === tabName) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+        
+        // Function to switch between edit panel tabs
+        function switchEditPanelTab(tabName) {
+            document.querySelectorAll('.panel-tab').forEach(tab => {
+                if (tab.getAttribute('data-tab') === tabName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+
+            document.querySelectorAll('.panel-content').forEach(content => {
+                if (content.getAttribute('data-tab') === tabName) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+        
+        // Function to switch between main tabs
+        function switchMainTab(tabName) {
+            // Update active tab
+            document.querySelectorAll('.main-tab').forEach(tab => {
+                if (tab.id === tabName + 'Tab') {
+                    tab.classList.add('text-primary', 'border-primary');
+                    tab.classList.remove('text-gray-500', 'border-transparent');
+                } else {
+                    tab.classList.remove('text-primary', 'border-primary');
+                    tab.classList.add('text-gray-500', 'border-transparent');
+                }
+            });
+            
+            // Show active content
+            if (tabName === 'schedules') {
+                document.getElementById('schedulesContent').classList.remove('hidden');
+                document.getElementById('availabilityContent').classList.add('hidden');
+                document.getElementById('confirmationContent').classList.add('hidden');
+                document.getElementById('completedContent').classList.add('hidden');
+                document.getElementById('scheduleCards').classList.remove('hidden');
+                document.getElementById('availabilityCards').classList.add('hidden');
+                document.getElementById('confirmationCards').classList.add('hidden');
+                document.getElementById('completedCards').classList.add('hidden');
+            } else if (tabName === 'availability') {
+                document.getElementById('schedulesContent').classList.add('hidden');
+                document.getElementById('availabilityContent').classList.remove('hidden');
+                document.getElementById('confirmationContent').classList.add('hidden');
+                document.getElementById('completedContent').classList.add('hidden');
+                document.getElementById('scheduleCards').classList.add('hidden');
+                document.getElementById('availabilityCards').classList.remove('hidden');
+                document.getElementById('confirmationCards').classList.add('hidden');
+                document.getElementById('completedCards').classList.add('hidden');
+                // Load room availability immediately when tab is clicked
+                checkRoomAvailability();
+            } else if (tabName === 'confirmation') {
+                document.getElementById('schedulesContent').classList.add('hidden');
+                document.getElementById('availabilityContent').classList.add('hidden');
+                document.getElementById('confirmationContent').classList.remove('hidden');
+                document.getElementById('completedContent').classList.add('hidden');
+                document.getElementById('scheduleCards').classList.add('hidden');
+                document.getElementById('availabilityCards').classList.add('hidden');
+                document.getElementById('confirmationCards').classList.remove('hidden');
+                document.getElementById('completedCards').classList.add('hidden');
+            } else if (tabName === 'completed') {
+                document.getElementById('schedulesContent').classList.add('hidden');
+                document.getElementById('availabilityContent').classList.add('hidden');
+                document.getElementById('confirmationContent').classList.add('hidden');
+                document.getElementById('completedContent').classList.remove('hidden');
+                document.getElementById('scheduleCards').classList.add('hidden');
+                document.getElementById('availabilityCards').classList.add('hidden');
+                document.getElementById('confirmationCards').classList.add('hidden');
+                document.getElementById('completedCards').classList.remove('hidden');
+            }
+        }
+        
+        // Function to validate defense duration (minimum 30 minutes)
+        function validateDefenseDuration() {
+            const startTime = document.getElementById('start_time').value;
+            const endTime = document.getElementById('end_time').value;
+            
+            if (startTime && endTime) {
+                const start = new Date('1970-01-01T' + startTime);
+                const end = new Date('1970-01-01T' + endTime);
+                const duration = (end - start) / (1000 * 60); // minutes
+                
+                if (duration < 30) {
+                    alert('Defense duration must be at least 30 minutes.');
+                    return false;
+                }
+                
+                // Suggest optimal end time if duration is not in 30-minute increments
+                if (duration % 30 !== 0) {
+                    const optimalDuration = Math.ceil(duration / 30) * 30;
+                    const optimalEnd = new Date(start.getTime() + optimalDuration * 60000);
+                    const optimalEndTime = optimalEnd.toTimeString().slice(0, 5);
+                    
+                    if (confirm(`For optimal room usage, consider extending to ${optimalEndTime} (${optimalDuration} minutes total). Update end time?`)) {
+                        document.getElementById('end_time').value = optimalEndTime;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        // Function to populate available time slots
+        function populateTimeSlots() {
+            const roomId = document.getElementById('room_id').value;
+            const date = document.getElementById('defense_date').value;
+            const timeSlotSelect = document.getElementById('time_slot');
+            
+            if (!roomId || !date) {
+                timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+                return;
+            }
+            
+            timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+            
+            fetch('admin-pages/get_room_availability.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const room = data.find(r => r.id == roomId);
+                const slots = generateTimeSlots(room ? room.schedules : []);
+                
+                timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+                slots.forEach(slot => {
+                    const option = document.createElement('option');
+                    option.value = `${slot.start}|${slot.end}`;
+                    option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                    timeSlotSelect.appendChild(option);
+                });
+                
+                if (slots.length === 0) {
+                    timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+            });
+        }
+        
+        // Function to generate available time slots
+        function generateTimeSlots(schedules) {
+            const slots = [];
+            const workStart = 9 * 60; // 9:00 AM
+            const workEnd = 17 * 60;  // 5:00 PM
+            
+            // Sort schedules by start time
+            schedules.sort((a, b) => {
+                const timeA = timeToMinutes(a.start_time);
+                const timeB = timeToMinutes(b.start_time);
+                return timeA - timeB;
+            });
+            
+            let currentTime = workStart;
+            
+            schedules.forEach(schedule => {
+                const startMinutes = timeToMinutes(schedule.start_time);
+                const endMinutes = timeToMinutes(schedule.end_time);
+                
+                // Add slots before this schedule
+                while (currentTime + 30 <= startMinutes) {
+                    const slotEnd = Math.min(currentTime + 30, startMinutes);
+                    if (slotEnd - currentTime >= 30) {
+                        slots.push({
+                            start: minutesToTime(currentTime),
+                            end: minutesToTime(slotEnd),
+                            duration: slotEnd - currentTime
+                        });
+                    }
+                    currentTime += 30;
+                }
+                currentTime = Math.max(currentTime, endMinutes);
+            });
+            
+            // Add remaining slots after last schedule
+            while (currentTime + 30 <= workEnd) {
+                slots.push({
+                    start: minutesToTime(currentTime),
+                    end: minutesToTime(currentTime + 30),
+                    duration: 30
+                });
+                currentTime += 30;
+            }
+            
+            return slots;
+        }
+        
+        // Helper functions
+        function timeToMinutes(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+        
+        function minutesToTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        }
+        
+        // Function to populate edit modal time slots
+        function populateEditTimeSlots() {
+            const roomId = document.getElementById('edit_room_id').value;
+            const date = document.getElementById('edit_defense_date').value;
+            const timeSlotSelect = document.getElementById('edit_time_slot');
+            const currentDefenseId = document.getElementById('edit_defense_id').value;
+            
+            if (!roomId || !date) {
+                timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+                return;
+            }
+            
+            timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+            
+            fetch('admin-pages/get_room_availability.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}&exclude_defense_id=${encodeURIComponent(currentDefenseId)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const room = data.find(r => r.id == roomId);
+                const slots = generateTimeSlots(room ? room.schedules : []);
+                
+                timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+                slots.forEach(slot => {
+                    const option = document.createElement('option');
+                    option.value = `${slot.start}|${slot.end}`;
+                    option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                    timeSlotSelect.appendChild(option);
+                });
+                
+                if (slots.length === 0) {
+                    timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+            });
+        }
+        
+        // Function to update edit modal hidden time inputs
+        function updateEditTimeInputs() {
+            const timeSlot = document.getElementById('edit_time_slot').value;
+            const durationDisplay = document.getElementById('edit_duration_display');
+            
+            if (timeSlot) {
+                const [startTime, endTime] = timeSlot.split('|');
+                document.getElementById('edit_start_time').value = startTime;
+                document.getElementById('edit_end_time').value = endTime;
+                
+                const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+                durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+            } else {
+                document.getElementById('edit_start_time').value = '';
+                document.getElementById('edit_end_time').value = '';
+                durationDisplay.textContent = 'No slot selected';
+            }
+        }
+
+        // Function to update hidden time inputs when slot is selected
+        function updateTimeInputs() {
+            const timeSlot = document.getElementById('time_slot').value;
+            const durationDisplay = document.getElementById('duration_display');
+            
+            if (timeSlot) {
+                const [startTime, endTime] = timeSlot.split('|');
+                document.getElementById('start_time').value = startTime;
+                document.getElementById('end_time').value = endTime;
+                
+                const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+                durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+            } else {
+                document.getElementById('start_time').value = '';
+                document.getElementById('end_time').value = '';
+                durationDisplay.textContent = 'No slot selected';
+            }
+        }
+
+        // Function to check room availability
+        function checkRoomAvailability() {
+            const selectedDate = document.getElementById('availabilityDate').value;
+            if (!selectedDate) return;
+            
+            // Update selected date display
+            const dateObj = new Date(selectedDate);
+            const formattedDate = dateObj.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+            document.getElementById('selectedDate').textContent = formattedDate;
+            
+            // Show loading state
+            document.getElementById('roomAvailabilityGrid').innerHTML = 
+                '<div class="col-span-3 text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i><p class="text-gray-500">Loading room availability...</p></div>';
+            
+            // Fetch room availability via AJAX
+            fetch('admin-pages/get_room_availability.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'date=' + encodeURIComponent(selectedDate)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                displayRoomAvailability(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('roomAvailabilityGrid').innerHTML = 
+                    '<div class="col-span-3 text-center py-8"><p class="text-red-500">Error: ' + error.message + '</p></div>';
+            });
+        }
+        
+        // Function to display room availability
+        function displayRoomAvailability(rooms) {
+            const grid = document.getElementById('roomAvailabilityGrid');
+            
+            if (!rooms || rooms.length === 0) {
+                grid.innerHTML = '<div class="col-span-3 text-center py-8"><p class="text-gray-500">No rooms found</p></div>';
+                return;
+            }
+            
+            let html = '';
+            rooms.forEach(room => {
+                const hasSchedules = room.schedules && room.schedules.length > 0;
+                const statusClass = hasSchedules ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
+                
+                let statusText = 'Available all day';
+                if (hasSchedules) {
+                    const firstSchedule = room.schedules[0];
+                    const lastSchedule = room.schedules[room.schedules.length - 1];
+                    statusText = `Available before ${firstSchedule.start_time} and after ${lastSchedule.end_time}`;
+                }
+                
+                const statusIcon = hasSchedules ? 'fa-times-circle' : 'fa-check-circle';
+                
+                const gradientClass = hasSchedules ? 'from-white via-red-50 to-rose-100 border-red-200' : 'from-white via-green-50 to-emerald-100 border-green-200';
+                const iconGradient = hasSchedules ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-green-500 to-emerald-600';
+                
+                html += `
+                    <div class="defense-card bg-gradient-to-br ${gradientClass} border rounded-2xl shadow-lg p-6 relative overflow-hidden">
+                        <!-- Decorative elements -->
+                        <div class="absolute top-0 right-0 w-20 h-20 ${hasSchedules ? 'bg-red-400/10' : 'bg-green-400/10'} rounded-full -translate-y-10 translate-x-10"></div>
+                        <div class="absolute bottom-0 left-0 w-16 h-16 ${hasSchedules ? 'bg-rose-400/10' : 'bg-emerald-400/10'} rounded-full translate-y-8 -translate-x-8"></div>
+                        
+                        <div class="relative z-10">
+                            <!-- Header -->
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center">
+                                    <div class="${iconGradient} p-3 rounded-xl mr-3 shadow-lg">
+                                        <i class="fas fa-door-open text-white text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-bold text-gray-900 leading-tight">${room.room_name}</h3>
+                                        <p class="text-xs ${hasSchedules ? 'text-red-600' : 'text-green-600'} font-medium">${room.building}</p>
+                                    </div>
+                                </div>
+                                <span class="${statusClass} px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
+                                    <i class="fas ${statusIcon} mr-1 text-xs"></i>${hasSchedules ? 'Occupied' : 'Available'}
+                                </span>
+                            </div>
+
+                            <!-- Details Section -->
+                            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+                                <div class="flex items-center text-sm mb-2">
+                                    <i class="fas fa-users ${hasSchedules ? 'text-red-500' : 'text-green-500'} mr-3 w-4"></i>
+                                    <span class="text-gray-700 font-medium">Capacity: ${room.capacity || 'N/A'}</span>
+                                </div>
+                                ${(() => {
+                                    const availableSlots = generateTimeSlots(room.schedules || []);
+                                    if (availableSlots.length > 0) {
+                                        return `
+                                            <div class="space-y-1">
+                                                <p class="text-xs text-green-600 font-medium mb-2">Available Slots:</p>
+                                                ${availableSlots.slice(0, 4).map(slot => `
+                                                    <div class="flex items-center text-sm">
+                                                        <i class="fas fa-clock text-green-500 mr-3 w-4"></i>
+                                                        <span class="text-gray-700 font-medium">${slot.start} - ${slot.end} (${slot.duration} min)</span>
+                                                    </div>
+                                                `).join('')}
+                                                ${availableSlots.length > 4 ? `<p class="text-xs text-gray-500">+${availableSlots.length - 4} more slots</p>` : ''}
+                                            </div>
+                                        `;
+                                    } else {
+                                        return `
+                                            <div class="flex items-center text-sm">
+                                                <i class="fas fa-times-circle text-red-500 mr-3 w-4"></i>
+                                                <span class="text-gray-700 font-medium">No available slots</span>
+                                            </div>
+                                        `;
+                                    }
+                                })()}
+                                ${hasSchedules ? `
+                                    <div class="mt-3 pt-2 border-t border-gray-200">
+                                                                            <p class="text-xs text-red-600 font-medium mb-1">In Use:</p>
+                                                                            ${room.schedules.map(schedule => `
+                                                                                <div class="flex items-center text-xs text-red-600 mb-1">
+                                                                                    <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
+                                                                                    ${schedule.program} | ${schedule.cluster} | ${schedule.group_name} | ${schedule.defense_date} | ${schedule.start_time} - ${schedule.end_time}
+                                                                                </div>
+                                                                            `).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            grid.innerHTML = html;
+        }
+        
+
+    </script>
 <script>
 /* ========= MODAL FUNCTIONS ========= */
 function openModal(modalId) {
@@ -2763,6 +2963,98 @@ document.addEventListener('DOMContentLoaded', () => {
         <?php unset($_SESSION['refresh_availability']); ?>
     <?php endif; ?>
 });
+
+// ========= NEW DEFENSE CONFIRMATION FUNCTIONS =========
+function markDefensePassed(defenseId) {
+    if (confirm('Mark this defense as passed? This will move it to completed defenses.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `<input type="hidden" name="defense_id" value="${defenseId}"><input type="hidden" name="mark_passed" value="1">`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function markDefenseFailed(defenseId) {
+    if (confirm('Mark this defense as failed? This will allow scheduling a redefense.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `<input type="hidden" name="defense_id" value="${defenseId}"><input type="hidden" name="mark_failed" value="1">`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function confirmDefense(defenseId) {
+    if (confirm('Mark this defense as passed? This will move it to the evaluation tab.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `<input type="hidden" name="defense_id" value="${defenseId}"><input type="hidden" name="confirm_defense" value="1">`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function toggleConfirmedProgram(program) {
+    const content = document.getElementById('confirmed-content-' + program);
+    const icon = document.getElementById('confirmed-icon-' + program);
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+function toggleConfirmedCluster(clusterKey) {
+    const content = document.getElementById('confirmed-content-' + clusterKey);
+    const icon = document.getElementById('confirmed-icon-' + clusterKey);
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+function toggleCompletedProgram(program) {
+    const content = document.getElementById('completed-content-' + program);
+    const icon = document.getElementById('completed-icon-' + program);
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+function toggleCompletedCluster(clusterKey) {
+    const content = document.getElementById('completed-content-' + clusterKey);
+    const icon = document.getElementById('completed-icon-' + clusterKey);
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+// Make functions globally accessible
+window.markDefensePassed = markDefensePassed;
+window.markDefenseFailed = markDefenseFailed;
+window.confirmDefense = confirmDefense;
+window.toggleConfirmedProgram = toggleConfirmedProgram;
+window.toggleConfirmedCluster = toggleConfirmedCluster;
+window.toggleCompletedProgram = toggleCompletedProgram;
+window.toggleCompletedCluster = toggleCompletedCluster;
 </script>
 </body>
 </html>

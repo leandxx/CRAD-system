@@ -334,7 +334,7 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cluster Adviser Assignment | Admin Dashboard</title>
+    <title>SMS | Cluster Adviser Assingment</title>
     <link rel="icon" href="assets/img/sms-logo.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">

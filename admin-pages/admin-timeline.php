@@ -5,6 +5,26 @@ include("../includes/connection.php");
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Global: Toggle Final Defense open/closed for ALL proposals
+    if (isset($_POST['toggle_final_defense_global'])) {
+        $open = (int)($_POST['final_defense_open_global'] ?? 0) === 1 ? 1 : 0;
+
+        // Ensure proposals.final_defense_open exists
+        $colCheck = $conn->query("SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'proposals' AND COLUMN_NAME = 'final_defense_open'");
+        if ($colCheck && ($colRow = $colCheck->fetch_assoc()) && (int)$colRow['cnt'] === 0) {
+            @$conn->query("ALTER TABLE proposals ADD COLUMN final_defense_open TINYINT(1) NOT NULL DEFAULT 0 AFTER reviewed_at");
+        }
+
+        // Update all proposals
+        $stmt = $conn->prepare("UPDATE proposals SET final_defense_open = ?");
+        $stmt->bind_param("i", $open);
+        $stmt->execute();
+        $stmt->close();
+
+        $_SESSION['success_message'] = $open ? 'Final Defense is now OPEN for ALL students.' : 'Final Defense is now CLOSED for ALL students.';
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit();
+    }
     // Create timeline
     if (isset($_POST['create_timeline'])) {
         $title = $_POST['title'] ?? '';
@@ -1154,9 +1174,37 @@ $isoDeadline = $current_milestone
       </div>
       <h2 class="text-2xl font-bold text-gray-800">Proposal Review</h2>
     </div>
-    <span class="gradient-green text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg">
-      <?php echo count($proposals); ?> Submitted
-    </span>
+    <div class="flex items-center gap-3">
+      <form method="POST" class="bg-white/60 backdrop-blur-sm rounded-xl p-2 border border-white/40 flex items-center gap-2">
+        <?php
+          // Determine global state: if any proposal is closed, show Open All; if all open (>=1), show Close All
+          $global_open = 0;
+          $has_final_defense_col = 0;
+          $colCheck = $conn->query("SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'proposals' AND COLUMN_NAME = 'final_defense_open'");
+          if ($colCheck && ($colRow = $colCheck->fetch_assoc())) {
+            $has_final_defense_col = (int)$colRow['cnt'];
+          }
+          if ($has_final_defense_col) {
+            $res = $conn->query("SELECT COUNT(*) AS total, SUM(final_defense_open = 1) AS open_count FROM proposals");
+            if ($res && ($row = $res->fetch_assoc())) {
+              $total = (int)$row['total'];
+              $open_count = (int)$row['open_count'];
+              if ($total > 0 && $open_count === $total) { $global_open = 1; }
+            }
+          }
+        ?>
+        <input type="hidden" name="final_defense_open_global" value="<?php echo $global_open ? '0' : '1'; ?>">
+        <button type="submit" name="toggle_final_defense_global" id="finalDefenseToggleBtnGlobal" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all <?php echo $global_open ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'; ?>">
+          <?php echo $global_open ? 'Close Final Defense (All Students)' : 'Open Final Defense (All Students)'; ?>
+        </button>
+        <span class="text-sm <?php echo $global_open ? 'text-green-700 font-medium' : 'text-gray-600'; ?>">
+          Current: <?php echo $global_open ? 'OPEN for all' : 'CLOSED (or mixed)'; ?>
+        </span>
+      </form>
+      <span class="gradient-green text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg">
+        <?php echo count($proposals); ?> Submitted
+      </span>
+    </div>
   </div>
 
   <!-- Search and Filter Bar -->
@@ -1190,39 +1238,70 @@ $isoDeadline = $current_milestone
 
   <?php if (!empty($proposals)): ?>
     <?php 
-    // Group proposals by cluster and program
-    $grouped_proposals = [];
+    // Group by Program → Cluster → Proposals
+    $program_groups = [];
     foreach ($proposals as $proposal) {
-        $cluster_key = $proposal['program'] . ' - Cluster ' . ($proposal['cluster'] ?? 'Unassigned');
-        $grouped_proposals[$cluster_key][] = $proposal;
+        $program_name = $proposal['program'] ?: 'Unassigned Program';
+        $cluster_name = 'Cluster ' . ($proposal['cluster'] ?? 'Unassigned');
+        if (!isset($program_groups[$program_name])) { $program_groups[$program_name] = []; }
+        if (!isset($program_groups[$program_name][$cluster_name])) { $program_groups[$program_name][$cluster_name] = []; }
+        $program_groups[$program_name][$cluster_name][] = $proposal;
     }
     ?>
     
-    <?php foreach ($grouped_proposals as $cluster_name => $cluster_proposals): ?>
-      <div class="mb-10">
-        <div class="cluster-header cursor-pointer rounded-2xl p-6 mb-6 transition-all" onclick="toggleCluster('<?php echo md5($cluster_name); ?>')">
+    <?php foreach ($program_groups as $program_name => $clusters): ?>
+      <?php 
+        $program_id = md5($program_name);
+        $program_total = 0; foreach ($clusters as $cList) { $program_total += count($cList); }
+      ?>
+      <div class="program-block mb-10">
+        <div class="program-header cursor-pointer rounded-2xl p-6 mb-4 transition-all bg-white/70 border border-white/40" onclick="toggleProgram('<?php echo $program_id; ?>')">
           <div class="flex items-center justify-between">
             <div class="flex items-center">
-              <div class="bg-blue-500 p-3 rounded-xl mr-4">
-                <i class="fas fa-layer-group text-white text-xl"></i>
+              <div class="bg-purple-500 p-3 rounded-xl mr-4">
+                <i class="fas fa-graduation-cap text-white text-xl"></i>
               </div>
               <div>
-                <h3 class="text-2xl font-bold text-gray-800"><?php echo htmlspecialchars($cluster_name); ?></h3>
-                <p class="text-gray-600">Click to expand proposals</p>
+                <h3 class="text-2xl font-bold text-gray-800 program-title"><?php echo htmlspecialchars($program_name); ?></h3>
+                <p class="text-gray-600">Click to show clusters</p>
               </div>
-              <div class="ml-6 bg-blue-500 text-white text-lg font-bold px-4 py-2 rounded-xl shadow-lg">
-                <?php echo count($cluster_proposals); ?>
+              <div class="ml-6 bg-purple-500 text-white text-lg font-bold px-4 py-2 rounded-xl shadow-lg">
+                <?php echo (int)$program_total; ?>
               </div>
             </div>
             <div class="bg-white/50 p-3 rounded-xl">
-              <i class="fas fa-chevron-down text-blue-600 transition-transform text-xl" id="chevron-<?php echo md5($cluster_name); ?>"></i>
+              <i class="fas fa-chevron-down text-purple-600 transition-transform text-xl" id="prog-chevron-<?php echo $program_id; ?>"></i>
             </div>
           </div>
         </div>
-        
-        <div class="cluster-content hidden" id="cluster-<?php echo md5($cluster_name); ?>">
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 ml-8">
-          <?php foreach ($cluster_proposals as $proposal): 
+
+        <div class="program-content hidden" id="program-<?php echo $program_id; ?>">
+          <?php foreach ($clusters as $cluster_name => $cluster_proposals): ?>
+          <?php $cluster_id = md5($program_name . '|' . $cluster_name); ?>
+          <div class="mb-8 ml-4">
+            <div class="cluster-header cursor-pointer rounded-2xl p-6 mb-4 transition-all bg-white/60 border border-white/40" onclick="toggleCluster('<?php echo $cluster_id; ?>')">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                  <div class="bg-blue-500 p-3 rounded-xl mr-4">
+                    <i class="fas fa-layer-group text-white text-xl"></i>
+                  </div>
+                  <div>
+                    <h4 class="text-xl font-bold text-gray-800 cluster-title"><?php echo htmlspecialchars($cluster_name); ?></h4>
+                    <p class="text-gray-600">Click to show groups</p>
+                  </div>
+                  <div class="ml-6 bg-blue-500 text-white text-lg font-bold px-4 py-2 rounded-xl shadow-lg">
+                    <?php echo count($cluster_proposals); ?>
+                  </div>
+                </div>
+                <div class="bg-white/50 p-3 rounded-xl">
+                  <i class="fas fa-chevron-down text-blue-600 transition-transform text-xl" id="chevron-<?php echo $cluster_id; ?>"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="cluster-content hidden" id="cluster-<?php echo $cluster_id; ?>">
+              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 ml-8">
+              <?php foreach ($cluster_proposals as $proposal): 
         // Simplified status system
         // Default to pending
         $status_class = 'bg-yellow-100 text-yellow-800';
@@ -1343,6 +1422,7 @@ $isoDeadline = $current_milestone
           </div>
         </div>
       </div>
+    <?php endforeach; ?>
     <?php endforeach; ?>
   <?php else: ?>
     <div class="text-center py-16">
@@ -2475,6 +2555,20 @@ $isoDeadline = $current_milestone
       }
     });
 
+    // Toggle program visibility
+    function toggleProgram(programId) {
+      const content = document.getElementById('program-' + programId);
+      const chevron = document.getElementById('prog-chevron-' + programId);
+      if (!content || !chevron) return;
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+      } else {
+        content.classList.add('hidden');
+        chevron.style.transform = 'rotate(0deg)';
+      }
+    }
+
     // Toggle cluster visibility with smooth animation
     function toggleCluster(clusterId) {
       const content = document.getElementById('cluster-' + clusterId);
@@ -2505,26 +2599,64 @@ $isoDeadline = $current_milestone
       }
     }
     
-    // Real-time search function
+    // Real-time search function (programs, clusters, groups)
     function searchProposals() {
       const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const programBlocks = document.querySelectorAll('.program-block');
+      const programHeaders = document.querySelectorAll('.program-header');
       const clusterHeaders = document.querySelectorAll('.cluster-header');
       const proposalCards = document.querySelectorAll('.proposal-card');
       
       if (searchTerm === '') {
-        // Show all clusters and cards
+        // Show all programs, clusters and cards
+        programBlocks.forEach(block => block.style.display = 'block');
+        document.querySelectorAll('.program-content').forEach(pc => pc.classList.add('hidden'));
+        document.querySelectorAll('[id^="prog-chevron-"]').forEach(ch => ch.style.transform = 'rotate(0deg)');
         clusterHeaders.forEach(header => header.parentElement.style.display = 'block');
         proposalCards.forEach(card => card.style.display = 'flex');
         return;
       }
       
-      // Hide all clusters initially
+      // Hide everything initially
+      programBlocks.forEach(block => block.style.display = 'none');
+      document.querySelectorAll('.program-content').forEach(pc => pc.classList.add('hidden'));
+      document.querySelectorAll('[id^="prog-chevron-"]').forEach(ch => ch.style.transform = 'rotate(0deg)');
       clusterHeaders.forEach(header => header.parentElement.style.display = 'none');
       
-      // Also check cluster headers directly
+      // Check program headers
+      programHeaders.forEach(header => {
+        const titleEl = header.querySelector('.program-title');
+        const name = titleEl ? titleEl.textContent.toLowerCase() : '';
+        if (name.includes(searchTerm)) {
+          const block = header.closest('.program-block');
+          if (block) block.style.display = 'block';
+          const programId = header.querySelector('[id^="prog-chevron-"]').id.replace('prog-chevron-', '');
+          const programContent = document.getElementById('program-' + programId);
+          if (programContent) {
+            programContent.classList.remove('hidden');
+            document.getElementById('prog-chevron-' + programId).style.transform = 'rotate(180deg)';
+            // Show all clusters under this program
+            programContent.querySelectorAll('.cluster-header').forEach(ch => ch.parentElement.style.display = 'block');
+            programContent.querySelectorAll('.cluster-content').forEach(cc => cc.classList.remove('hidden'));
+            programContent.querySelectorAll('.proposal-card').forEach(card => card.style.display = 'flex');
+          }
+        }
+      });
+
+      // Check cluster headers directly
       clusterHeaders.forEach(header => {
-        const clusterName = header.querySelector('h3').textContent.toLowerCase();
+        const titleEl = header.querySelector('.cluster-title');
+        const clusterName = titleEl ? titleEl.textContent.toLowerCase() : '';
         if (clusterName.includes(searchTerm)) {
+          // Show parent program
+          const programContent = header.closest('.program-content');
+          if (programContent) {
+            const programId = programContent.id.replace('program-', '');
+            const programBlock = programContent.closest('.program-block');
+            if (programBlock) programBlock.style.display = 'block';
+            programContent.classList.remove('hidden');
+            document.getElementById('prog-chevron-' + programId).style.transform = 'rotate(180deg)';
+          }
           header.parentElement.style.display = 'block';
           // Auto-expand cluster
           const clusterId = header.querySelector('[id^="chevron-"]').id.replace('chevron-', '');
@@ -2549,12 +2681,22 @@ $isoDeadline = $current_milestone
         if (clusterContent) {
           const clusterId = clusterContent.id.replace('cluster-', '');
           const clusterHeader = document.getElementById('chevron-' + clusterId).closest('.cluster-header');
-          clusterName = clusterHeader.querySelector('h3').textContent.toLowerCase();
+          const titleEl = clusterHeader ? clusterHeader.querySelector('.cluster-title') : null;
+          clusterName = titleEl ? titleEl.textContent.toLowerCase() : '';
         }
         
+        // Get program name from parent program block
+        let programName = '';
+        const programBlock = card.closest('.program-block');
+        if (programBlock) {
+          const titleEl = programBlock.querySelector('.program-title');
+          programName = titleEl ? titleEl.textContent.toLowerCase() : '';
+        }
+
         const matches = group.includes(searchTerm) || 
-                       program.includes(searchTerm) || 
-                       clusterName.includes(searchTerm);
+                        program.includes(searchTerm) || 
+                        clusterName.includes(searchTerm) ||
+                        programName.includes(searchTerm);
         
         if (matches) {
           card.style.display = 'flex';
@@ -2562,11 +2704,21 @@ $isoDeadline = $current_milestone
           const clusterContent = card.closest('.cluster-content');
           if (clusterContent) {
             const clusterId = clusterContent.id.replace('cluster-', '');
-            const clusterHeader = document.getElementById('chevron-' + clusterId).closest('.cluster-header').parentElement;
-            clusterHeader.style.display = 'block';
+            const clusterHeaderEl = document.getElementById('chevron-' + clusterId).closest('.cluster-header');
+            const clusterWrapper = clusterHeaderEl ? clusterHeaderEl.parentElement : null;
+            if (clusterWrapper) clusterWrapper.style.display = 'block';
             // Auto-expand cluster
             clusterContent.classList.remove('hidden');
             document.getElementById('chevron-' + clusterId).style.transform = 'rotate(180deg)';
+          }
+          // Show parent program
+          const programContent = card.closest('.program-content');
+          if (programContent) {
+            const programId = programContent.id.replace('program-', '');
+            const programBlock = programContent.closest('.program-block');
+            if (programBlock) programBlock.style.display = 'block';
+            programContent.classList.remove('hidden');
+            document.getElementById('prog-chevron-' + programId).style.transform = 'rotate(180deg)';
           }
         } else {
           card.style.display = 'none';

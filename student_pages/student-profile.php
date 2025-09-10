@@ -44,30 +44,18 @@ if ($existing_profile && $existing_profile['faculty_id']) {
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $school_id = $_POST['school_id'];
     $full_name = $_POST['full_name'];
-    $program = $_POST['program'];
     $school_year = $_POST['school_year'];
     
-    // Get cluster assignment from admin based on course and school year
-    $cluster_query = "
-        SELECT cluster 
-        FROM clusters 
-        WHERE program = ? AND school_year = ? AND status = 'active'
-        LIMIT 1
-    ";
-    
-    $cluster_stmt = $conn->prepare($cluster_query);
-    $cluster_stmt->bind_param("ss", $program, $school_year);
-    $cluster_stmt->execute();
-    $cluster_result = $cluster_stmt->get_result();
-    
-    if ($cluster_result && $cluster_result->num_rows > 0) {
-        $cluster_data = $cluster_result->fetch_assoc();
-        $cluster = $cluster_data['cluster'];
+    // Enforce admin-controlled program and cluster
+    // - If profile exists, do NOT allow students to change program/cluster via POST
+    // - If profile does not exist, allow initial program set; cluster remains 'Not Assigned' until admin assigns
+    if ($existing_profile) {
+        $program = $existing_profile['program'];
+        $cluster = isset($existing_profile['cluster']) && $existing_profile['cluster'] !== '' ? $existing_profile['cluster'] : 'Not Assigned';
     } else {
-        // If no cluster is assigned by admin, set a default value
+        $program = isset($_POST['program']) ? $_POST['program'] : '';
         $cluster = 'Not Assigned';
     }
-    $cluster_stmt->close();
     
     if ($existing_profile) {
         // Update existing profile
@@ -363,6 +351,7 @@ $profile_check->close();
                                     id="program" 
                                     name="program" 
                                     class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition input-field"
+                                    <?php echo ($existing_profile ? 'disabled' : ''); ?>
                                     required
                                 >
                                    <option value="">Select Program</option>
@@ -380,6 +369,9 @@ $profile_check->close();
                                     <option value="BS Psychology" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Psychology') ? 'selected' : ''; ?>>BS Psychology (BSPSYCH)</option>
                                     <option value="BL Information Science" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BL Information Science') ? 'selected' : ''; ?>>BL Information Science (BLIS)</option>
                                 </select>
+                                <?php if ($existing_profile): ?>
+                                <p class="text-xs text-gray-500 mt-1">Program is controlled by admin and cannot be changed here.</p>
+                                <?php endif; ?>
                             </div>
                             
                             <div>
@@ -393,12 +385,7 @@ $profile_check->close();
                                     }
                                     ?>
                                 </div>
-                                <input 
-                                    type="hidden" 
-                                    id="cluster" 
-                                    name="cluster" 
-                                    value="<?php echo isset($existing_profile['cluster']) ? htmlspecialchars($existing_profile['cluster']) : ''; ?>"
-                                >
+                                
                             </div>
                             
                             <div>

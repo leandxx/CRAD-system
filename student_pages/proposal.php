@@ -347,7 +347,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['upload_payment'])) {
         $payment_type = mysqli_real_escape_string($conn, $_POST['payment_type']);
         $payment_amount = 100.00;
-        
+
+        // Prevent Final Defense uploads unless admin has opened it
+        if ($payment_type === 'final_defense' && !$final_defense_open) {
+            $error_message = "Final Defense payment uploads are currently closed.";
+        } else {
+
         $target_dir = "../assets/uploads/receipts/";
         if (!file_exists($target_dir)) {
             mkdir($target_dir, 0777, true);
@@ -442,6 +447,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 header("Location: ../student_pages/proposal.php");
                 exit();
+            }
             }
         }
     }
@@ -901,14 +907,14 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             <div class="stats-card bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
                                 <h3 class="font-semibold text-blue-800 text-sm uppercase tracking-wide">Payment Status</h3>
                                 <div class="mt-2 space-y-2">
-<?php
-function renderStatusBadge($status) {
-    if ($status === 'approved') return '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>';
-    if ($status === 'rejected') return '<span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">Rejected</span>';
-    if ($status === 'pending') return '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending Review</span>';
-    return '<span class="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">No Attachment</span>';
-}
-?>
+                                    <?php
+                                        function renderStatusBadge($status) {
+                                            if ($status === 'approved') return '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>';
+                                            if ($status === 'rejected') return '<span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">Rejected</span>';
+                                            if ($status === 'pending') return '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending Review</span>';
+                                            return '<span class="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">No Attachment</span>';
+                                        }
+                                        ?>
                                     <div class="flex items-center justify-between">
                                         <span class="text-xs text-gray-600">Research Forum:</span>
                                         <?php echo renderStatusBadge($rf_status); ?>
@@ -1268,21 +1274,23 @@ function renderStatusBadge($status) {
 
     <!-- Payment Upload Modal -->
     <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
-        <div class="enhanced-modal rounded-lg shadow-xl w-full max-w-lg">
-            <div class="border-b px-6 py-4 flex justify-between items-center">
+    <div class="enhanced-modal rounded-lg shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+        <div class="border-b px-6 py-4 flex justify-between items-center">
                 <h3 class="text-xl font-semibold text-gray-800">Manage Group Payment Receipt</h3>
                 <button onclick="toggleModal('paymentModal')" class="text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <form method="POST" enctype="multipart/form-data" class="px-6 py-4">
+            <form method="POST" enctype="multipart/form-data" class="px-6 py-4 flex-1 overflow-y-auto">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
                     <select name="payment_type" id="paymentTypeSelect" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" onchange="showExistingImages()">
                         <option value="">Select payment type</option>
                         <option value="research_forum">Research Forum <?php echo $has_research_forum_payment ? '(Uploaded)' : ''; ?></option>
                         <option value="pre_oral_defense">Pre-Oral Defense <?php echo $has_pre_oral_payment ? '(Uploaded)' : ''; ?></option>
+                        <?php if ($final_defense_open): ?>
                         <option value="final_defense">Final Defense <?php echo $has_final_defense_payment ? '(Uploaded)' : ''; ?></option>
+                        <?php endif; ?>
                     </select>
                 </div>
                 

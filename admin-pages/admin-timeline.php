@@ -1183,9 +1183,9 @@ $isoDeadline = $current_milestone
           Current: <?php echo $global_open ? 'OPEN for all' : 'CLOSED (or mixed)'; ?>
         </span>
       </form>
-      <span class="gradient-green text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg">
-        <?php echo count($proposals); ?> Submitted
-      </span>
+    <span class="gradient-green text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg">
+      <?php echo count($proposals); ?> Submitted
+    </span>
     </div>
   </div>
 
@@ -1262,28 +1262,28 @@ $isoDeadline = $current_milestone
           <?php $cluster_id = md5($program_name . '|' . $cluster_name); ?>
           <div class="mb-8 ml-4">
             <div class="cluster-header cursor-pointer rounded-2xl p-6 mb-4 transition-all bg-white/60 border border-white/40" onclick="toggleCluster('<?php echo $cluster_id; ?>')">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                  <div class="bg-blue-500 p-3 rounded-xl mr-4">
-                    <i class="fas fa-layer-group text-white text-xl"></i>
-                  </div>
-                  <div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <div class="bg-blue-500 p-3 rounded-xl mr-4">
+                <i class="fas fa-layer-group text-white text-xl"></i>
+              </div>
+              <div>
                     <h4 class="text-xl font-bold text-gray-800 cluster-title"><?php echo htmlspecialchars($cluster_name); ?></h4>
                     <p class="text-gray-600">Click to show groups</p>
-                  </div>
-                  <div class="ml-6 bg-blue-500 text-white text-lg font-bold px-4 py-2 rounded-xl shadow-lg">
-                    <?php echo count($cluster_proposals); ?>
-                  </div>
-                </div>
-                <div class="bg-white/50 p-3 rounded-xl">
-                  <i class="fas fa-chevron-down text-blue-600 transition-transform text-xl" id="chevron-<?php echo $cluster_id; ?>"></i>
-                </div>
+              </div>
+              <div class="ml-6 bg-blue-500 text-white text-lg font-bold px-4 py-2 rounded-xl shadow-lg">
+                <?php echo count($cluster_proposals); ?>
               </div>
             </div>
-
+            <div class="bg-white/50 p-3 rounded-xl">
+                  <i class="fas fa-chevron-down text-blue-600 transition-transform text-xl" id="chevron-<?php echo $cluster_id; ?>"></i>
+            </div>
+          </div>
+        </div>
+        
             <div class="cluster-content hidden" id="cluster-<?php echo $cluster_id; ?>">
-              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 ml-8">
-              <?php foreach ($cluster_proposals as $proposal): 
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 ml-8">
+          <?php foreach ($cluster_proposals as $proposal): 
         // Simplified status system
         // Default to pending
         $status_class = 'bg-yellow-100 text-yellow-800';
@@ -1389,6 +1389,9 @@ $isoDeadline = $current_milestone
           <!-- Actions -->
           <div class="flex flex-col sm:flex-row gap-2">
             <?php if ($proposal['status'] === 'Completed'): ?>
+              <button type="button" onclick='openProposalReviewModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)' class="flex-1 bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="View Proposal">
+                <i class="fas fa-eye mr-1"></i>View
+              </button>
               <button type="button" onclick='openRevertModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)' class="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Revert Approval">
                 <i class="fas fa-undo mr-1"></i>Revert
               </button>
@@ -2642,9 +2645,9 @@ $isoDeadline = $current_milestone
           const titleEl = programBlock.querySelector('.program-title');
           programName = titleEl ? titleEl.textContent.toLowerCase() : '';
         }
-
+        
         const matches = group.includes(searchTerm) || 
-                        program.includes(searchTerm) || 
+                       program.includes(searchTerm) || 
                         clusterName.includes(searchTerm) ||
                         programName.includes(searchTerm);
         
@@ -2707,8 +2710,8 @@ $isoDeadline = $current_milestone
       countdownInterval = setInterval(updateAdminCountdown, 1000);
       
       // Ensure modals are attached directly to <body> to avoid clipping by parent containers
-      try {
-        const modalIds = ['proposalReviewModal', 'approvalModal', 'editTimelineModal', 'createTimelineModal'];
+       try {
+        const modalIds = ['proposalReviewModal', 'approvalModal', 'editTimelineModal', 'createTimelineModal', 'revertModal'];
         modalIds.forEach(id => {
           const el = document.getElementById(id);
           if (el && el.parentElement !== document.body) {
@@ -2716,7 +2719,7 @@ $isoDeadline = $current_milestone
           }
         });
       } catch (e) {}
-
+      
       // Add loading to form submissions
       document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function() {

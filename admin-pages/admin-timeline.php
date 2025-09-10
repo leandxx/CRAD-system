@@ -2711,7 +2711,7 @@ $isoDeadline = $current_milestone
       
       // Ensure modals are attached directly to <body> to avoid clipping by parent containers
       try {
-        const modalIds = ['proposalReviewModal', 'approvalModal', 'editTimelineModal', 'createTimelineModal'];
+        const modalIds = ['proposalReviewModal', 'approvalModal', 'editTimelineModal', 'createTimelineModal', 'revertModal'];
         modalIds.forEach(id => {
           const el = document.getElementById(id);
           if (el && el.parentElement !== document.body) {

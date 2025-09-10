@@ -1389,6 +1389,9 @@ $isoDeadline = $current_milestone
           <!-- Actions -->
           <div class="flex flex-col sm:flex-row gap-2">
             <?php if ($proposal['status'] === 'Completed'): ?>
+              <button type="button" onclick='openProposalReviewModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)' class="flex-1 bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="View Proposal">
+                <i class="fas fa-eye mr-1"></i>View
+              </button>
               <button type="button" onclick='openRevertModal(<?php echo htmlspecialchars(json_encode($proposal), ENT_QUOTES, "UTF-8"); ?>)' class="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Revert Approval">
                 <i class="fas fa-undo mr-1"></i>Revert
               </button>

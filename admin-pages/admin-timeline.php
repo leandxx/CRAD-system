@@ -2710,8 +2710,8 @@ $isoDeadline = $current_milestone
       countdownInterval = setInterval(updateAdminCountdown, 1000);
       
       // Ensure modals are attached directly to <body> to avoid clipping by parent containers
-      try {
-        const modalIds = ['proposalReviewModal', 'approvalModal', 'editTimelineModal', 'createTimelineModal'];
+       try {
+        const modalIds = ['proposalReviewModal', 'approvalModal', 'editTimelineModal', 'createTimelineModal', 'revertModal'];
         modalIds.forEach(id => {
           const el = document.getElementById(id);
           if (el && el.parentElement !== document.body) {

@@ -347,7 +347,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['upload_payment'])) {
         $payment_type = mysqli_real_escape_string($conn, $_POST['payment_type']);
         $payment_amount = 100.00;
-        
+
+        // Prevent Final Defense uploads unless admin has opened it
+        if ($payment_type === 'final_defense' && !$final_defense_open) {
+            $error_message = "Final Defense payment uploads are currently closed.";
+        } else {
+
         $target_dir = "../assets/uploads/receipts/";
         if (!file_exists($target_dir)) {
             mkdir($target_dir, 0777, true);
@@ -442,6 +447,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 header("Location: ../student_pages/proposal.php");
                 exit();
+            }
             }
         }
     }
@@ -1282,7 +1288,9 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                         <option value="">Select payment type</option>
                         <option value="research_forum">Research Forum <?php echo $has_research_forum_payment ? '(Uploaded)' : ''; ?></option>
                         <option value="pre_oral_defense">Pre-Oral Defense <?php echo $has_pre_oral_payment ? '(Uploaded)' : ''; ?></option>
+                        <?php if ($final_defense_open): ?>
                         <option value="final_defense">Final Defense <?php echo $has_final_defense_payment ? '(Uploaded)' : ''; ?></option>
+                        <?php endif; ?>
                     </select>
                 </div>
                 

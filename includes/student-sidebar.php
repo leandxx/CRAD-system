@@ -22,6 +22,18 @@ $user = $result->fetch_assoc();
 
 $role = $user['role'];
 $full_name = $user['full_name'] ?? 'User'; // fallback if full_name not set
+// Derive initials for avatar
+$name_parts = preg_split('/\s+/', trim($full_name));
+$initials = '';
+if (!empty($name_parts)) {
+    $first = strtoupper(substr($name_parts[0], 0, 1));
+    $last = '';
+    if (count($name_parts) > 1) {
+        $last = strtoupper(substr($name_parts[count($name_parts)-1], 0, 1));
+    }
+    $initials = $first . $last;
+}
+if ($initials === '') { $initials = 'U'; }
 
 // Create greeting
 $greeting = "Hello, " . match(strtolower($role)) {
@@ -164,9 +176,11 @@ $greeting = "Hello, " . match(strtolower($role)) {
 
     <!-- Profile Section -->
     <div class="p-4 flex items-center space-x-3 bg-blue-900">
-        <img src="assets/img/me.png" alt="Student profile" class="rounded-full h-12 w-12">
+        <a href="student_pages/student-profile.php" class="rounded-full h-12 w-12 bg-white/10 flex items-center justify-center text-white font-semibold hover:bg-white/20 transition" title="View Profile">
+            <span><?php echo htmlspecialchars($initials); ?></span>
+        </a>
         <div>
-            <p class="font-medium profile-name"><?php echo htmlspecialchars($full_name); ?></p>
+            <a href="student_pages/student-profile.php" class="font-medium profile-name hover:underline"><?php echo htmlspecialchars($full_name); ?></a>
             <p class="text-xs text-blue-200 profile-role"><?php echo htmlspecialchars(ucfirst($role)); ?></p>
         </div>
     </div>
@@ -260,8 +274,8 @@ $greeting = "Hello, " . match(strtolower($role)) {
                     </div>
                     <div class="relative group">
                         <button class="flex items-center space-x-2 focus:outline-none">
-                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white">
-                                <i class="fas fa-user text-sm"></i>
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-semibold">
+                                <?php echo htmlspecialchars($initials); ?>
                             </div>
                             <i class="fas fa-chevron-down text-xs opacity-70 group-hover:opacity-100 transition"></i>
                         </button>

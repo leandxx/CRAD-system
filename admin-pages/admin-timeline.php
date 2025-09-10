@@ -212,25 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Toggle Final Defense open/closed for this proposal's group
-    if (isset($_POST['toggle_final_defense'])) {
-        $proposal_id = (int)($_POST['proposal_id'] ?? 0);
-        $open = (int)($_POST['final_defense_open'] ?? 0) === 1 ? 1 : 0;
-
-        // Ensure proposals.final_defense_open exists
-        $colCheck = $conn->query("SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'proposals' AND COLUMN_NAME = 'final_defense_open'");
-        if ($colCheck && ($colRow = $colCheck->fetch_assoc()) && (int)$colRow['cnt'] === 0) {
-            @$conn->query("ALTER TABLE proposals ADD COLUMN final_defense_open TINYINT(1) NOT NULL DEFAULT 0 AFTER reviewed_at");
-        }
-
-        $stmt = $conn->prepare("UPDATE proposals SET final_defense_open = ? WHERE id = ?");
-        $stmt->bind_param("ii", $open, $proposal_id);
-        $stmt->execute();
-        $stmt->close();
-
-        $_SESSION['success_message'] = $open ? 'Final Defense is now OPEN for this group.' : 'Final Defense is now CLOSED for this group.';
-        header("Location: " . $_SERVER['REQUEST_URI']);
-        exit();
-    }
+    // Removed per-group final defense toggle (global control is used)
 
     // Update timeline
     if (isset($_POST['update_timeline'])) {
@@ -1650,21 +1632,7 @@ $isoDeadline = $current_milestone
                         </div>
                     </div>
 
-                    <div class="mb-6">
-                        <div class="flex items-center mb-4">
-                            <i class="fas fa-lock text-blue-600 text-xl mr-3"></i>
-                            <div>
-                                <h4 class="text-lg font-bold text-gray-800">Final Defense Access</h4>
-                                <p class="text-sm text-gray-600">Control whether this group's Final Defense is open</p>
-                            </div>
-                        </div>
-                        <form method="POST" class="bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-white/40 flex items-center gap-3">
-                            <input type="hidden" name="proposal_id" value="<?php echo (int)($proposal['id'] ?? 0); ?>">
-                            <input type="hidden" id="final_defense_open_input" name="final_defense_open" value="0">
-                            <button type="submit" name="toggle_final_defense" id="finalDefenseToggleBtn" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all"></button>
-                            <span id="finalDefenseStatusText" class="text-sm"></span>
-                        </form>
-                    </div>
+                    
 
                     <div class="flex justify-center mt-6">
                         <button type="button" onclick="openApprovalModal()" id="approvalButton" class="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2 mx-auto">
@@ -2072,25 +2040,7 @@ $isoDeadline = $current_milestone
       // Update payment status summary
       updatePaymentStatusSummary(proposal);
       
-      // Initialize Final Defense toggle UI based on proposal data
-      try {
-        const btn = document.getElementById('finalDefenseToggleBtn');
-        const input = document.getElementById('final_defense_open_input');
-        const label = document.getElementById('finalDefenseStatusText');
-        const open = proposal.final_defense_open == 1;
-        input.value = open ? '0' : '1';
-        if (open) {
-          btn.textContent = 'Close Final Defense';
-          btn.className = 'px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold';
-          label.textContent = 'Current: OPEN';
-          label.className = 'text-sm text-green-700 font-medium';
-        } else {
-          btn.textContent = 'Open Final Defense';
-          btn.className = 'px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold';
-          label.textContent = 'Current: CLOSED';
-          label.className = 'text-sm text-gray-600';
-        }
-      } catch (e) {}
+      // Per-group Final Defense toggle removed (global control used)
 
       // Update button based on status and payment
       updateApprovalButton(proposal);

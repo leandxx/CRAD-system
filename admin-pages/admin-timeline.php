@@ -2756,6 +2756,17 @@ $isoDeadline = $current_milestone
       updateAdminCountdown();
       countdownInterval = setInterval(updateAdminCountdown, 1000);
       
+      // Ensure modals are attached directly to <body> to avoid clipping by parent containers
+      try {
+        const modalIds = ['proposalReviewModal', 'approvalModal', 'editTimelineModal', 'createTimelineModal'];
+        modalIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el && el.parentElement !== document.body) {
+            document.body.appendChild(el);
+          }
+        });
+      } catch (e) {}
+
       // Add loading to form submissions
       document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function() {

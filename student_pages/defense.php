@@ -103,6 +103,11 @@ if ($has_group) {
     }
     
     // Check requirements status
+    // Determine if pre-oral defense has been completed (used by notices and timeline)
+    $preoral_completed_query = "SELECT 1 FROM defense_schedules WHERE group_id = '$group_id' AND defense_type = 'pre_oral' AND status = 'completed' LIMIT 1";
+    $preoral_completed_result = mysqli_query($conn, $preoral_completed_query);
+    $has_completed_preoral = $preoral_completed_result && mysqli_num_rows($preoral_completed_result) > 0;
+
     // 1. Check if proposal is submitted (not checking status since column doesn't exist)
     $proposal_query = "SELECT COUNT(*) as count FROM proposals WHERE group_id = '$group_id'";
     $proposal_result = mysqli_query($conn, $proposal_query);
@@ -468,7 +473,7 @@ if ($has_group) {
                                 <?php if (!$has_pre_oral_payment): ?>
                                     <li>• Pre-Oral Defense payment required for pre-oral schedules</li>
                                 <?php endif; ?>
-                                <?php if (!$has_final_defense_payment): ?>
+                                <?php if ($has_completed_preoral && !$has_final_defense_payment): ?>
                                     <li>• Final Defense payment required for final defense schedules</li>
                                 <?php endif; ?>
                             </ul>
@@ -638,16 +643,25 @@ if ($has_group) {
                                 </div>
                             </div>
                             
-                            <!-- Item 2 - Payment -->
+                            <!-- Item 2 - Payment (dynamic by current phase) -->
+                            <?php 
+                                $payments_ok_preoral = ($has_research_forum_payment && $has_pre_oral_payment);
+                                $payments_ok_final = ($has_research_forum_payment && $has_pre_oral_payment && $has_final_defense_payment);
+                                $is_final_phase = $has_completed_preoral; // after pre-oral completion, next phase is final
+                                $payments_ok = $is_final_phase ? $payments_ok_final : $payments_ok_preoral;
+                                $payment_requirements_text = $is_final_phase 
+                                    ? 'Required: Research Forum + Pre-Oral + Final payments' 
+                                    : 'Required: Research Forum + Pre-Oral payments';
+                            ?>
                             <div class="relative timeline-item">
-                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo ($requirements_status['payment_completed'] > 0) ? 'bg-green-500 shadow-md' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
-                                    <i class="fas <?php echo ($requirements_status['payment_completed'] > 0) ? 'fa-check' : 'fa-clock'; ?> text-white text-xs"></i>
+                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo $payments_ok ? 'bg-green-500 shadow-md' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
+                                    <i class="fas <?php echo $payments_ok ? 'fa-check' : 'fa-clock'; ?> text-white text-xs"></i>
                                 </div>
                                 <div class="pl-2">
                                     <h3 class="font-medium text-gray-800">Payment Completion</h3>
-                                    <p class="text-sm text-gray-600 mt-1">Required for defense scheduling</p>
-                                    <p class="text-xs font-medium <?php echo ($requirements_status['payment_completed'] > 0) ? 'text-green-600' : 'text-gray-500'; ?> mt-2">
-                                        <?php echo ($requirements_status['payment_completed'] > 0) ? 'Completed' : 'Pending'; ?>
+                                    <p class="text-sm text-gray-600 mt-1"><?php echo $payment_requirements_text; ?></p>
+                                    <p class="text-xs font-medium <?php echo $payments_ok ? 'text-green-600' : 'text-gray-500'; ?> mt-2">
+                                        <?php echo $payments_ok ? 'Completed' : 'Pending'; ?>
                                     </p>
                                 </div>
                             </div>
@@ -733,10 +747,7 @@ if ($has_group) {
                             
                             <!-- Item 6 - Final Defense (show if pre-oral exists and is completed) -->
                             <?php 
-                            // Check if there's a completed pre-oral defense
-                            $preoral_completed_query = "SELECT * FROM defense_schedules WHERE group_id = '$group_id' AND defense_type = 'pre_oral' AND status = 'completed' LIMIT 1";
-                            $preoral_completed_result = mysqli_query($conn, $preoral_completed_query);
-                            $has_completed_preoral = mysqli_num_rows($preoral_completed_result) > 0;
+                            // $has_completed_preoral computed above
                             
                             if ($has_completed_preoral): 
                                 // Check for final defense

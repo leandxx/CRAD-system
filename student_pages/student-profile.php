@@ -100,6 +100,53 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $stmt->close();
 }
 $profile_check->close();
+
+// After processing, ensure displayed cluster reflects group assignment if applicable
+// If the student is a member of a group that has a cluster_id, mirror that cluster into student_profiles for consistency
+try {
+    $group_sql = "SELECT g.cluster_id FROM groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.student_id = ? LIMIT 1";
+    $group_stmt = $conn->prepare($group_sql);
+    $group_stmt->bind_param("i", $user_id);
+    $group_stmt->execute();
+    $group_result = $group_stmt->get_result();
+    $group_data = $group_result ? $group_result->fetch_assoc() : null;
+    $group_stmt->close();
+
+    if ($group_data && !empty($group_data['cluster_id'])) {
+        $cid = (int)$group_data['cluster_id'];
+        $csql = "SELECT cluster, faculty_id, program FROM clusters WHERE id = ?";
+        $cstmt = $conn->prepare($csql);
+        $cstmt->bind_param("i", $cid);
+        $cstmt->execute();
+        $cres = $cstmt->get_result();
+        $cinfo = $cres ? $cres->fetch_assoc() : null;
+        $cstmt->close();
+
+        if ($cinfo) {
+            // If profile exists but has different cluster/program, update it to match admin/group assignment
+            if ($existing_profile) {
+                $needs_update = ($existing_profile['cluster'] !== $cinfo['cluster']) || ($existing_profile['program'] !== $cinfo['program']) || ((int)$existing_profile['faculty_id'] !== (int)$cinfo['faculty_id']);
+                if ($needs_update) {
+                    $usql = "UPDATE student_profiles SET cluster = ?, program = ?, faculty_id = ? WHERE user_id = ?";
+                    $ustmt = $conn->prepare($usql);
+                    $fid = $cinfo['faculty_id'] ? (int)$cinfo['faculty_id'] : null;
+                    $ustmt->bind_param("ssii", $cinfo['cluster'], $cinfo['program'], $fid, $user_id);
+                    $ustmt->execute();
+                    $ustmt->close();
+                    // Refresh existing_profile reference for rendering
+                    $profile_check = $conn->prepare("SELECT * FROM student_profiles WHERE user_id = ?");
+                    $profile_check->bind_param("i", $user_id);
+                    $profile_check->execute();
+                    $profile_result = $profile_check->get_result();
+                    $existing_profile = $profile_result->fetch_assoc();
+                    $profile_check->close();
+                }
+            }
+        }
+    }
+} catch (Exception $e) {
+    // Silent fail for display sync; avoid breaking profile page
+}
 ?>
 
 <!DOCTYPE html>

@@ -90,6 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (mysqli_query($conn, $schedule_query)) {
             if (empty($_POST['parent_defense_id']) || $_POST['parent_defense_id'] == 'NULL') {
                 $defense_id = mysqli_insert_id($conn);
+            } else {
+                $defense_id = $parent_id;  // Use the parent_id for redefense
             }
 
             // Delete existing panel members first (to prevent duplicates)
@@ -479,7 +481,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Defense Scheduling</title>
+    <title>SMS | Defense Scheduling</title>
     <link rel="icon" href="assets/img/sms-logo.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -723,8 +725,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             <?php endif; ?>
 
             <!-- Stats Overview -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-slide-up">
-                <div class="stats-card p-4 relative overflow-hidden">
+            <div class="flex w-full mb-8 animate-slide-up gap-4">
+                <div class="stats-card p-4 relative overflow-hidden flex-1">
                     <div class="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-full -translate-y-8 translate-x-8"></div>
                     <div class="flex items-center justify-between mb-3">
                         <div class="gradient-blue p-2 rounded-lg">
@@ -738,7 +740,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <p class="text-xs text-gray-600 font-medium uppercase tracking-wide">Proposals</p>
                 </div>
 
-                <div class="stats-card p-4 relative overflow-hidden">
+                <div class="stats-card p-4 relative overflow-hidden flex-1">
                     <div class="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-full -translate-y-8 translate-x-8"></div>
                     <div class="flex items-center justify-between mb-3">
                         <div class="gradient-green p-2 rounded-lg">
@@ -752,7 +754,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <p class="text-xs text-gray-600 font-medium uppercase tracking-wide">Defenses</p>
                 </div>
 
-                <div class="stats-card p-4 relative overflow-hidden">
+                <div class="stats-card p-4 relative overflow-hidden flex-1">
                     <div class="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 rounded-full -translate-y-8 translate-x-8"></div>
                     <div class="flex items-center justify-between mb-3">
                         <div class="gradient-purple p-2 rounded-lg">
@@ -766,7 +768,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <p class="text-xs text-gray-600 font-medium uppercase tracking-wide">Defenses</p>
                 </div>
 
-                <div class="stats-card p-4 relative overflow-hidden">
+                <div class="stats-card p-4 relative overflow-hidden flex-1">
                     <div class="absolute top-0 right-0 w-16 h-16 bg-orange-500/10 rounded-full -translate-y-8 translate-x-8"></div>
                     <div class="flex items-center justify-between mb-3">
                         <div class="bg-gradient-to-r from-yellow-400 to-orange-500 p-2 rounded-lg">
@@ -780,7 +782,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <p class="text-xs text-gray-600 font-medium uppercase tracking-wide">Defenses</p>
                 </div>
 
-                <div class="stats-card p-4 relative overflow-hidden">
+                <div class="stats-card p-4 relative overflow-hidden flex-1">
                     <div class="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 rounded-full -translate-y-8 translate-x-8"></div>
                     <div class="flex items-center justify-between mb-3">
                         <div class="gradient-purple p-2 rounded-lg">
@@ -985,9 +987,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     <?php endif; ?>
                                 <?php endif; ?>
                                 <?php if ($schedule['status'] == 'completed'): ?>
-                                    <button onclick="markFailed(<?php echo $schedule['id']; ?>)" class="flex-1 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Failed">
-                                        <i class="fas fa-times-circle mr-1"></i>Mark Failed
-                                    </button>
+                                    <span class="flex-1 bg-gradient-to-r from-green-400 to-green-600 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
+                                        <i class="fas fa-trophy mr-1"></i>Final Completed
+                                    </span>
                                 <?php endif; ?>
                                 <?php if ($schedule['status'] == 'failed'): ?>
                                     <button onclick="scheduleRedefense(<?php echo $schedule['group_id']; ?>, <?php echo $schedule['id']; ?>, '<?php echo addslashes($schedule['group_name']); ?>', '<?php echo addslashes($schedule['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Redefense">
@@ -1003,6 +1005,96 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                             </div>
                         </div>
                     </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+
+                    <!-- Failed Defenses -->
+                    <?php 
+                    $failed_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, p.title as proposal_title 
+                                    FROM defense_schedules ds 
+                                    JOIN groups g ON ds.group_id = g.id 
+                                    LEFT JOIN clusters c ON g.cluster_id = c.id 
+                                    JOIN proposals p ON g.id = p.group_id 
+                                    WHERE ds.status = 'failed'
+                                    ORDER BY g.program, c.cluster, ds.defense_date DESC";
+                    $failed_result = mysqli_query($conn, $failed_query);
+                    $failed_by_program = [];
+                    
+                    while ($failed = mysqli_fetch_assoc($failed_result)) {
+                        $program = $failed['program'] ?: 'Unknown';
+                        $cluster = $failed['cluster'] ?: 'No Cluster';
+                        $failed_by_program[$program][$cluster][] = $failed;
+                    }
+                    ?>
+                    
+                    <?php foreach ($failed_by_program as $program => $clusters): ?>
+                    <div class="bg-white rounded-xl shadow-sm border border-red-200">
+                        <div class="p-4 border-b border-red-200 cursor-pointer" onclick="toggleFailedProgram('<?php echo $program; ?>')">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-red-600"><?php echo $program; ?> - Failed Defenses</h3>
+                                <i class="fas fa-chevron-down transition-transform" id="failed-icon-<?php echo $program; ?>"></i>
+                            </div>
+                        </div>
+                        <div class="program-content" id="failed-content-<?php echo $program; ?>" style="display: none;">
+                            <?php foreach ($clusters as $cluster => $defenses): ?>
+                            <div class="border-b border-red-100 last:border-b-0">
+                                <div class="p-3 bg-red-50 cursor-pointer" onclick="toggleFailedCluster('<?php echo $program . '-' . $cluster; ?>')">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-medium text-red-700">Cluster <?php echo $cluster; ?></h4>
+                                        <i class="fas fa-chevron-down transition-transform text-sm" id="failed-icon-<?php echo $program . '-' . $cluster; ?>"></i>
+                                    </div>
+                                </div>
+                                <div class="cluster-content" id="failed-content-<?php echo $program . '-' . $cluster; ?>" style="display: none;">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                                        <?php foreach ($defenses as $failed): ?>
+                                        <div class="defense-card bg-gradient-to-br from-white via-red-50 to-rose-100 border border-red-200 rounded-2xl shadow-lg p-6 relative overflow-hidden">
+                                            <div class="absolute top-0 right-0 w-20 h-20 bg-red-400/10 rounded-full -translate-y-10 translate-x-10"></div>
+                                            <div class="absolute bottom-0 left-0 w-16 h-16 bg-rose-400/10 rounded-full translate-y-8 -translate-x-8"></div>
+                                            
+                                            <div class="relative z-10">
+                                                <div class="flex justify-between items-start mb-4">
+                                                    <div class="flex items-center">
+                                                        <div class="bg-gradient-to-r from-red-500 to-rose-600 p-3 rounded-xl mr-3 shadow-lg">
+                                                            <i class="fas fa-times-circle text-white text-lg"></i>
+                                                        </div>
+                                                        <div>
+                                                            <h3 class="text-lg font-bold text-gray-900 leading-tight"><?php echo $failed['group_name']; ?></h3>
+                                                            <p class="text-xs text-red-600 font-medium"><?php echo $failed['proposal_title']; ?></p>
+                                                        </div>
+                                                    </div>
+                                                    <span class="bg-gradient-to-r from-red-500 to-rose-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                                                        <i class="fas fa-times-circle mr-1"></i>Failed
+                                                    </span>
+                                                </div>
+
+                                                <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+                                                    <div class="grid grid-cols-1 gap-3">
+                                                        <div class="flex items-center text-sm">
+                                                            <i class="fas fa-calendar text-red-500 mr-3 w-4"></i>
+                                                            <span class="text-gray-700 font-medium"><?php echo date('M j, Y', strtotime($failed['defense_date'])); ?></span>
+                                                        </div>
+                                                        <div class="flex items-center text-sm">
+                                                            <i class="fas fa-clock text-red-500 mr-3 w-4"></i>
+                                                            <span class="text-gray-700 font-medium">Failed on previous attempt</span>
+                                                        </div>
+                                                        <div class="flex items-center text-sm">
+                                                            <i class="fas fa-exclamation-triangle text-red-500 mr-3 w-4"></i>
+                                                            <span class="text-gray-700 font-medium">Requires redefense</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <button onclick="scheduleRedefense(<?php echo $failed['group_id']; ?>, <?php echo $failed['id']; ?>, '<?php echo addslashes($failed['group_name']); ?>', '<?php echo addslashes($failed['proposal_title']); ?>')" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105">
+                                                    <i class="fas fa-redo mr-2"></i>Schedule Redefense
+                                                </button>
+                                            </div>
+                                        </div>
                                         <?php endforeach; ?>
                                     </div>
                                 </div>
@@ -1891,6 +1983,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         // Function to handle status filtering
         function filterStatus(status) {
             const cards = document.querySelectorAll('.defense-card');
+            const programs = document.querySelectorAll('.bg-white.rounded-xl.shadow-sm.border');
+            
             cards.forEach(card => {
                 if (status === 'all') {
                     card.classList.remove('hidden');
@@ -1904,14 +1998,24 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 }
             });
             
+            // Show/hide program sections based on whether they have visible cards
+            programs.forEach(program => {
+                const hasVisibleCards = Array.from(program.querySelectorAll('.defense-card')).some(card => !card.classList.contains('hidden'));
+                if (hasVisibleCards) {
+                    program.classList.remove('hidden');
+                } else {
+                    program.classList.add('hidden');
+                }
+            });
+            
             // Update active filter button
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 if (btn.getAttribute('data-filter') === status) {
                     btn.classList.add('bg-primary', 'text-white');
-                    btn.classList.remove('bg-gray-200', 'text-gray-700');
+                    btn.classList.remove('bg-gray-100', 'text-gray-700');
                 } else {
                     btn.classList.remove('bg-primary', 'text-white');
-                    btn.classList.add('bg-gray-200', 'text-gray-700');
+                    btn.classList.add('bg-gray-100', 'text-gray-700');
                 }
             });
         }
@@ -2095,20 +2199,23 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         function validateDefenseDuration() {
             const startTime = document.getElementById('start_time').value;
             const endTime = document.getElementById('end_time').value;
+            const groupId = document.getElementById('group_id').value;
+            const program = groupsPrograms[groupId] || '';
+            const minDuration = program.toLowerCase() === 'bsit' ? 60 : 40;
             
             if (startTime && endTime) {
                 const start = new Date('1970-01-01T' + startTime);
                 const end = new Date('1970-01-01T' + endTime);
                 const duration = (end - start) / (1000 * 60); // minutes
                 
-                if (duration < 30) {
-                    alert('Defense duration must be at least 30 minutes.');
+                if (duration < minDuration) {
+                    alert(`Defense duration must be at least ${minDuration} minutes for ${program.toUpperCase()} program.`);
                     return false;
                 }
                 
-                // Suggest optimal end time if duration is not in 30-minute increments
-                if (duration % 30 !== 0) {
-                    const optimalDuration = Math.ceil(duration / 30) * 30;
+                // Suggest optimal end time if duration is not in proper increments
+                if (duration % minDuration !== 0) {
+                    const optimalDuration = Math.ceil(duration / minDuration) * minDuration;
                     const optimalEnd = new Date(start.getTime() + optimalDuration * 60000);
                     const optimalEndTime = optimalEnd.toTimeString().slice(0, 5);
                     
@@ -2167,6 +2274,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             const workStart = 9 * 60; // 9:00 AM
             const workEnd = 17 * 60;  // 5:00 PM
             
+            // Get selected group's program
+            const groupId = document.getElementById('group_id').value;
+            const program = groupsPrograms[groupId] || '';
+            const slotDuration = program.toLowerCase() === 'bsit' ? 60 : 40;
+            
             // Sort schedules by start time
             schedules.sort((a, b) => {
                 const timeA = timeToMinutes(a.start_time);
@@ -2181,28 +2293,28 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 const endMinutes = timeToMinutes(schedule.end_time);
                 
                 // Add slots before this schedule
-                while (currentTime + 30 <= startMinutes) {
-                    const slotEnd = Math.min(currentTime + 30, startMinutes);
-                    if (slotEnd - currentTime >= 30) {
+                while (currentTime + slotDuration <= startMinutes) {
+                    const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
+                    if (slotEnd - currentTime >= slotDuration) {
                         slots.push({
                             start: minutesToTime(currentTime),
                             end: minutesToTime(slotEnd),
                             duration: slotEnd - currentTime
                         });
                     }
-                    currentTime += 30;
+                    currentTime += slotDuration;
                 }
                 currentTime = Math.max(currentTime, endMinutes);
             });
             
             // Add remaining slots after last schedule
-            while (currentTime + 30 <= workEnd) {
+            while (currentTime + slotDuration <= workEnd) {
                 slots.push({
                     start: minutesToTime(currentTime),
-                    end: minutesToTime(currentTime + 30),
-                    duration: 30
+                    end: minutesToTime(currentTime + slotDuration),
+                    duration: slotDuration
                 });
-                currentTime += 30;
+                currentTime += slotDuration;
             }
             
             return slots;
@@ -2428,9 +2540,18 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     <div class="mt-3 pt-2 border-t border-gray-200">
                                                                             <p class="text-xs text-red-600 font-medium mb-1">In Use:</p>
                                                                             ${room.schedules.map(schedule => `
-                                                                                <div class="flex items-center text-xs text-red-600 mb-1">
-                                                                                    <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
-                                                                                    ${schedule.program} | ${schedule.cluster} | ${schedule.group_name} | ${schedule.defense_date} | ${schedule.start_time} - ${schedule.end_time}
+                                                                                <div class="flex items-center text-xs mb-2">
+                                                                                    <div class="w-full bg-red-50 rounded-lg p-2 border border-red-100">
+                                                                                        <div class="flex items-center mb-1">
+                                                                                            <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
+                                                                                            <span class="text-red-600 font-medium">${schedule.start_time} - ${schedule.end_time}</span>
+                                                                                        </div>
+                                                                                        <div class="text-gray-700 ml-4">
+                                                                                            <div><span class="font-medium">Program:</span> ${schedule.program || 'Not specified'}</div>
+                                                                                            <div><span class="font-medium">Cluster:</span> ${schedule.cluster || 'Not specified'}</div>
+                                                                                            <div><span class="font-medium">Group:</span> ${schedule.group_name || 'Not specified'}</div>
+                                                                                        </div>
+                                                                                    </div>
                                                                                 </div>
                                                                             `).join('')}
                                     </div>
@@ -2691,6 +2812,32 @@ window.scheduleFinalDefense = scheduleFinalDefense;
 window.scheduleRedefense = scheduleRedefense;
 
 /* ========= PROGRAM/CLUSTER TOGGLE FUNCTIONS ========= */
+function toggleFailedProgram(program) {
+    const content = document.getElementById('failed-content-' + program);
+    const icon = document.getElementById('failed-icon-' + program);
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+function toggleFailedCluster(clusterKey) {
+    const content = document.getElementById('failed-content-' + clusterKey);
+    const icon = document.getElementById('failed-icon-' + clusterKey);
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
 function toggleProgram(program) {
     const content = document.getElementById('content-' + program);
     const icon = document.getElementById('icon-' + program);
@@ -2816,6 +2963,18 @@ function scheduleRedefense(groupId, parentDefenseId, groupName, proposalTitle) {
     document.getElementById('selected_group_display').textContent = groupName + ' - ' + proposalTitle;
     document.getElementById('redefense_reason_div').classList.remove('hidden');
     document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-redo text-white text-sm"></i></div>Schedule Redefense';
+    
+    // Get existing panel members for the parent defense
+    fetch('get_defense_panel.php?defense_id=' + parentDefenseId)
+        .then(response => response.json())
+        .then(data => {
+            // Pre-select existing panel members
+            data.forEach(member => {
+                const checkbox = document.querySelector(`input[value="${member.faculty_id}|${member.role}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+        })
+        .catch(error => console.error('Error loading panel members:', error));
     
     // Filter panel members by group's program
     filterPanelMembersByGroup(groupId);
@@ -2952,6 +3111,9 @@ function filterEditPanelMembersByGroup(groupId) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize groupsPrograms from PHP data
+    window.groupsPrograms = <?php echo json_encode($groups_programs); ?>;
+    
     // Default filters/tabs
     if (typeof filterStatus === 'function') filterStatus('all');
     if (typeof switchPanelTab === 'function') switchPanelTab('chairperson');

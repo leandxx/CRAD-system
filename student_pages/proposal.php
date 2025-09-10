@@ -346,6 +346,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     if (isset($_POST['upload_payment'])) {
         $payment_type = mysqli_real_escape_string($conn, $_POST['payment_type']);
+        // Enforce visibility rules server-side: final defense uploads only when opened by admin
+        if ($payment_type === 'final_defense' && !$final_defense_open) {
+            $error_message = "Final Defense payments are currently closed. Please wait for admin to open this phase.";
+        }
         $payment_amount = 100.00;
         
         $target_dir = "../assets/uploads/receipts/";
@@ -361,7 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $existing_payment = mysqli_fetch_assoc($existing_result);
         
         // Validate file uploads (multiple images)
-        if (!isset($_FILES['payment_images']) || empty($_FILES['payment_images']['name'][0])) {
+        if (empty($error_message) && (!isset($_FILES['payment_images']) || empty($_FILES['payment_images']['name'][0]))) {
             $error_message = "Please select at least one image receipt to upload.";
         } else {
             $uploaded_files = [];
@@ -1282,7 +1286,9 @@ function renderStatusBadge($status) {
                         <option value="">Select payment type</option>
                         <option value="research_forum">Research Forum <?php echo $has_research_forum_payment ? '(Uploaded)' : ''; ?></option>
                         <option value="pre_oral_defense">Pre-Oral Defense <?php echo $has_pre_oral_payment ? '(Uploaded)' : ''; ?></option>
+                        <?php if ($final_defense_open): ?>
                         <option value="final_defense">Final Defense <?php echo $has_final_defense_payment ? '(Uploaded)' : ''; ?></option>
+                        <?php endif; ?>
                     </select>
                 </div>
                 

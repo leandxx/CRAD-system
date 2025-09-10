@@ -347,101 +347,106 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['upload_payment'])) {
         $payment_type = mysqli_real_escape_string($conn, $_POST['payment_type']);
         $payment_amount = 100.00;
-        
-        $target_dir = "../assets/uploads/receipts/";
-        if (!file_exists($target_dir)) {
-            mkdir($target_dir, 0777, true);
-        }
-        
-        // Check if group already has payment for this type
-        $existing_payment_query = "SELECT p.* FROM payments p 
-                                  JOIN group_members gm ON p.student_id = gm.student_id 
-                                  WHERE gm.group_id = '$group_id' AND p.payment_type = '$payment_type' LIMIT 1";
-        $existing_result = mysqli_query($conn, $existing_payment_query);
-        $existing_payment = mysqli_fetch_assoc($existing_result);
-        
-        // Validate file uploads (multiple images)
-        if (!isset($_FILES['payment_images']) || empty($_FILES['payment_images']['name'][0])) {
-            $error_message = "Please select at least one image receipt to upload.";
+
+        // Prevent Final Defense uploads unless admin has opened it
+        if ($payment_type === 'final_defense' && !$final_defense_open) {
+            $error_message = "Final Defense payment uploads are currently closed.";
         } else {
-            $uploaded_files = [];
-            $allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
-            $max_file_size = 5 * 1024 * 1024; // 5MB limit
-            
-            // Process each uploaded file
-            for ($i = 0; $i < count($_FILES['payment_images']['name']); $i++) {
-                if ($_FILES['payment_images']['error'][$i] === UPLOAD_ERR_OK) {
-                    $file_name = $_FILES['payment_images']['name'][$i];
-                    $file_tmp = $_FILES['payment_images']['tmp_name'][$i];
-                    $file_size = $_FILES['payment_images']['size'][$i];
-                    $file_extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-                    
-                    // Validate file type
-                    if (!in_array($file_extension, $allowed_types)) {
-                        $error_message = "Only JPG, JPEG, PNG, and GIF images are allowed.";
-                        break;
-                    }
-                    
-                    // Validate file size
-                    if ($file_size > $max_file_size) {
-                        $error_message = "Each image must be less than 5MB.";
-                        break;
-                    }
-                    
-                    // Generate unique filename
-                    $unique_name = time() . '_' . $i . '_' . $file_name;
-                    $target_file = $target_dir . $unique_name;
-                    
-                    if (move_uploaded_file($file_tmp, $target_file)) {
-                        $uploaded_files[] = $target_file;
-                    } else {
-                        $error_message = "Error uploading file: " . $file_name;
-                        break;
-                    }
-                }
+            $target_dir = "../assets/uploads/receipts/";
+            if (!file_exists($target_dir)) {
+                mkdir($target_dir, 0777, true);
             }
             
-            // If all files uploaded successfully
-            if (empty($error_message) && !empty($uploaded_files)) {
-                $image_receipts_json = json_encode($uploaded_files);
+            // Check if group already has payment for this type
+            $existing_payment_query = "SELECT p.* FROM payments p 
+                                      JOIN group_members gm ON p.student_id = gm.student_id 
+                                      WHERE gm.group_id = '$group_id' AND p.payment_type = '$payment_type' LIMIT 1";
+            $existing_result = mysqli_query($conn, $existing_payment_query);
+            $existing_payment = mysqli_fetch_assoc($existing_result);
+            
+            // Validate file uploads (multiple images)
+            if (!isset($_FILES['payment_images']) || empty($_FILES['payment_images']['name'][0])) {
+                $error_message = "Please select at least one image receipt to upload.";
+            } else {
+                $uploaded_files = [];
+                $allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
+                $max_file_size = 5 * 1024 * 1024; // 5MB limit
                 
-                if ($existing_payment) {
-                    // Delete old image files
-                    if ($existing_payment['image_receipts']) {
-                        $old_images = json_decode($existing_payment['image_receipts'], true);
-                        if ($old_images) {
-                            foreach ($old_images as $old_image) {
-                                if (file_exists($old_image)) {
-                                    unlink($old_image);
+                // Process each uploaded file
+                for ($i = 0; $i < count($_FILES['payment_images']['name']); $i++) {
+                    if ($_FILES['payment_images']['error'][$i] === UPLOAD_ERR_OK) {
+                        $file_name = $_FILES['payment_images']['name'][$i];
+                        $file_tmp = $_FILES['payment_images']['tmp_name'][$i];
+                        $file_size = $_FILES['payment_images']['size'][$i];
+                        $file_extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+                        
+                        // Validate file type
+                        if (!in_array($file_extension, $allowed_types)) {
+                            $error_message = "Only JPG, JPEG, PNG, and GIF images are allowed.";
+                            break;
+                        }
+                        
+                        // Validate file size
+                        if ($file_size > $max_file_size) {
+                            $error_message = "Each image must be less than 5MB.";
+                            break;
+                        }
+                        
+                        // Generate unique filename
+                        $unique_name = time() . '_' . $i . '_' . $file_name;
+                        $target_file = $target_dir . $unique_name;
+                        
+                        if (move_uploaded_file($file_tmp, $target_file)) {
+                            $uploaded_files[] = $target_file;
+                        } else {
+                            $error_message = "Error uploading file: " . $file_name;
+                            break;
+                        }
+                    }
+                }
+                
+                // If all files uploaded successfully
+                if (empty($error_message) && !empty($uploaded_files)) {
+                    $image_receipts_json = json_encode($uploaded_files);
+                    
+                    if ($existing_payment) {
+                        // Delete old image files
+                        if ($existing_payment['image_receipts']) {
+                            $old_images = json_decode($existing_payment['image_receipts'], true);
+                            if ($old_images) {
+                                foreach ($old_images as $old_image) {
+                                    if (file_exists($old_image)) {
+                                        unlink($old_image);
+                                    }
                                 }
                             }
                         }
+                        
+                        // Update existing payment for all group members
+                        // Reset status to pending for review, clear admin flags and feedback on update
+                        $update_query = "UPDATE payments p 
+                                        JOIN group_members gm ON p.student_id = gm.student_id 
+                                        SET p.image_receipts = '$image_receipts_json', p.payment_date = NOW(), p.status = 'pending', p.admin_approved = 0, p.review_feedback = NULL 
+                                        WHERE gm.group_id = '$group_id' AND p.payment_type = '$payment_type'";
+                        mysqli_query($conn, $update_query);
+                        $success_message = "Group payment receipt images updated successfully!";
+                    } else {
+                        // Create new payment for all group members
+                        $members_query = "SELECT student_id FROM group_members WHERE group_id = '$group_id'";
+                        $members_result = mysqli_query($conn, $members_query);
+                        
+                        while ($member = mysqli_fetch_assoc($members_result)) {
+                            $member_id = $member['student_id'];
+                            $payment_query = "INSERT INTO payments (student_id, payment_type, amount, image_receipts, status, payment_date) 
+                                             VALUES ('$member_id', '$payment_type', '$payment_amount', '$image_receipts_json', 'pending', NOW())";
+                            mysqli_query($conn, $payment_query);
+                        }
+                        $success_message = "Group payment receipt images uploaded successfully!";
                     }
                     
-                    // Update existing payment for all group members
-                    // Reset status to pending for review, clear admin flags and feedback on update
-                    $update_query = "UPDATE payments p 
-                                    JOIN group_members gm ON p.student_id = gm.student_id 
-                                    SET p.image_receipts = '$image_receipts_json', p.payment_date = NOW(), p.status = 'pending', p.admin_approved = 0, p.review_feedback = NULL 
-                                    WHERE gm.group_id = '$group_id' AND p.payment_type = '$payment_type'";
-                    mysqli_query($conn, $update_query);
-                    $success_message = "Group payment receipt images updated successfully!";
-                } else {
-                    // Create new payment for all group members
-                    $members_query = "SELECT student_id FROM group_members WHERE group_id = '$group_id'";
-                    $members_result = mysqli_query($conn, $members_query);
-                    
-                    while ($member = mysqli_fetch_assoc($members_result)) {
-                        $member_id = $member['student_id'];
-                        $payment_query = "INSERT INTO payments (student_id, payment_type, amount, image_receipts, status, payment_date) 
-                                         VALUES ('$member_id', '$payment_type', '$payment_amount', '$image_receipts_json', 'pending', NOW())";
-                        mysqli_query($conn, $payment_query);
-                    }
-                    $success_message = "Group payment receipt images uploaded successfully!";
+                    header("Location: ../student_pages/proposal.php");
+                    exit();
                 }
-                
-                header("Location: ../student_pages/proposal.php");
-                exit();
             }
         }
     }
@@ -1282,7 +1287,9 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                         <option value="">Select payment type</option>
                         <option value="research_forum">Research Forum <?php echo $has_research_forum_payment ? '(Uploaded)' : ''; ?></option>
                         <option value="pre_oral_defense">Pre-Oral Defense <?php echo $has_pre_oral_payment ? '(Uploaded)' : ''; ?></option>
+                        <?php if ($final_defense_open): ?>
                         <option value="final_defense">Final Defense <?php echo $has_final_defense_payment ? '(Uploaded)' : ''; ?></option>
+                        <?php endif; ?>
                     </select>
                 </div>
                 

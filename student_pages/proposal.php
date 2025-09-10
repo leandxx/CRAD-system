@@ -901,14 +901,14 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             <div class="stats-card bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
                                 <h3 class="font-semibold text-blue-800 text-sm uppercase tracking-wide">Payment Status</h3>
                                 <div class="mt-2 space-y-2">
-<?php
-function renderStatusBadge($status) {
-    if ($status === 'approved') return '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>';
-    if ($status === 'rejected') return '<span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">Rejected</span>';
-    if ($status === 'pending') return '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending Review</span>';
-    return '<span class="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">No Attachment</span>';
-}
-?>
+                                    <?php
+                                        function renderStatusBadge($status) {
+                                            if ($status === 'approved') return '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Approved</span>';
+                                            if ($status === 'rejected') return '<span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">Rejected</span>';
+                                            if ($status === 'pending') return '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending Review</span>';
+                                            return '<span class="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">No Attachment</span>';
+                                        }
+                                        ?>
                                     <div class="flex items-center justify-between">
                                         <span class="text-xs text-gray-600">Research Forum:</span>
                                         <?php echo renderStatusBadge($rf_status); ?>

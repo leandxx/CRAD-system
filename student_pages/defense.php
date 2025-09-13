@@ -140,14 +140,6 @@ if ($has_group) {
     if ($docs_result) {
         $docs_data = mysqli_fetch_assoc($docs_result);
         $requirements_status['total_required_docs'] = $docs_data['count'];
-        
-        // Check submitted documents if table exists
-        $submitted_query = "SELECT COUNT(*) as count FROM document_submissions WHERE group_id = '$group_id'";
-        $submitted_result = mysqli_query($conn, $submitted_query);
-        if ($submitted_result) {
-            $submitted_data = mysqli_fetch_assoc($submitted_result);
-            $requirements_status['documents_submitted'] = $submitted_data['count'];
-        }
     }
 }
 

@@ -15,62 +15,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             @$conn->query("ALTER TABLE proposals ADD COLUMN final_defense_open TINYINT(1) NOT NULL DEFAULT 0 AFTER reviewed_at");
         }
 
-        // If opening final defense, implement the new logic
-        if ($open == 1) {
-            // Start transaction for data consistency
-            mysqli_begin_transaction($conn);
-            
-            try {
-                // 1. Automatically fail all unpaid pre-oral defenses
-                $fail_unpaid_query = "UPDATE defense_schedules ds 
-                                    SET status = 'failed', defense_result = 'failed'
-                                    WHERE ds.defense_type = 'pre_oral' 
-                                    AND ds.status = 'scheduled'
-                                    AND ds.group_id IN (
-                                        SELECT DISTINCT gm.group_id 
-                                        FROM group_members gm 
-                                        WHERE gm.student_id NOT IN (
-                                            SELECT DISTINCT student_id 
-                                            FROM payments 
-                                            WHERE status = 'approved' 
-                                            AND payment_type = 'pre_oral_defense'
-                                        )
-                                    )";
-                $fail_result = mysqli_query($conn, $fail_unpaid_query);
-                if (!$fail_result) {
-                    throw new Exception("Failed to update unpaid pre-oral defenses: " . mysqli_error($conn));
-                }
-
-                // 2. Reset all completed pre-oral defenses to pending status
-                $reset_completed_query = "UPDATE defense_schedules 
-                                        SET status = 'scheduled', defense_result = 'pending'
-                                        WHERE defense_type = 'pre_oral' 
-                                        AND status = 'completed'";
-                $reset_result = mysqli_query($conn, $reset_completed_query);
-                if (!$reset_result) {
-                    throw new Exception("Failed to reset completed pre-oral defenses: " . mysqli_error($conn));
-                }
-
-                // 3. Change all pre-oral defense types to final
-                $change_to_final_query = "UPDATE defense_schedules 
-                                        SET defense_type = 'final'
-                                        WHERE defense_type = 'pre_oral'";
-                $change_result = mysqli_query($conn, $change_to_final_query);
-                if (!$change_result) {
-                    throw new Exception("Failed to change defense types to final: " . mysqli_error($conn));
-                }
-
-                // Commit transaction if all queries succeeded
-                mysqli_commit($conn);
-                
-            } catch (Exception $e) {
-                // Rollback transaction on error
-                mysqli_rollback($conn);
-                $_SESSION['error_message'] = "Error opening final defense: " . $e->getMessage();
-                header("Location: " . $_SERVER['REQUEST_URI']);
-                exit();
-            }
-        }
 
         // Update all proposals
         $stmt = $conn->prepare("UPDATE proposals SET final_defense_open = ?");
@@ -78,11 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $stmt->close();
 
-        if ($open == 1) {
-            $_SESSION['success_message'] = 'Final Defense is now OPEN for ALL students. The following actions were performed: 1) Unpaid pre-oral defenses were automatically failed, 2) Completed pre-oral defenses were reset to pending status, 3) All defense types were changed to final defense.';
-        } else {
-            $_SESSION['success_message'] = 'Final Defense is now CLOSED for ALL students.';
-        }
+        $_SESSION['success_message'] = $open ? 'Final Defense is now OPEN for ALL students.' : 'Final Defense is now CLOSED for ALL students.';
         header("Location: " . $_SERVER['REQUEST_URI']);
         exit();
     }

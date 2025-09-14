@@ -380,48 +380,75 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // Handle opening final defense for eligible groups
     if (isset($_POST['action']) && $_POST['action'] == 'open_final_defense') {
-        // Get all groups who have completed pre-oral defense (regardless of payment status)
-        $eligible_groups_query = "SELECT g.id, g.name, g.program, c.cluster, f.fullname as adviser_name
-                                 FROM groups g
-                                 LEFT JOIN clusters c ON g.cluster_id = c.id
-                                 LEFT JOIN faculty f ON c.faculty_id = f.id
-                                 WHERE g.id IN (
-                                     SELECT DISTINCT ds.group_id 
-                                     FROM defense_schedules ds 
-                                     WHERE ds.defense_type = 'pre_oral' 
-                                     AND ds.status = 'completed'
-                                 )
-                                 AND g.id NOT IN (
-                                     SELECT DISTINCT ds2.group_id 
-                                     FROM defense_schedules ds2 
-                                     WHERE ds2.defense_type = 'final' 
-                                     AND ds2.status IN ('scheduled', 'pending', 'completed')
-                                 )";
+        // Start transaction for data consistency
+        mysqli_begin_transaction($conn);
         
-        $eligible_result = mysqli_query($conn, $eligible_groups_query);
-        
-        if (!$eligible_result) {
-            echo json_encode(['success' => false, 'message' => 'Error fetching eligible groups: ' . mysqli_error($conn)]);
-            exit();
-        }
-        
-        $eligible_groups = mysqli_fetch_all($eligible_result, MYSQLI_ASSOC);
-        $count = 0;
-        
-        // Create pending final defense entries for each eligible group
-        foreach ($eligible_groups as $group) {
-            $insert_query = "INSERT INTO defense_schedules (group_id, defense_type, status, created_at) 
-                            VALUES ('" . $group['id'] . "', 'final', 'pending', NOW())";
-            
-            if (mysqli_query($conn, $insert_query)) {
-                $count++;
+        try {
+            // 1. Automatically fail all unpaid pre-oral defenses
+            $fail_unpaid_query = "UPDATE defense_schedules ds 
+                                SET status = 'failed', defense_result = 'failed'
+                                WHERE ds.defense_type = 'pre_oral' 
+                                AND ds.status = 'scheduled'
+                                AND ds.group_id IN (
+                                    SELECT DISTINCT gm.group_id 
+                                    FROM group_members gm 
+                                    WHERE gm.student_id NOT IN (
+                                        SELECT DISTINCT student_id 
+                                        FROM payments 
+                                        WHERE status = 'approved' 
+                                        AND payment_type = 'pre_oral_defense'
+                                    )
+                                )";
+            $fail_result = mysqli_query($conn, $fail_unpaid_query);
+            if (!$fail_result) {
+                throw new Exception("Failed to update unpaid pre-oral defenses: " . mysqli_error($conn));
             }
-        }
-        
-        if ($count > 0) {
-            echo json_encode(['success' => true, 'count' => $count, 'message' => 'Final defense opened for ' . $count . ' groups']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'No eligible groups found for final defense']);
+
+            // 2. Reset all completed pre-oral defenses to pending status
+            $reset_completed_query = "UPDATE defense_schedules 
+                                    SET status = 'scheduled', defense_result = 'pending'
+                                    WHERE defense_type = 'pre_oral' 
+                                    AND status = 'completed'";
+            $reset_result = mysqli_query($conn, $reset_completed_query);
+            if (!$reset_result) {
+                throw new Exception("Failed to reset completed pre-oral defenses: " . mysqli_error($conn));
+            }
+
+            // 3. Change all pre-oral defense types to final
+            $change_to_final_query = "UPDATE defense_schedules 
+                                    SET defense_type = 'final'
+                                    WHERE defense_type = 'pre_oral'";
+            $change_result = mysqli_query($conn, $change_to_final_query);
+            if (!$change_result) {
+                throw new Exception("Failed to change defense types to final: " . mysqli_error($conn));
+            }
+
+            // 4. Update proposals to open final defense
+            $update_proposals_query = "UPDATE proposals SET final_defense_open = 1";
+            $proposals_result = mysqli_query($conn, $update_proposals_query);
+            if (!$proposals_result) {
+                throw new Exception("Failed to update proposals: " . mysqli_error($conn));
+            }
+
+            // Commit transaction if all queries succeeded
+            mysqli_commit($conn);
+            
+            // Get count of affected groups for response
+            $count_query = "SELECT COUNT(DISTINCT group_id) as count FROM defense_schedules WHERE defense_type = 'final'";
+            $count_result = mysqli_query($conn, $count_query);
+            $count_data = mysqli_fetch_assoc($count_result);
+            $count = $count_data['count'];
+            
+            echo json_encode([
+                'success' => true, 
+                'count' => $count, 
+                'message' => 'Final defense opened for ALL students. The following actions were performed: 1) Unpaid pre-oral defenses were automatically failed, 2) Completed pre-oral defenses were reset to pending status, 3) All defense types were changed to final defense, 4) Final defense is now open for all proposals.'
+            ]);
+            
+        } catch (Exception $e) {
+            // Rollback transaction on error
+            mysqli_rollback($conn);
+            echo json_encode(['success' => false, 'message' => 'Error opening final defense: ' . $e->getMessage()]);
         }
         exit();
     }

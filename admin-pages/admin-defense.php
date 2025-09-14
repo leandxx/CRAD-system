@@ -192,6 +192,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit();
     }
 
+    if (isset($_POST['mark_completed'])) {
+        $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
+        $update_query = "UPDATE defense_schedules SET status = 'completed' WHERE id = '$defense_id'";
+        if (mysqli_query($conn, $update_query)) {
+            $_SESSION['success_message'] = "Defense marked as completed.";
+        } else {
+            $error_message = "Error updating defense status: " . mysqli_error($conn);
+        }
+        header("Location: admin-defense.php");
+        exit();
+    }
+
     // Manual trigger to update all overdue defenses
     if (isset($_POST['update_overdue_defenses'])) {
         $current_datetime = date('Y-m-d H:i:s');
@@ -561,7 +573,7 @@ $completed_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, p.t
                 LEFT JOIN rooms r ON ds.room_id = r.id 
                 LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
                 LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
-                WHERE ds.status = 'completed'
+                WHERE ds.status IN ('completed', 'passed')
                 GROUP BY ds.id
                 ORDER BY g.program, f.fullname, c.cluster, ds.defense_date DESC";
 $completed_result = mysqli_query($conn, $completed_query);
@@ -582,7 +594,7 @@ $total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals 
 $scheduled_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'scheduled' AND CONCAT(defense_date, ' ', end_time) > NOW()"));
 $confirmed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'passed'"));
 $pending_defenses = $total_proposals - $scheduled_defenses;
-$completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'completed'"));
+$completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status IN ('completed', 'passed')"));
 ?>
 
 <!DOCTYPE html>
@@ -1704,10 +1716,16 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                             </div>
 
                                                 <div class="flex gap-2">
-                                                    <?php if ($completed['defense_type'] == 'pre_oral'): ?>
-                                                        <button onclick="scheduleFinalDefense(<?php echo $completed['group_id']; ?>, <?php echo $completed['id']; ?>, '<?php echo addslashes($completed['group_name']); ?>', '<?php echo addslashes($completed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
-                                                            <i class="fas fa-arrow-right mr-1"></i>Final Defense
-                                                        </button>
+                                                    <?php if ($completed['status'] == 'passed'): ?>
+                                                        <?php if ($completed['defense_type'] == 'pre_oral'): ?>
+                                                            <button onclick="scheduleFinalDefense(<?php echo $completed['group_id']; ?>, <?php echo $completed['id']; ?>, '<?php echo addslashes($completed['group_name']); ?>', '<?php echo addslashes($completed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
+                                                                <i class="fas fa-arrow-right mr-1"></i>Final Defense
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <button onclick="markDefenseCompleted(<?php echo $completed['id']; ?>)" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Completed">
+                                                                <i class="fas fa-check mr-1"></i>Mark Completed
+                                                            </button>
+                                                        <?php endif; ?>
                                                     <?php else: ?>
                                                         <span class="flex-1 bg-gradient-to-r from-green-400 to-green-600 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
                                                             <i class="fas fa-trophy mr-1"></i>Final Completed
@@ -3559,6 +3577,16 @@ function markDefensePassed(defenseId) {
     }
 }
 
+function markDefenseCompleted(defenseId) {
+    if (confirm('Mark this defense as completed? This will finalize the defense process.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `<input type="hidden" name="defense_id" value="${defenseId}"><input type="hidden" name="mark_completed" value="1">`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
 function markDefenseFailed(defenseId) {
     if (confirm('Mark this defense as failed? This will allow scheduling a redefense.')) {
         const form = document.createElement('form');
@@ -3722,57 +3750,6 @@ function togglePendingClusterDefenses(programAdviserClusterKey) {
     }
 }
 
-function toggleCompletedProgram(program) {
-    const content = document.getElementById('completed-content-' + program);
-    const icon = document.getElementById('completed-icon-' + program);
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.style.transform = 'rotate(180deg)';
-    } else {
-        content.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-    }
-}
-
-function toggleCompletedCluster(programAdviserClusterKey) {
-    const content = document.getElementById('completed-cluster-content-' + programAdviserClusterKey);
-    const icon = document.getElementById('completed-cluster-icon-' + programAdviserClusterKey);
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.style.transform = 'rotate(180deg)';
-    } else {
-        content.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-    }
-}
-
-function toggleCompletedAdviser(programAdviserKey) {
-    const content = document.getElementById('completed-adviser-content-' + programAdviserKey);
-    const icon = document.getElementById('completed-adviser-icon-' + programAdviserKey);
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.style.transform = 'rotate(180deg)';
-    } else {
-        content.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-    }
-}
-
-function toggleCompletedCluster(programAdviserClusterKey) {
-    const content = document.getElementById('completed-cluster-content-' + programAdviserClusterKey);
-    const icon = document.getElementById('completed-cluster-icon-' + programAdviserClusterKey);
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.style.transform = 'rotate(180deg)';
-    } else {
-        content.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-    }
-}
 
 function toggleUpcomingAdviser(programAdviserKey) {
     const content = document.getElementById('upcoming-adviser-content-' + programAdviserKey);

@@ -375,7 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // Handle opening final defense for eligible groups
     if (isset($_POST['action']) && $_POST['action'] == 'open_final_defense') {
-        // Get all groups who have completed pre-oral defense
+        // Get all groups who have completed pre-oral defense AND have paid required fees
         $eligible_groups_query = "SELECT g.id, g.name, g.program, c.cluster, f.fullname as adviser_name
                                  FROM groups g
                                  LEFT JOIN clusters c ON g.cluster_id = c.id
@@ -391,6 +391,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                      FROM defense_schedules ds2 
                                      WHERE ds2.defense_type = 'final' 
                                      AND ds2.status IN ('scheduled', 'pending', 'completed')
+                                 )
+                                 AND g.id NOT IN (
+                                     SELECT DISTINCT gm.group_id
+                                     FROM group_members gm
+                                     LEFT JOIN payments p ON gm.student_id = p.student_id
+                                     WHERE p.payment_type = 'defense_fee'
+                                     AND p.status != 'paid'
                                  )";
         
         $eligible_result = mysqli_query($conn, $eligible_groups_query);
@@ -2194,7 +2201,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 </div>
                                 <div class="text-left">
                                     <h4 class="font-semibold text-gray-800 text-lg">Final Defense</h4>
-                                    <p class="text-gray-600 text-sm mt-1">Open final defense for groups who completed pre-oral defense</p>
+                                    <p class="text-gray-600 text-sm mt-1">Open final defense for groups who completed pre-oral defense and paid fees</p>
                                 </div>
                                 <i class="fas fa-chevron-right text-gray-400 ml-auto group-hover:text-purple-500 transition-colors"></i>
                             </div>
@@ -2661,7 +2668,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
         function openFinalDefenseForEligibleGroups() {
             // Show confirmation dialog
-            if (!confirm('This will move all groups who completed pre-oral defense to pending status for final defense. Continue?')) {
+            if (!confirm('This will move all groups who completed pre-oral defense AND have paid their fees to pending status for final defense. Continue?')) {
                 return;
             }
             
@@ -2677,7 +2684,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             .then(data => {
                 if (data.success) {
                     // Show success message
-                    showNotification(`Final Defense opened! ${data.count} groups moved to pending for final defense.`, 'success');
+                    showNotification(`Final Defense opened! ${data.count} groups (completed pre-oral + paid fees) moved to pending for final defense.`, 'success');
                     
                     // Reload the page to show updated status
                     setTimeout(() => {

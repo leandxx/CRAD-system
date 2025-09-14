@@ -1040,7 +1040,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     <i class="fas fa-clock mr-2"></i> <span id="overdueText">Update Overdue</span> <span id="overdueCount" class="ml-1 bg-red-500 text-white text-xs rounded-full px-2 py-1 hidden">0</span>
                                 </button>
                                 <button onclick="toggleModal()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
-                                    <i class="fas fa-plus mr-2"></i> Schedule Defense
+                                    <i class="fas fa-cog mr-2"></i> Enable Type of Defense
                                 </button>
                             </div>
                         </div>

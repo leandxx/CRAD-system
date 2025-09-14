@@ -24,11 +24,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         // Validate required fields
         if (empty($group_id) || empty($defense_date) || empty($start_time) || empty($end_time) || empty($room_id)) {
-            $error_message = "All fields are required for scheduling a defense.";
+            $_SESSION['error_message'] = "All fields are required for scheduling a defense.";
+            header("Location: admin-defense.php");
+            exit();
         } elseif (strtotime($defense_date) < strtotime(date('Y-m-d'))) {
-            $error_message = "Defense date cannot be in the past.";
+            $_SESSION['error_message'] = "Defense date cannot be in the past.";
+            header("Location: admin-defense.php");
+            exit();
         } elseif (strtotime($start_time) >= strtotime($end_time)) {
-            $error_message = "End time must be after start time.";
+            $_SESSION['error_message'] = "End time must be after start time.";
+            header("Location: admin-defense.php");
+            exit();
         } else {
             // Check if all group members have paid required fees
             $unpaid_check = "SELECT COUNT(*) as unpaid_count 
@@ -44,7 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $unpaid_data = mysqli_fetch_assoc($unpaid_result);
             
             if ($unpaid_data['unpaid_count'] > 0) {
-                $error_message = "Cannot schedule defense. Some group members have unpaid fees. Please verify payment status first.";
+                $_SESSION['error_message'] = "Cannot schedule defense. Some group members have unpaid fees. Please verify payment status first.";
+                header("Location: admin-defense.php");
+                exit();
             } else {
                 // Check room availability
                 $exclude_defense = '';
@@ -68,7 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $availability_data = mysqli_fetch_assoc($availability_result);
                 
                 if ($availability_data['conflict_count'] > 0) {
-                    $error_message = "Room is not available during the selected time slot. Please choose a different time or room.";
+                    $_SESSION['error_message'] = "Room is not available during the selected time slot. Please choose a different time or room.";
+                    header("Location: admin-defense.php");
+                    exit();
                 } else {
 
         // Default status = scheduled
@@ -93,7 +103,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (mysqli_query($conn, $schedule_query)) {
                 $defense_id = $parent_id; // Use the existing defense ID
             } else {
-                $error_message = "Failed to update defense schedule: " . mysqli_error($conn);
+                $_SESSION['error_message'] = "Failed to update defense schedule: " . mysqli_error($conn);
+                header("Location: admin-defense.php");
+                exit();
             }
         } else {
             // Insert new defense schedule
@@ -104,11 +116,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (mysqli_query($conn, $schedule_query)) {
                 $defense_id = mysqli_insert_id($conn);
             } else {
-                $error_message = "Failed to create defense schedule: " . mysqli_error($conn);
+                $_SESSION['error_message'] = "Failed to create defense schedule: " . mysqli_error($conn);
+                header("Location: admin-defense.php");
+                exit();
             }
         }
 
-        if (empty($error_message)) {
+        if (empty($_SESSION['error_message'])) {
 
             // Delete existing panel members first (to prevent duplicates)
             mysqli_query($conn, "DELETE FROM defense_panel WHERE defense_id = '$defense_id'");
@@ -149,7 +163,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             header("Location: admin-defense.php");
             exit();
         } else {
-            $error_message = "Error scheduling defense: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error scheduling defense: " . mysqli_error($conn);
+            header("Location: admin-defense.php");
+            exit();
         }
                 }
             }
@@ -162,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (mysqli_query($conn, $update_query)) {
             $_SESSION['success_message'] = "Defense marked as failed. You can now schedule a redefense.";
         } else {
-            $error_message = "Error updating defense status: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
         }
         header("Location: admin-defense.php");
         exit();
@@ -174,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (mysqli_query($conn, $update_query)) {
             $_SESSION['success_message'] = "Defense marked as passed and completed.";
         } else {
-            $error_message = "Error updating defense status: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
         }
         header("Location: admin-defense.php");
         exit();
@@ -186,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (mysqli_query($conn, $update_query)) {
             $_SESSION['success_message'] = "Defense confirmed and ready for evaluation.";
         } else {
-            $error_message = "Error confirming defense: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error confirming defense: " . mysqli_error($conn);
         }
         header("Location: admin-defense.php");
         exit();
@@ -198,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (mysqli_query($conn, $update_query)) {
             $_SESSION['success_message'] = "Defense marked as completed.";
         } else {
-            $error_message = "Error updating defense status: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
         }
         header("Location: admin-defense.php");
         exit();
@@ -217,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $affected_rows = mysqli_affected_rows($conn);
             $_SESSION['success_message'] = "Updated $affected_rows overdue defense(s) to evaluation status.";
         } else {
-            $error_message = "Error updating overdue defenses: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error updating overdue defenses: " . mysqli_error($conn);
         }
         header("Location: admin-defense.php");
         exit();
@@ -238,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             header("Location: admin-defense.php");
             exit();
         } else {
-            $error_message = "Error deleting defense schedule: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error deleting defense schedule: " . mysqli_error($conn);
         }
     }
 
@@ -252,9 +268,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         // Validate required fields
         if (strtotime($defense_date) < strtotime(date('Y-m-d'))) {
-            $error_message = "Defense date cannot be in the past.";
+            $_SESSION['error_message'] = "Defense date cannot be in the past.";
+            header("Location: admin-defense.php");
+            exit();
         } elseif (strtotime($start_time) >= strtotime($end_time)) {
-            $error_message = "End time must be after start time.";
+            $_SESSION['error_message'] = "End time must be after start time.";
+            header("Location: admin-defense.php");
+            exit();
         } else {
             // Check room availability (exclude current defense from check)
             $availability_query = "SELECT COUNT(*) as conflict_count 
@@ -272,7 +292,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $availability_data = mysqli_fetch_assoc($availability_result);
             
             if ($availability_data['conflict_count'] > 0) {
-                $error_message = "Room is not available during the selected time slot. Please choose a different time or room.";
+                $_SESSION['error_message'] = "Room is not available during the selected time slot. Please choose a different time or room.";
+                header("Location: admin-defense.php");
+                exit();
             } else {
 
         // Update defense schedule (don't update group_id as it shouldn't change)
@@ -313,26 +335,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             header("Location: admin-defense.php");
             exit();
         } else {
-            $error_message = "Error updating defense schedule: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error updating defense schedule: " . mysqli_error($conn);
+            header("Location: admin-defense.php");
+            exit();
         }
             }
         }
     }
 }
 
-// Get all defense schedules organized by program and cluster
-$defense_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, r.room_name, r.building, p.title as proposal_title,
+// Get all defense schedules organized by program, adviser, and cluster
+$defense_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, p.title as proposal_title, r.room_name, r.building,
+                 f.fullname as adviser_name, f.id as adviser_id,
                  GROUP_CONCAT(CONCAT(pm.first_name, ' ', pm.last_name) SEPARATOR ', ') as panel_names
                  FROM defense_schedules ds 
                  LEFT JOIN groups g ON ds.group_id = g.id 
                  LEFT JOIN clusters c ON g.cluster_id = c.id
+                 LEFT JOIN faculty f ON c.faculty_id = f.id
                  LEFT JOIN rooms r ON ds.room_id = r.id 
                  LEFT JOIN proposals p ON g.id = p.group_id
                  LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
                  LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
                  WHERE ds.status = 'scheduled' AND CONCAT(ds.defense_date, ' ', ds.end_time) > NOW()
                  GROUP BY ds.id
-                 ORDER BY g.program, c.cluster, ds.defense_date, ds.start_time";
+                 ORDER BY g.program, f.fullname, c.cluster, ds.defense_date, ds.start_time";
 $defense_result = mysqli_query($conn, $defense_query);
 $defense_schedules = [];
 $defense_by_program = [];
@@ -354,10 +380,14 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
     $schedule['panel_members'] = $panel_members;
     $defense_schedules[] = $schedule;
     
-    // Organize by program and cluster
+    // Organize by program, adviser, and cluster (consistent 4-level structure)
+    $adviser_name = $schedule['adviser_name'] ?: 'Unassigned Adviser';
+    $adviser_id = $schedule['adviser_id'] ?: 'unassigned';
     $program = $schedule['program'] ?: 'Unknown';
     $cluster = $schedule['cluster'] ?: 'No Cluster';
-    $defense_by_program[$program][$cluster][] = $schedule;
+    
+    $defense_by_program[$program]['advisers'][$adviser_id]['adviser_name'] = $adviser_name;
+    $defense_by_program[$program]['advisers'][$adviser_id]['clusters'][$cluster]['defenses'][] = $schedule;
 }
 
 // Handle automatic status updates for overdue defenses
@@ -850,9 +880,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 <?php unset($_SESSION['defense_status_updated']); ?>
             <?php endif; ?>
             
-            <?php if (isset($error_message)): ?>
+            <?php if (isset($_SESSION['error_message'])): ?>
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                    <span class="block sm:inline"><?php echo $error_message; ?></span>
+                    <span class="block sm:inline"><?php echo $_SESSION['error_message']; ?></span>
                 </div>
             <?php endif; ?>
 
@@ -1011,26 +1041,64 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
                 <!-- Cards Grid -->
                 <div class="space-y-6">
-                    <?php foreach ($defense_by_program as $program => $clusters): ?>
+                    <?php foreach ($defense_by_program as $program => $program_data): ?>
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                         <div class="p-4 border-b border-gray-200 cursor-pointer" onclick="toggleProgram('<?php echo $program; ?>')">
                             <div class="flex items-center justify-between">
-                                <h3 class="text-lg font-semibold text-gray-800"><?php echo $program; ?></h3>
+                                <h3 class="text-lg font-semibold text-gray-800">
+                                    <i class="fas fa-graduation-cap mr-2"></i><?php echo $program; ?>
+                                    <span class="text-sm text-gray-500 ml-2">
+                                        <?php 
+                                        $total_scheduled = 0;
+                                        foreach ($program_data['advisers'] as $adviser_id => $adviser_data) {
+                                            foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
+                                                $total_scheduled += count($cluster_data['defenses']);
+                                            }
+                                        }
+                                        echo "($total_scheduled scheduled defense" . ($total_scheduled > 1 ? 's' : '') . ")";
+                                        ?>
+                                    </span>
+                                </h3>
                                 <i class="fas fa-chevron-down transition-transform" id="icon-<?php echo $program; ?>"></i>
                             </div>
                         </div>
                         <div class="program-content" id="content-<?php echo $program; ?>" style="display: none;">
-                            <?php foreach ($clusters as $cluster => $schedules): ?>
+                            <?php foreach ($program_data['advisers'] as $adviser_id => $adviser_data): ?>
                             <div class="border-b border-gray-100 last:border-b-0">
-                                <div class="p-3 bg-gray-50 cursor-pointer" onclick="toggleCluster('<?php echo $program . '-' . $cluster; ?>')">
+                                <div class="p-3 bg-gray-50 cursor-pointer" onclick="toggleAdviser('<?php echo $program . '-' . $adviser_id; ?>')">
                                     <div class="flex items-center justify-between">
-                                        <h4 class="font-medium text-gray-700">Cluster <?php echo $cluster; ?></h4>
-                                        <i class="fas fa-chevron-down transition-transform text-sm" id="icon-<?php echo $program . '-' . $cluster; ?>"></i>
+                                        <h4 class="font-medium text-gray-700">
+                                            <i class="fas fa-user-tie mr-2"></i><?php echo $adviser_data['adviser_name']; ?>
+                                            <span class="text-sm text-gray-500 ml-2">
+                                                <?php 
+                                                $adviser_scheduled = 0;
+                                                foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
+                                                    $adviser_scheduled += count($cluster_data['defenses']);
+                                                }
+                                                echo "($adviser_scheduled scheduled defense" . ($adviser_scheduled > 1 ? 's' : '') . ")";
+                                                ?>
+                                            </span>
+                                        </h4>
+                                        <i class="fas fa-chevron-down transition-transform text-sm" id="adviser-icon-<?php echo $program . '-' . $adviser_id; ?>"></i>
                                     </div>
                                 </div>
-                                <div class="cluster-content" id="content-<?php echo $program . '-' . $cluster; ?>" style="display: none;">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-                                        <?php foreach ($schedules as $schedule): ?>
+                                <div class="adviser-content" id="adviser-content-<?php echo $program . '-' . $adviser_id; ?>" style="display: none;">
+                                    <?php foreach ($adviser_data['clusters'] as $cluster => $cluster_data): ?>
+                                    <div class="border-b border-gray-100 last:border-b-0">
+                                        <div class="p-3 bg-gray-50 cursor-pointer" onclick="toggleCluster('<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>')">
+                                            <div class="flex items-center justify-between">
+                                                <h5 class="font-medium text-gray-600">
+                                                    <i class="fas fa-layer-group mr-2"></i>Cluster <?php echo $cluster; ?>
+                                                    <span class="text-sm text-gray-500 ml-2">
+                                                        (<?php echo count($cluster_data['defenses']); ?> scheduled defense<?php echo count($cluster_data['defenses']) > 1 ? 's' : ''; ?>)
+                                                    </span>
+                                                </h5>
+                                                <i class="fas fa-chevron-down transition-transform text-sm" id="cluster-icon-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>"></i>
+                                            </div>
+                                        </div>
+                                        <div class="cluster-content" id="cluster-content-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>" style="display: none;">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                                                <?php foreach ($cluster_data['defenses'] as $schedule): ?>
                     <!-- Scheduled Defense Card -->
                     <div class="defense-card bg-gradient-to-br from-white via-blue-50 to-indigo-100 border border-blue-200 rounded-2xl shadow-lg p-6 flex flex-col justify-between relative overflow-hidden" 
                          data-status="<?php echo $schedule['status']; ?>" 
@@ -1153,7 +1221,10 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         </div>
                     </div>
                                         <?php endforeach; ?>
+                                            </div>
+                                        </div>
                                     </div>
+                                    <?php endforeach; ?>
                                 </div>
                             </div>
                             <?php endforeach; ?>
@@ -1278,6 +1349,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         </div>
                     </div>
                     <?php endforeach; ?>
+                    
+                    <?php if (empty($pending_by_program)): ?>
+                    <div class="bg-white rounded-lg shadow p-8 text-center">
+                        <i class="fas fa-graduation-cap text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-gray-500">No pending groups found. All groups have been scheduled for defense.</p>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 
                 <?php if (empty($defense_by_program)): ?>
@@ -1444,7 +1522,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                     <?php endforeach; ?>
                     
-                    <?php if (empty($confirmed_by_adviser)): ?>
+                    <?php if (empty($confirmed_by_program)): ?>
                     <div class="bg-white rounded-lg shadow p-8 text-center">
                         <i class="fas fa-check-circle text-4xl text-gray-400 mb-3"></i>
                         <p class="text-gray-500">No passed defenses awaiting evaluation</p>
@@ -3250,9 +3328,9 @@ function toggleProgram(program) {
     }
 }
 
-function toggleCluster(clusterKey) {
-    const content = document.getElementById('content-' + clusterKey);
-    const icon = document.getElementById('icon-' + clusterKey);
+function toggleAdviser(programAdviserKey) {
+    const content = document.getElementById('adviser-content-' + programAdviserKey);
+    const icon = document.getElementById('adviser-icon-' + programAdviserKey);
     
     if (content.style.display === 'none') {
         content.style.display = 'block';
@@ -3262,6 +3340,20 @@ function toggleCluster(clusterKey) {
         icon.style.transform = 'rotate(0deg)';
     }
 }
+
+function toggleCluster(programAdviserClusterKey) {
+    const content = document.getElementById('cluster-content-' + programAdviserClusterKey);
+    const icon = document.getElementById('cluster-icon-' + programAdviserClusterKey);
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
 
 function toggleUpcomingProgram(program) {
     const content = document.getElementById('upcoming-content-' + program);

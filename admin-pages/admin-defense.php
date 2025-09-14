@@ -1716,6 +1716,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                 </div>
                                             </div>
                                         </div>
+                                        </div>
                                         <?php endforeach; ?>
                                     </div>
                                 </div>

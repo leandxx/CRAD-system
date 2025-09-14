@@ -375,7 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // Handle opening final defense for eligible groups
     if (isset($_POST['action']) && $_POST['action'] == 'open_final_defense') {
-        // Get all groups who have completed pre-oral defense AND have paid required fees
+        // Get all groups who have completed pre-oral defense (regardless of payment status)
         $eligible_groups_query = "SELECT g.id, g.name, g.program, c.cluster, f.fullname as adviser_name
                                  FROM groups g
                                  LEFT JOIN clusters c ON g.cluster_id = c.id
@@ -391,13 +391,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                      FROM defense_schedules ds2 
                                      WHERE ds2.defense_type = 'final' 
                                      AND ds2.status IN ('scheduled', 'pending', 'completed')
-                                 )
-                                 AND g.id NOT IN (
-                                     SELECT DISTINCT gm.group_id
-                                     FROM group_members gm
-                                     LEFT JOIN payments p ON gm.student_id = p.student_id
-                                     WHERE p.payment_type = 'defense_fee'
-                                     AND p.status != 'paid'
                                  )";
         
         $eligible_result = mysqli_query($conn, $eligible_groups_query);
@@ -1485,8 +1478,23 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                         </div>
 
                                                         <!-- Action -->
-                                                        <button onclick="scheduleDefenseForGroup(<?php echo $group['id']; ?>, '<?php echo addslashes($group['name']); ?>', '<?php echo addslashes($group['proposal_title']); ?>')" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105">
-                                                            <i class="fas fa-calendar-plus mr-2"></i>Schedule Defense
+                                                        <?php
+                                                        // Check if group has paid defense fees
+                                                        $payment_check_query = "SELECT COUNT(*) as unpaid_count 
+                                                                              FROM group_members gm
+                                                                              LEFT JOIN payments p ON gm.student_id = p.student_id
+                                                                              WHERE gm.group_id = " . $group['id'] . "
+                                                                              AND p.payment_type = 'defense_fee'
+                                                                              AND p.status != 'paid'";
+                                                        $payment_result = mysqli_query($conn, $payment_check_query);
+                                                        $payment_data = mysqli_fetch_assoc($payment_result);
+                                                        $has_unpaid_fees = $payment_data['unpaid_count'] > 0;
+                                                        ?>
+                                                        <button onclick="<?php echo $has_unpaid_fees ? 'showPaymentRequiredAlert()' : 'scheduleDefenseForGroup(' . $group['id'] . ', \'' . addslashes($group['name']) . '\', \'' . addslashes($group['proposal_title']) . '\')'; ?>" 
+                                                                class="w-full <?php echo $has_unpaid_fees ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 hover:shadow-lg transform hover:scale-105'; ?> text-white py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center transition-all duration-300"
+                                                                <?php echo $has_unpaid_fees ? 'disabled' : ''; ?>>
+                                                            <i class="fas fa-<?php echo $has_unpaid_fees ? 'lock' : 'calendar-plus'; ?> mr-2"></i>
+                                                            <?php echo $has_unpaid_fees ? 'Payment Required' : 'Schedule Defense'; ?>
                                                         </button>
                                                     </div>
                                                 </div>
@@ -2201,7 +2209,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 </div>
                                 <div class="text-left">
                                     <h4 class="font-semibold text-gray-800 text-lg">Final Defense</h4>
-                                    <p class="text-gray-600 text-sm mt-1">Open final defense for groups who completed pre-oral defense and paid fees</p>
+                                    <p class="text-gray-600 text-sm mt-1">Open final defense for groups who completed pre-oral defense</p>
                                 </div>
                                 <i class="fas fa-chevron-right text-gray-400 ml-auto group-hover:text-purple-500 transition-colors"></i>
                             </div>
@@ -2666,9 +2674,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             });
         }
 
+        function showPaymentRequiredAlert() {
+            alert('This group must pay their defense fees before scheduling a defense. Please ensure all group members have paid their required fees.');
+        }
+
         function openFinalDefenseForEligibleGroups() {
             // Show confirmation dialog
-            if (!confirm('This will move all groups who completed pre-oral defense AND have paid their fees to pending status for final defense. Continue?')) {
+            if (!confirm('This will move all groups who completed pre-oral defense to pending status for final defense. Continue?')) {
                 return;
             }
             
@@ -2684,7 +2696,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             .then(data => {
                 if (data.success) {
                     // Show success message
-                    showNotification(`Final Defense opened! ${data.count} groups (completed pre-oral + paid fees) moved to pending for final defense.`, 'success');
+                    showNotification(`Final Defense opened! ${data.count} groups who completed pre-oral defense moved to pending for final defense.`, 'success');
                     
                     // Reload the page to show updated status
                     setTimeout(() => {
@@ -3686,6 +3698,7 @@ window.openDefenseTypeModal = openDefenseTypeModal;
 window.selectDefenseType = selectDefenseType;
 window.openPreOralDefenseForAllGroups = openPreOralDefenseForAllGroups;
 window.openFinalDefenseForEligibleGroups = openFinalDefenseForEligibleGroups;
+window.showPaymentRequiredAlert = showPaymentRequiredAlert;
 
 /* ========= PROGRAM/CLUSTER TOGGLE FUNCTIONS ========= */
 function toggleFailedProgram(program) {

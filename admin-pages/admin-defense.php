@@ -748,6 +748,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         .gradient-purple {
             background: linear-gradient(135deg, #8b5cf6, #7c3aed);
         }
+        .gradient-red {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
         .defense-card {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
@@ -1433,6 +1436,159 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <div class="bg-white rounded-lg shadow p-8 text-center">
                         <i class="fas fa-check-circle text-4xl text-gray-400 mb-3"></i>
                         <p class="text-gray-500">No passed defenses awaiting evaluation</p>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Failed Defenses Cards (Redefense Required) -->
+            <div id="failedCards" class="stats-card rounded-2xl p-8 animate-scale-in hidden">
+                <div class="flex items-center mb-8">
+                    <div class="gradient-red p-3 rounded-xl mr-4">
+                        <i class="fas fa-exclamation-triangle text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">Failed Defenses (Redefense Required)</h2>
+                </div>
+                <div class="space-y-6 mb-8 animate-fade-in">
+                    <?php foreach ($failed_by_program as $program => $program_data): ?>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                        <div class="p-4 border-b border-gray-200 cursor-pointer" onclick="toggleFailedProgramDefenses('<?php echo $program; ?>')">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-red-700">
+                                    <i class="fas fa-graduation-cap mr-2"></i><?php echo $program; ?>
+                                    <span class="text-sm text-gray-500 ml-2">
+                                        <?php 
+                                        $total_failed = 0;
+                                        foreach ($program_data['advisers'] as $adviser_id => $adviser_data) {
+                                            foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
+                                                $total_failed += count($cluster_data['defenses']);
+                                            }
+                                        }
+                                        echo "($total_failed failed defense" . ($total_failed > 1 ? 's' : '') . ")";
+                                        ?>
+                                    </span>
+                                </h3>
+                                <i class="fas fa-chevron-down transition-transform" id="failed-program-icon-<?php echo $program; ?>"></i>
+                            </div>
+                        </div>
+                        <div class="program-content" id="failed-program-content-<?php echo $program; ?>" style="display: none;">
+                            <?php foreach ($program_data['advisers'] as $adviser_id => $adviser_data): ?>
+                            <div class="border-b border-gray-100 last:border-b-0">
+                                <div class="p-3 bg-red-50 cursor-pointer" onclick="toggleFailedAdviserDefenses('<?php echo $program . '-' . $adviser_id; ?>')">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-medium text-red-700">
+                                            <i class="fas fa-user-tie mr-2"></i><?php echo $adviser_data['adviser_name']; ?>
+                                            <span class="text-sm text-gray-500 ml-2">
+                                                <?php 
+                                                $adviser_failed = 0;
+                                                foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
+                                                    $adviser_failed += count($cluster_data['defenses']);
+                                                }
+                                                echo "($adviser_failed failed defense" . ($adviser_failed > 1 ? 's' : '') . ")";
+                                                ?>
+                                            </span>
+                                        </h4>
+                                        <i class="fas fa-chevron-down transition-transform text-sm" id="failed-adviser-icon-<?php echo $program . '-' . $adviser_id; ?>"></i>
+                                    </div>
+                                </div>
+                                <div class="adviser-content" id="failed-adviser-content-<?php echo $program . '-' . $adviser_id; ?>" style="display: none;">
+                                    <?php foreach ($adviser_data['clusters'] as $cluster => $cluster_data): ?>
+                                    <div class="border-b border-gray-100 last:border-b-0">
+                                        <div class="p-3 bg-red-50 cursor-pointer" onclick="toggleFailedClusterDefenses('<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>')">
+                                            <div class="flex items-center justify-between">
+                                                <h5 class="font-medium text-red-600">
+                                                    <i class="fas fa-layer-group mr-2"></i>Cluster <?php echo $cluster; ?>
+                                                    <span class="text-sm text-gray-500 ml-2">
+                                                        (<?php echo count($cluster_data['defenses']); ?> failed defense<?php echo count($cluster_data['defenses']) > 1 ? 's' : ''; ?>)
+                                                    </span>
+                                                </h5>
+                                                <i class="fas fa-chevron-down transition-transform text-sm" id="failed-cluster-icon-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>"></i>
+                                            </div>
+                                        </div>
+                                        <div class="cluster-content" id="failed-cluster-content-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>" style="display: none;">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                                                <?php foreach ($cluster_data['defenses'] as $failed): ?>
+                        <div class="defense-card bg-gradient-to-br from-white via-red-50 to-pink-100 border border-red-200 rounded-2xl shadow-lg p-6 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-20 h-20 bg-red-400/10 rounded-full -translate-y-10 translate-x-10"></div>
+                            <div class="absolute bottom-0 left-0 w-16 h-16 bg-pink-400/10 rounded-full translate-y-8 -translate-x-8"></div>
+                            
+                            <div class="relative z-10">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div class="flex items-center">
+                                        <div class="gradient-red p-3 rounded-xl mr-3 shadow-lg">
+                                            <i class="fas fa-times-circle text-white text-lg"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-bold text-gray-900 leading-tight"><?php echo $failed['group_name']; ?></h3>
+                                            <p class="text-xs text-red-600 font-medium"><?php echo $failed['proposal_title']; ?></p>
+                                            <p class="text-xs text-gray-500">
+                                                <?php 
+                                                if ($failed['defense_type'] == 'redefense') {
+                                                    echo 'Redefense Defense';
+                                                    if (!empty($failed['parent_defense_id'])) {
+                                                        echo ' (Retake)';
+                                                    }
+                                                } else {
+                                                    echo ucfirst($failed['defense_type']) . ' Defense';
+                                                }
+                                                ?>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span class="bg-gradient-to-r from-red-400 to-pink-600 text-white px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
+                                        <i class="fas fa-times mr-1 text-xs"></i>Failed
+                                    </span>
+                                </div>
+
+                                <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+                                    <div class="grid grid-cols-1 gap-3">
+                                        <div class="flex items-center text-sm">
+                                            <i class="fas fa-calendar text-red-500 mr-3 w-4"></i>
+                                            <span class="text-gray-700 font-medium"><?php echo date('M j, Y', strtotime($failed['defense_date'])); ?></span>
+                                        </div>
+                                        <div class="flex items-center text-sm">
+                                            <i class="fas fa-clock text-red-500 mr-3 w-4"></i>
+                                            <span class="text-gray-700 font-medium">
+                                                <?php echo date('g:i A', strtotime($failed['start_time'])); ?> - 
+                                                <?php echo date('g:i A', strtotime($failed['end_time'])); ?>
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center text-sm">
+                                            <i class="fas fa-map-marker-alt text-red-500 mr-3 w-4"></i>
+                                            <span class="text-gray-700 font-medium"><?php echo $failed['building'] . ' ' . $failed['room_name']; ?></span>
+                                        </div>
+                                        <?php if (!empty($failed['redefense_reason'])): ?>
+                                        <div class="flex items-start text-sm">
+                                            <i class="fas fa-comment text-red-500 mr-3 w-4 mt-1"></i>
+                                            <span class="text-gray-700 font-medium"><?php echo htmlspecialchars($failed['redefense_reason']); ?></span>
+                                        </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-2">
+                                    <button onclick="scheduleRedefense(<?php echo $failed['group_id']; ?>, <?php echo $failed['id']; ?>, '<?php echo addslashes($failed['group_name']); ?>', '<?php echo addslashes($failed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Redefense">
+                                        <i class="fas fa-redo mr-1"></i>Schedule Redefense
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                    
+                    <?php if (empty($failed_by_program)): ?>
+                    <div class="bg-white rounded-lg shadow p-8 text-center">
+                        <i class="fas fa-check-circle text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-gray-500">No failed defenses requiring redefense</p>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -2380,6 +2536,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 document.getElementById('scheduleCards').classList.remove('hidden');
                 document.getElementById('availabilityCards').classList.add('hidden');
                 document.getElementById('confirmationCards').classList.add('hidden');
+                document.getElementById('failedCards').classList.add('hidden');
                 document.getElementById('completedCards').classList.add('hidden');
             } else if (tabName === 'availability') {
                 document.getElementById('schedulesContent').classList.add('hidden');
@@ -2389,6 +2546,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 document.getElementById('scheduleCards').classList.add('hidden');
                 document.getElementById('availabilityCards').classList.remove('hidden');
                 document.getElementById('confirmationCards').classList.add('hidden');
+                document.getElementById('failedCards').classList.add('hidden');
                 document.getElementById('completedCards').classList.add('hidden');
                 // Load room availability immediately when tab is clicked
                 checkRoomAvailability();
@@ -2400,6 +2558,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 document.getElementById('scheduleCards').classList.add('hidden');
                 document.getElementById('availabilityCards').classList.add('hidden');
                 document.getElementById('confirmationCards').classList.remove('hidden');
+                document.getElementById('failedCards').classList.remove('hidden');
                 document.getElementById('completedCards').classList.add('hidden');
             } else if (tabName === 'completed') {
                 document.getElementById('schedulesContent').classList.add('hidden');
@@ -2409,6 +2568,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 document.getElementById('scheduleCards').classList.add('hidden');
                 document.getElementById('availabilityCards').classList.add('hidden');
                 document.getElementById('confirmationCards').classList.add('hidden');
+                document.getElementById('failedCards').classList.add('hidden');
                 document.getElementById('completedCards').classList.remove('hidden');
             }
         }

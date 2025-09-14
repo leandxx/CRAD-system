@@ -66,8 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 exit();
             }
         } else {
-            // Check if all group members have paid required fees (only for pre-oral defense)
-            if ($defense_type == 'pre_oral') {
+            // Check if all group members have paid required fees (for both pre-oral and final defense)
+            if ($defense_type == 'pre_oral' || $defense_type == 'final') {
                 $unpaid_check = "SELECT COUNT(*) as unpaid_count 
                                 FROM group_members gm 
                                 WHERE gm.group_id = '$group_id' 
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     SELECT DISTINCT student_id 
                                     FROM payments 
                                     WHERE status = 'approved' 
-                                    AND payment_type IN ('research_forum', 'pre_oral_defense')
+                                    AND payment_type IN ('research_forum', 'pre_oral_defense', 'defense_fee')
                                 )";
                 $unpaid_result = mysqli_query($conn, $unpaid_check);
                 $unpaid_data = mysqli_fetch_assoc($unpaid_result);
@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
             
-            // For final defense, no payment check required
+            // For both defense types, check room availability
             if ($defense_type == 'final' || $defense_type == 'pre_oral') {
                 // Check room availability
                 $exclude_defense = '';
@@ -1486,9 +1486,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
                                                         <!-- Action -->
                                                         <?php
-                                                        // Check if group has paid defense fees (only for pre-oral defense)
+                                                        // Check if group has paid defense fees (for both pre-oral and final defense)
                                                         $has_unpaid_fees = false;
-                                                        if ($group['defense_type'] == 'pre_oral') {
+                                                        if ($group['defense_type'] == 'pre_oral' || $group['defense_type'] == 'final') {
                                                             $payment_check_query = "SELECT COUNT(*) as unpaid_count 
                                                                                   FROM group_members gm
                                                                                   LEFT JOIN payments p ON gm.student_id = p.student_id

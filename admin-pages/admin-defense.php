@@ -1039,8 +1039,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <button onclick="updateOverdueDefenses()" id="updateOverdueBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105" title="Update overdue defenses to evaluation status">
                                     <i class="fas fa-clock mr-2"></i> <span id="overdueText">Update Overdue</span> <span id="overdueCount" class="ml-1 bg-red-500 text-white text-xs rounded-full px-2 py-1 hidden">0</span>
                                 </button>
-                                <button onclick="toggleModal()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
-                                    <i class="fas fa-cog mr-2"></i> Enable Type of Defense
+                                <button onclick="openFinalDefenseModal()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
+                                    <i class="fas fa-graduation-cap mr-2"></i> Enable Final Defense
                                 </button>
                             </div>
                         </div>
@@ -2076,7 +2076,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         </div>
                         Schedule Defense
                     </h3>
-                    <p class="text-blue-100 mt-1 text-sm">Schedule a new defense session for the selected group.</p>
+                    <p class="text-blue-100 mt-1 text-sm" id="modal-description">Schedule a new defense session for the selected group.</p>
                 </div>
             <form method="POST" action="" class="p-6" onsubmit="return validateDefenseDuration()">
                 <input type="hidden" name="defense_type" id="defense_type" value="pre_oral">
@@ -3315,6 +3315,21 @@ function resetDefenseForm() {
     document.getElementById('selected_group_display').textContent = 'No group selected';
     document.getElementById('redefense_reason_div').classList.add('hidden');
     document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-calendar-plus text-white text-sm"></i></div>Schedule Defense';
+    document.getElementById('modal-description').textContent = 'Schedule a new defense session for the selected group.';
+}
+
+function openFinalDefenseModal() {
+    // Set up the modal for final defense
+    document.getElementById('defense_type').value = 'final';
+    document.getElementById('parent_defense_id').value = '';
+    document.getElementById('group_id').value = '';
+    document.getElementById('selected_group_display').textContent = 'No group selected';
+    document.getElementById('redefense_reason_div').classList.add('hidden');
+    document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Enable Final Defense';
+    document.getElementById('modal-description').textContent = 'Schedule a final defense session for groups who have completed pre-oral defense.';
+    
+    // Open the modal
+    openModal('proposalModal');
 }
 
 function toggleEditModal() {
@@ -3423,6 +3438,7 @@ window.scheduleFinalDefenseForGroup = scheduleFinalDefenseForGroup;
 window.scheduleFinalDefense = scheduleFinalDefense;
 window.scheduleRedefense = scheduleRedefense;
 window.toggleFinalDefenseSection = toggleFinalDefenseSection;
+window.openFinalDefenseModal = openFinalDefenseModal;
 
 /* ========= PROGRAM/CLUSTER TOGGLE FUNCTIONS ========= */
 function toggleFailedProgram(program) {

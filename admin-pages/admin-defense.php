@@ -320,19 +320,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// Get all defense schedules organized by program and cluster
-$defense_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, r.room_name, r.building, p.title as proposal_title,
+// Get all defense schedules organized by program, adviser, and cluster
+$defense_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, p.title as proposal_title, r.room_name, r.building,
+                 f.fullname as adviser_name, f.id as adviser_id,
                  GROUP_CONCAT(CONCAT(pm.first_name, ' ', pm.last_name) SEPARATOR ', ') as panel_names
                  FROM defense_schedules ds 
                  LEFT JOIN groups g ON ds.group_id = g.id 
                  LEFT JOIN clusters c ON g.cluster_id = c.id
+                 LEFT JOIN faculty f ON c.faculty_id = f.id
                  LEFT JOIN rooms r ON ds.room_id = r.id 
                  LEFT JOIN proposals p ON g.id = p.group_id
                  LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
                  LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
                  WHERE ds.status = 'scheduled' AND CONCAT(ds.defense_date, ' ', ds.end_time) > NOW()
                  GROUP BY ds.id
-                 ORDER BY g.program, c.cluster, ds.defense_date, ds.start_time";
+                 ORDER BY g.program, f.fullname, c.cluster, ds.defense_date, ds.start_time";
 $defense_result = mysqli_query($conn, $defense_query);
 $defense_schedules = [];
 $defense_by_program = [];
@@ -354,10 +356,14 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
     $schedule['panel_members'] = $panel_members;
     $defense_schedules[] = $schedule;
     
-    // Organize by program and cluster
+    // Organize by program, adviser, and cluster (consistent 4-level structure)
+    $adviser_name = $schedule['adviser_name'] ?: 'Unassigned Adviser';
+    $adviser_id = $schedule['adviser_id'] ?: 'unassigned';
     $program = $schedule['program'] ?: 'Unknown';
     $cluster = $schedule['cluster'] ?: 'No Cluster';
-    $defense_by_program[$program][$cluster][] = $schedule;
+    
+    $defense_by_program[$program]['advisers'][$adviser_id]['adviser_name'] = $adviser_name;
+    $defense_by_program[$program]['advisers'][$adviser_id]['clusters'][$cluster]['defenses'][] = $schedule;
 }
 
 // Handle automatic status updates for overdue defenses
@@ -1011,26 +1017,64 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
                 <!-- Cards Grid -->
                 <div class="space-y-6">
-                    <?php foreach ($defense_by_program as $program => $clusters): ?>
+                    <?php foreach ($defense_by_program as $program => $program_data): ?>
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                         <div class="p-4 border-b border-gray-200 cursor-pointer" onclick="toggleProgram('<?php echo $program; ?>')">
                             <div class="flex items-center justify-between">
-                                <h3 class="text-lg font-semibold text-gray-800"><?php echo $program; ?></h3>
+                                <h3 class="text-lg font-semibold text-gray-800">
+                                    <i class="fas fa-graduation-cap mr-2"></i><?php echo $program; ?>
+                                    <span class="text-sm text-gray-500 ml-2">
+                                        <?php 
+                                        $total_scheduled = 0;
+                                        foreach ($program_data['advisers'] as $adviser_id => $adviser_data) {
+                                            foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
+                                                $total_scheduled += count($cluster_data['defenses']);
+                                            }
+                                        }
+                                        echo "($total_scheduled scheduled defense" . ($total_scheduled > 1 ? 's' : '') . ")";
+                                        ?>
+                                    </span>
+                                </h3>
                                 <i class="fas fa-chevron-down transition-transform" id="icon-<?php echo $program; ?>"></i>
                             </div>
                         </div>
                         <div class="program-content" id="content-<?php echo $program; ?>" style="display: none;">
-                            <?php foreach ($clusters as $cluster => $schedules): ?>
+                            <?php foreach ($program_data['advisers'] as $adviser_id => $adviser_data): ?>
                             <div class="border-b border-gray-100 last:border-b-0">
-                                <div class="p-3 bg-gray-50 cursor-pointer" onclick="toggleCluster('<?php echo $program . '-' . $cluster; ?>')">
+                                <div class="p-3 bg-gray-50 cursor-pointer" onclick="toggleAdviser('<?php echo $program . '-' . $adviser_id; ?>')">
                                     <div class="flex items-center justify-between">
-                                        <h4 class="font-medium text-gray-700">Cluster <?php echo $cluster; ?></h4>
-                                        <i class="fas fa-chevron-down transition-transform text-sm" id="icon-<?php echo $program . '-' . $cluster; ?>"></i>
+                                        <h4 class="font-medium text-gray-700">
+                                            <i class="fas fa-user-tie mr-2"></i><?php echo $adviser_data['adviser_name']; ?>
+                                            <span class="text-sm text-gray-500 ml-2">
+                                                <?php 
+                                                $adviser_scheduled = 0;
+                                                foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
+                                                    $adviser_scheduled += count($cluster_data['defenses']);
+                                                }
+                                                echo "($adviser_scheduled scheduled defense" . ($adviser_scheduled > 1 ? 's' : '') . ")";
+                                                ?>
+                                            </span>
+                                        </h4>
+                                        <i class="fas fa-chevron-down transition-transform text-sm" id="adviser-icon-<?php echo $program . '-' . $adviser_id; ?>"></i>
                                     </div>
                                 </div>
-                                <div class="cluster-content" id="content-<?php echo $program . '-' . $cluster; ?>" style="display: none;">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-                                        <?php foreach ($schedules as $schedule): ?>
+                                <div class="adviser-content" id="adviser-content-<?php echo $program . '-' . $adviser_id; ?>" style="display: none;">
+                                    <?php foreach ($adviser_data['clusters'] as $cluster => $cluster_data): ?>
+                                    <div class="border-b border-gray-100 last:border-b-0">
+                                        <div class="p-3 bg-gray-50 cursor-pointer" onclick="toggleCluster('<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>')">
+                                            <div class="flex items-center justify-between">
+                                                <h5 class="font-medium text-gray-600">
+                                                    <i class="fas fa-layer-group mr-2"></i>Cluster <?php echo $cluster; ?>
+                                                    <span class="text-sm text-gray-500 ml-2">
+                                                        (<?php echo count($cluster_data['defenses']); ?> scheduled defense<?php echo count($cluster_data['defenses']) > 1 ? 's' : ''; ?>)
+                                                    </span>
+                                                </h5>
+                                                <i class="fas fa-chevron-down transition-transform text-sm" id="cluster-icon-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>"></i>
+                                            </div>
+                                        </div>
+                                        <div class="cluster-content" id="cluster-content-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>" style="display: none;">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                                                <?php foreach ($cluster_data['defenses'] as $schedule): ?>
                     <!-- Scheduled Defense Card -->
                     <div class="defense-card bg-gradient-to-br from-white via-blue-50 to-indigo-100 border border-blue-200 rounded-2xl shadow-lg p-6 flex flex-col justify-between relative overflow-hidden" 
                          data-status="<?php echo $schedule['status']; ?>" 
@@ -1153,7 +1197,10 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         </div>
                     </div>
                                         <?php endforeach; ?>
+                                            </div>
+                                        </div>
                                     </div>
+                                    <?php endforeach; ?>
                                 </div>
                             </div>
                             <?php endforeach; ?>
@@ -3289,9 +3336,9 @@ function toggleProgram(program) {
     }
 }
 
-function toggleCluster(clusterKey) {
-    const content = document.getElementById('content-' + clusterKey);
-    const icon = document.getElementById('icon-' + clusterKey);
+function toggleAdviser(programAdviserKey) {
+    const content = document.getElementById('adviser-content-' + programAdviserKey);
+    const icon = document.getElementById('adviser-icon-' + programAdviserKey);
     
     if (content.style.display === 'none') {
         content.style.display = 'block';
@@ -3301,6 +3348,20 @@ function toggleCluster(clusterKey) {
         icon.style.transform = 'rotate(0deg)';
     }
 }
+
+function toggleCluster(programAdviserClusterKey) {
+    const content = document.getElementById('cluster-content-' + programAdviserClusterKey);
+    const icon = document.getElementById('cluster-icon-' + programAdviserClusterKey);
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
 
 function toggleUpcomingProgram(program) {
     const content = document.getElementById('upcoming-content-' + program);

@@ -1039,9 +1039,32 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <button onclick="updateOverdueDefenses()" id="updateOverdueBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105" title="Update overdue defenses to evaluation status">
                                     <i class="fas fa-clock mr-2"></i> <span id="overdueText">Update Overdue</span> <span id="overdueCount" class="ml-1 bg-red-500 text-white text-xs rounded-full px-2 py-1 hidden">0</span>
                                 </button>
-                                <button onclick="openFinalDefenseModal()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
-                                    <i class="fas fa-graduation-cap mr-2"></i> Enable Final Defense
-                                </button>
+                                <div class="relative group">
+                                    <button onclick="toggleDefenseTypeDropdown()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
+                                        <i class="fas fa-cog mr-2"></i> Enable Type of Defense
+                                        <i class="fas fa-chevron-down ml-2 text-sm"></i>
+                                    </button>
+                                    
+                                    <!-- Dropdown Menu -->
+                                    <div id="defenseTypeDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+                                        <div class="py-2">
+                                            <button onclick="openDefenseModal('pre_oral')" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center transition-colors">
+                                                <i class="fas fa-graduation-cap mr-3 text-blue-500"></i>
+                                                <div>
+                                                    <div class="font-medium">Pre-Oral Defense</div>
+                                                    <div class="text-sm text-gray-500">Schedule initial defense for groups</div>
+                                                </div>
+                                            </button>
+                                            <button onclick="openDefenseModal('final')" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-700 flex items-center transition-colors">
+                                                <i class="fas fa-trophy mr-3 text-purple-500"></i>
+                                                <div>
+                                                    <div class="font-medium">Final Defense</div>
+                                                    <div class="text-sm text-gray-500">Schedule final defense for completed pre-oral groups</div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3318,6 +3341,42 @@ function resetDefenseForm() {
     document.getElementById('modal-description').textContent = 'Schedule a new defense session for the selected group.';
 }
 
+function toggleDefenseTypeDropdown() {
+    const dropdown = document.getElementById('defenseTypeDropdown');
+    if (dropdown.classList.contains('opacity-0')) {
+        dropdown.classList.remove('opacity-0', 'invisible');
+        dropdown.classList.add('opacity-100', 'visible');
+    } else {
+        dropdown.classList.add('opacity-0', 'invisible');
+        dropdown.classList.remove('opacity-100', 'visible');
+    }
+}
+
+function openDefenseModal(defenseType) {
+    // Close dropdown
+    const dropdown = document.getElementById('defenseTypeDropdown');
+    dropdown.classList.add('opacity-0', 'invisible');
+    dropdown.classList.remove('opacity-100', 'visible');
+    
+    // Set up the modal based on defense type
+    document.getElementById('defense_type').value = defenseType;
+    document.getElementById('parent_defense_id').value = '';
+    document.getElementById('group_id').value = '';
+    document.getElementById('selected_group_display').textContent = 'No group selected';
+    document.getElementById('redefense_reason_div').classList.add('hidden');
+    
+    if (defenseType === 'pre_oral') {
+        document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Enable Pre-Oral Defense';
+        document.getElementById('modal-description').textContent = 'Schedule a pre-oral defense session for groups with approved proposals.';
+    } else if (defenseType === 'final') {
+        document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-trophy text-white text-sm"></i></div>Enable Final Defense';
+        document.getElementById('modal-description').textContent = 'Schedule a final defense session for groups who have completed pre-oral defense.';
+    }
+    
+    // Open the modal
+    openModal('proposalModal');
+}
+
 function openFinalDefenseModal() {
     // Set up the modal for final defense
     document.getElementById('defense_type').value = 'final';
@@ -3439,6 +3498,8 @@ window.scheduleFinalDefense = scheduleFinalDefense;
 window.scheduleRedefense = scheduleRedefense;
 window.toggleFinalDefenseSection = toggleFinalDefenseSection;
 window.openFinalDefenseModal = openFinalDefenseModal;
+window.toggleDefenseTypeDropdown = toggleDefenseTypeDropdown;
+window.openDefenseModal = openDefenseModal;
 
 /* ========= PROGRAM/CLUSTER TOGGLE FUNCTIONS ========= */
 function toggleFailedProgram(program) {
@@ -3762,6 +3823,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof filterStatus === 'function') filterStatus('all');
     if (typeof switchPanelTab === 'function') switchPanelTab('chairperson');
     switchEditPanelTab('edit_chairperson');
+
+    // Close defense type dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('defenseTypeDropdown');
+        const button = event.target.closest('[onclick="toggleDefenseTypeDropdown()"]');
+        
+        if (!button && dropdown && !dropdown.contains(event.target)) {
+            dropdown.classList.add('opacity-0', 'invisible');
+            dropdown.classList.remove('opacity-100', 'visible');
+        }
+    });
 
     // Refresh availability tab if needed
     <?php if (isset($_SESSION['refresh_availability'])): ?>

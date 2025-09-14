@@ -66,24 +66,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 exit();
             }
         } else {
-            // Check if all group members have paid required fees
-            $unpaid_check = "SELECT COUNT(*) as unpaid_count 
-                            FROM group_members gm 
-                            WHERE gm.group_id = '$group_id' 
-                            AND gm.student_id NOT IN (
-                                SELECT DISTINCT student_id 
-                                FROM payments 
-                                WHERE status = 'approved' 
-                                AND payment_type IN ('research_forum', 'pre_oral_defense')
-                            )";
-            $unpaid_result = mysqli_query($conn, $unpaid_check);
-            $unpaid_data = mysqli_fetch_assoc($unpaid_result);
+            // Check if all group members have paid required fees (only for pre-oral defense)
+            if ($defense_type == 'pre_oral') {
+                $unpaid_check = "SELECT COUNT(*) as unpaid_count 
+                                FROM group_members gm 
+                                WHERE gm.group_id = '$group_id' 
+                                AND gm.student_id NOT IN (
+                                    SELECT DISTINCT student_id 
+                                    FROM payments 
+                                    WHERE status = 'approved' 
+                                    AND payment_type IN ('research_forum', 'pre_oral_defense')
+                                )";
+                $unpaid_result = mysqli_query($conn, $unpaid_check);
+                $unpaid_data = mysqli_fetch_assoc($unpaid_result);
+                
+                if ($unpaid_data['unpaid_count'] > 0) {
+                    $_SESSION['error_message'] = "Cannot schedule defense. Some group members have unpaid fees. Please verify payment status first.";
+                    header("Location: admin-defense.php");
+                    exit();
+                }
+            }
             
-            if ($unpaid_data['unpaid_count'] > 0) {
-                $_SESSION['error_message'] = "Cannot schedule defense. Some group members have unpaid fees. Please verify payment status first.";
-                header("Location: admin-defense.php");
-                exit();
-            } else {
+            // For final defense, no payment check required
+            if ($defense_type == 'final' || $defense_type == 'pre_oral') {
                 // Check room availability
                 $exclude_defense = '';
                 if (!empty($_POST['parent_defense_id']) && $_POST['parent_defense_id'] != 'NULL' && $defense_type == 'redefense') {
@@ -659,12 +664,14 @@ while ($upcoming = mysqli_fetch_assoc($upcoming_result)) {
 
 // Get pending/unscheduled groups organized by program
 $pending_query = "SELECT g.*, g.program, c.cluster, p.title as proposal_title, 
-                 f.fullname as adviser_name, f.id as adviser_id
+                 f.fullname as adviser_name, f.id as adviser_id, ds.defense_type
                 FROM groups g 
                 LEFT JOIN clusters c ON g.cluster_id = c.id
                 LEFT JOIN faculty f ON c.faculty_id = f.id
                 JOIN proposals p ON g.id = p.group_id 
-                WHERE g.id NOT IN (SELECT group_id FROM defense_schedules) 
+                LEFT JOIN defense_schedules ds ON g.id = ds.group_id AND ds.status = 'pending'
+                WHERE (g.id NOT IN (SELECT group_id FROM defense_schedules WHERE status != 'pending') 
+                       OR ds.status = 'pending')
                 AND p.status IN ('Completed', 'Approved')
                 ORDER BY g.program, f.fullname, c.cluster, g.name";
 $pending_result = mysqli_query($conn, $pending_query);
@@ -1479,16 +1486,19 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
                                                         <!-- Action -->
                                                         <?php
-                                                        // Check if group has paid defense fees
-                                                        $payment_check_query = "SELECT COUNT(*) as unpaid_count 
-                                                                              FROM group_members gm
-                                                                              LEFT JOIN payments p ON gm.student_id = p.student_id
-                                                                              WHERE gm.group_id = " . $group['id'] . "
-                                                                              AND p.payment_type = 'defense_fee'
-                                                                              AND p.status != 'paid'";
-                                                        $payment_result = mysqli_query($conn, $payment_check_query);
-                                                        $payment_data = mysqli_fetch_assoc($payment_result);
-                                                        $has_unpaid_fees = $payment_data['unpaid_count'] > 0;
+                                                        // Check if group has paid defense fees (only for pre-oral defense)
+                                                        $has_unpaid_fees = false;
+                                                        if ($group['defense_type'] == 'pre_oral') {
+                                                            $payment_check_query = "SELECT COUNT(*) as unpaid_count 
+                                                                                  FROM group_members gm
+                                                                                  LEFT JOIN payments p ON gm.student_id = p.student_id
+                                                                                  WHERE gm.group_id = " . $group['id'] . "
+                                                                                  AND p.payment_type = 'defense_fee'
+                                                                                  AND p.status != 'paid'";
+                                                            $payment_result = mysqli_query($conn, $payment_check_query);
+                                                            $payment_data = mysqli_fetch_assoc($payment_result);
+                                                            $has_unpaid_fees = $payment_data['unpaid_count'] > 0;
+                                                        }
                                                         ?>
                                                         <button onclick="<?php echo $has_unpaid_fees ? 'showPaymentRequiredAlert()' : 'scheduleDefenseForGroup(' . $group['id'] . ', \'' . addslashes($group['name']) . '\', \'' . addslashes($group['proposal_title']) . '\')'; ?>" 
                                                                 class="w-full <?php echo $has_unpaid_fees ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 hover:shadow-lg transform hover:scale-105'; ?> text-white py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center transition-all duration-300"

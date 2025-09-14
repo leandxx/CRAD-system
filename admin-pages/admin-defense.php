@@ -372,6 +372,98 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
     }
+
+    // Handle opening final defense for eligible groups
+    if (isset($_POST['action']) && $_POST['action'] == 'open_final_defense') {
+        // Get all groups who have completed pre-oral defense
+        $eligible_groups_query = "SELECT g.id, g.name, g.program, c.cluster, f.fullname as adviser_name
+                                 FROM groups g
+                                 LEFT JOIN clusters c ON g.cluster_id = c.id
+                                 LEFT JOIN faculty f ON c.faculty_id = f.id
+                                 WHERE g.id IN (
+                                     SELECT DISTINCT ds.group_id 
+                                     FROM defense_schedules ds 
+                                     WHERE ds.defense_type = 'pre_oral' 
+                                     AND ds.status = 'completed'
+                                 )
+                                 AND g.id NOT IN (
+                                     SELECT DISTINCT ds2.group_id 
+                                     FROM defense_schedules ds2 
+                                     WHERE ds2.defense_type = 'final' 
+                                     AND ds2.status IN ('scheduled', 'pending', 'completed')
+                                 )";
+        
+        $eligible_result = mysqli_query($conn, $eligible_groups_query);
+        
+        if (!$eligible_result) {
+            echo json_encode(['success' => false, 'message' => 'Error fetching eligible groups: ' . mysqli_error($conn)]);
+            exit();
+        }
+        
+        $eligible_groups = mysqli_fetch_all($eligible_result, MYSQLI_ASSOC);
+        $count = 0;
+        
+        // Create pending final defense entries for each eligible group
+        foreach ($eligible_groups as $group) {
+            $insert_query = "INSERT INTO defense_schedules (group_id, defense_type, status, created_at) 
+                            VALUES ('" . $group['id'] . "', 'final', 'pending', NOW())";
+            
+            if (mysqli_query($conn, $insert_query)) {
+                $count++;
+            }
+        }
+        
+        if ($count > 0) {
+            echo json_encode(['success' => true, 'count' => $count, 'message' => 'Final defense opened for ' . $count . ' groups']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'No eligible groups found for final defense']);
+        }
+        exit();
+    }
+
+    // Handle opening pre-oral defense for all groups
+    if (isset($_POST['action']) && $_POST['action'] == 'open_pre_oral_defense') {
+        // Get all groups with approved proposals who don't have pre-oral defense yet
+        $eligible_groups_query = "SELECT g.id, g.name, g.program, c.cluster, f.fullname as adviser_name
+                                 FROM groups g
+                                 LEFT JOIN clusters c ON g.cluster_id = c.id
+                                 LEFT JOIN faculty f ON c.faculty_id = f.id
+                                 LEFT JOIN proposals p ON g.id = p.group_id
+                                 WHERE p.status = 'approved'
+                                 AND g.id NOT IN (
+                                     SELECT DISTINCT ds.group_id 
+                                     FROM defense_schedules ds 
+                                     WHERE ds.defense_type = 'pre_oral' 
+                                     AND ds.status IN ('scheduled', 'pending', 'completed')
+                                 )";
+        
+        $eligible_result = mysqli_query($conn, $eligible_groups_query);
+        
+        if (!$eligible_result) {
+            echo json_encode(['success' => false, 'message' => 'Error fetching eligible groups: ' . mysqli_error($conn)]);
+            exit();
+        }
+        
+        $eligible_groups = mysqli_fetch_all($eligible_result, MYSQLI_ASSOC);
+        $count = 0;
+        
+        // Create pending pre-oral defense entries for each eligible group
+        foreach ($eligible_groups as $group) {
+            $insert_query = "INSERT INTO defense_schedules (group_id, defense_type, status, created_at) 
+                            VALUES ('" . $group['id'] . "', 'pre_oral', 'pending', NOW())";
+            
+            if (mysqli_query($conn, $insert_query)) {
+                $count++;
+            }
+        }
+        
+        if ($count > 0) {
+            echo json_encode(['success' => true, 'count' => $count, 'message' => 'Pre-oral defense opened for ' . $count . ' groups']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'No eligible groups found for pre-oral defense']);
+        }
+        exit();
+    }
 }
 
 // Get all defense schedules organized by program, adviser, and cluster
@@ -2534,40 +2626,71 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         }
 
         function openPreOralDefenseForAllGroups() {
-            // Scroll to groups section and show all groups for pre-oral defense
-            const groupsSection = document.querySelector('.space-y-6');
-            if (groupsSection) {
-                groupsSection.scrollIntoView({ 
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+            // Show confirmation dialog
+            if (!confirm('This will move all groups with approved proposals to pending status for pre-oral defense. Continue?')) {
+                return;
             }
             
-            // Show success message
-            showNotification('Pre-Oral Defense opened for all groups', 'success');
+            // Send AJAX request to open pre-oral defense for all groups
+            fetch('admin-pages/admin-defense.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'action=open_pre_oral_defense'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    showNotification(`Pre-Oral Defense opened! ${data.count} groups moved to pending for pre-oral defense.`, 'success');
+                    
+                    // Reload the page to show updated status
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showNotification('Error opening pre-oral defense: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error opening pre-oral defense. Please try again.', 'error');
+            });
         }
 
         function openFinalDefenseForEligibleGroups() {
-            // Scroll to final defense eligible section
-            const finalDefenseSection = document.getElementById('final-defense-eligible');
-            if (finalDefenseSection) {
-                finalDefenseSection.scrollIntoView({ 
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            } else {
-                // If section doesn't exist, scroll to groups section
-                const groupsSection = document.querySelector('.space-y-6');
-                if (groupsSection) {
-                    groupsSection.scrollIntoView({ 
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
+            // Show confirmation dialog
+            if (!confirm('This will move all groups who completed pre-oral defense to pending status for final defense. Continue?')) {
+                return;
             }
             
-            // Show success message
-            showNotification('Final Defense opened for eligible groups (completed pre-oral)', 'success');
+            // Send AJAX request to open final defense for eligible groups
+            fetch('admin-pages/admin-defense.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'action=open_final_defense'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    showNotification(`Final Defense opened! ${data.count} groups moved to pending for final defense.`, 'success');
+                    
+                    // Reload the page to show updated status
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showNotification('Error opening final defense: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error opening final defense. Please try again.', 'error');
+            });
         }
 
         function openModal(modalId) {

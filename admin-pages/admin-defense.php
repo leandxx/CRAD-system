@@ -24,11 +24,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         // Validate required fields
         if (empty($group_id) || empty($defense_date) || empty($start_time) || empty($end_time) || empty($room_id)) {
-            $error_message = "All fields are required for scheduling a defense.";
+            $_SESSION['error_message'] = "All fields are required for scheduling a defense.";
+            header("Location: admin-defense.php");
+            exit();
         } elseif (strtotime($defense_date) < strtotime(date('Y-m-d'))) {
-            $error_message = "Defense date cannot be in the past.";
+            $_SESSION['error_message'] = "Defense date cannot be in the past.";
+            header("Location: admin-defense.php");
+            exit();
         } elseif (strtotime($start_time) >= strtotime($end_time)) {
-            $error_message = "End time must be after start time.";
+            $_SESSION['error_message'] = "End time must be after start time.";
+            header("Location: admin-defense.php");
+            exit();
         } else {
             // Check if all group members have paid required fees
             $unpaid_check = "SELECT COUNT(*) as unpaid_count 
@@ -44,7 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $unpaid_data = mysqli_fetch_assoc($unpaid_result);
             
             if ($unpaid_data['unpaid_count'] > 0) {
-                $error_message = "Cannot schedule defense. Some group members have unpaid fees. Please verify payment status first.";
+                $_SESSION['error_message'] = "Cannot schedule defense. Some group members have unpaid fees. Please verify payment status first.";
+                header("Location: admin-defense.php");
+                exit();
             } else {
                 // Check room availability
                 $exclude_defense = '';
@@ -68,7 +76,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $availability_data = mysqli_fetch_assoc($availability_result);
                 
                 if ($availability_data['conflict_count'] > 0) {
-                    $error_message = "Room is not available during the selected time slot. Please choose a different time or room.";
+                    $_SESSION['error_message'] = "Room is not available during the selected time slot. Please choose a different time or room.";
+                    header("Location: admin-defense.php");
+                    exit();
                 } else {
 
         // Default status = scheduled
@@ -93,7 +103,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (mysqli_query($conn, $schedule_query)) {
                 $defense_id = $parent_id; // Use the existing defense ID
             } else {
-                $error_message = "Failed to update defense schedule: " . mysqli_error($conn);
+                $_SESSION['error_message'] = "Failed to update defense schedule: " . mysqli_error($conn);
+                header("Location: admin-defense.php");
+                exit();
             }
         } else {
             // Insert new defense schedule
@@ -104,11 +116,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (mysqli_query($conn, $schedule_query)) {
                 $defense_id = mysqli_insert_id($conn);
             } else {
-                $error_message = "Failed to create defense schedule: " . mysqli_error($conn);
+                $_SESSION['error_message'] = "Failed to create defense schedule: " . mysqli_error($conn);
+                header("Location: admin-defense.php");
+                exit();
             }
         }
 
-        if (empty($error_message)) {
+        if (empty($_SESSION['error_message'])) {
 
             // Delete existing panel members first (to prevent duplicates)
             mysqli_query($conn, "DELETE FROM defense_panel WHERE defense_id = '$defense_id'");
@@ -149,7 +163,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             header("Location: admin-defense.php");
             exit();
         } else {
-            $error_message = "Error scheduling defense: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error scheduling defense: " . mysqli_error($conn);
+            header("Location: admin-defense.php");
+            exit();
         }
                 }
             }
@@ -162,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (mysqli_query($conn, $update_query)) {
             $_SESSION['success_message'] = "Defense marked as failed. You can now schedule a redefense.";
         } else {
-            $error_message = "Error updating defense status: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
         }
         header("Location: admin-defense.php");
         exit();
@@ -174,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (mysqli_query($conn, $update_query)) {
             $_SESSION['success_message'] = "Defense marked as passed and completed.";
         } else {
-            $error_message = "Error updating defense status: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
         }
         header("Location: admin-defense.php");
         exit();
@@ -186,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (mysqli_query($conn, $update_query)) {
             $_SESSION['success_message'] = "Defense confirmed and ready for evaluation.";
         } else {
-            $error_message = "Error confirming defense: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error confirming defense: " . mysqli_error($conn);
         }
         header("Location: admin-defense.php");
         exit();
@@ -198,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (mysqli_query($conn, $update_query)) {
             $_SESSION['success_message'] = "Defense marked as completed.";
         } else {
-            $error_message = "Error updating defense status: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
         }
         header("Location: admin-defense.php");
         exit();
@@ -217,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $affected_rows = mysqli_affected_rows($conn);
             $_SESSION['success_message'] = "Updated $affected_rows overdue defense(s) to evaluation status.";
         } else {
-            $error_message = "Error updating overdue defenses: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error updating overdue defenses: " . mysqli_error($conn);
         }
         header("Location: admin-defense.php");
         exit();
@@ -238,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             header("Location: admin-defense.php");
             exit();
         } else {
-            $error_message = "Error deleting defense schedule: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error deleting defense schedule: " . mysqli_error($conn);
         }
     }
 
@@ -252,9 +268,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         // Validate required fields
         if (strtotime($defense_date) < strtotime(date('Y-m-d'))) {
-            $error_message = "Defense date cannot be in the past.";
+            $_SESSION['error_message'] = "Defense date cannot be in the past.";
+            header("Location: admin-defense.php");
+            exit();
         } elseif (strtotime($start_time) >= strtotime($end_time)) {
-            $error_message = "End time must be after start time.";
+            $_SESSION['error_message'] = "End time must be after start time.";
+            header("Location: admin-defense.php");
+            exit();
         } else {
             // Check room availability (exclude current defense from check)
             $availability_query = "SELECT COUNT(*) as conflict_count 
@@ -272,7 +292,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $availability_data = mysqli_fetch_assoc($availability_result);
             
             if ($availability_data['conflict_count'] > 0) {
-                $error_message = "Room is not available during the selected time slot. Please choose a different time or room.";
+                $_SESSION['error_message'] = "Room is not available during the selected time slot. Please choose a different time or room.";
+                header("Location: admin-defense.php");
+                exit();
             } else {
 
         // Update defense schedule (don't update group_id as it shouldn't change)
@@ -313,7 +335,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             header("Location: admin-defense.php");
             exit();
         } else {
-            $error_message = "Error updating defense schedule: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Error updating defense schedule: " . mysqli_error($conn);
+            header("Location: admin-defense.php");
+            exit();
         }
             }
         }
@@ -856,9 +880,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 <?php unset($_SESSION['defense_status_updated']); ?>
             <?php endif; ?>
             
-            <?php if (isset($error_message)): ?>
+            <?php if (isset($_SESSION['error_message'])): ?>
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                    <span class="block sm:inline"><?php echo $error_message; ?></span>
+                    <span class="block sm:inline"><?php echo $_SESSION['error_message']; ?></span>
                 </div>
             <?php endif; ?>
 
@@ -1325,6 +1349,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         </div>
                     </div>
                     <?php endforeach; ?>
+                    
+                    <?php if (empty($pending_by_program)): ?>
+                    <div class="bg-white rounded-lg shadow p-8 text-center">
+                        <i class="fas fa-graduation-cap text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-gray-500">No pending groups found. All groups have been scheduled for defense.</p>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 
                 <?php if (empty($defense_by_program)): ?>
@@ -1491,7 +1522,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                     <?php endforeach; ?>
                     
-                    <?php if (empty($confirmed_by_adviser)): ?>
+                    <?php if (empty($confirmed_by_program)): ?>
                     <div class="bg-white rounded-lg shadow p-8 text-center">
                         <i class="fas fa-check-circle text-4xl text-gray-400 mb-3"></i>
                         <p class="text-gray-500">No passed defenses awaiting evaluation</p>

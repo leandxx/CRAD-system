@@ -192,6 +192,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit();
     }
 
+    // Manual trigger to update all overdue defenses
+    if (isset($_POST['update_overdue_defenses'])) {
+        $current_datetime = date('Y-m-d H:i:s');
+        $update_query = "UPDATE defense_schedules 
+                        SET status = 'passed', 
+                            updated_at = NOW() 
+                        WHERE status = 'scheduled' 
+                        AND CONCAT(defense_date, ' ', end_time) <= '$current_datetime'";
+        
+        if (mysqli_query($conn, $update_query)) {
+            $affected_rows = mysqli_affected_rows($conn);
+            $_SESSION['success_message'] = "Updated $affected_rows overdue defense(s) to evaluation status.";
+        } else {
+            $error_message = "Error updating overdue defenses: " . mysqli_error($conn);
+        }
+        header("Location: admin-defense.php");
+        exit();
+    }
+
     if (isset($_POST['delete_schedule'])) {
         $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
 
@@ -340,6 +359,9 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
             
             // Log the status change
             error_log("Defense ID {$schedule['id']} automatically moved to evaluation. Defense time: $defense_datetime, Current time: $current_datetime");
+            
+            // Set a flag to refresh the page to show updated status
+            $_SESSION['defense_status_updated'] = true;
         } else {
             error_log("Error updating defense status: " . mysqli_error($conn));
         }
@@ -801,6 +823,14 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
             <?php endif; ?>
             
+            <?php if (isset($_SESSION['defense_status_updated'])): ?>
+                <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <span class="block sm:inline">Some defenses have been automatically moved to evaluation status. Please refresh the page to see the updated status.</span>
+                    <button onclick="location.reload()" class="ml-4 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Refresh Now</button>
+                </div>
+                <?php unset($_SESSION['defense_status_updated']); ?>
+            <?php endif; ?>
+            
             <?php if (isset($error_message)): ?>
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
                     <span class="block sm:inline"><?php echo $error_message; ?></span>
@@ -904,6 +934,12 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     <input type="text" id="searchInput" placeholder="Search proposals..." onkeyup="handleSearch()" class="pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
                                     <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                                 </div>
+                                <button onclick="updateOverdueDefenses()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105" title="Update overdue defenses to evaluation status">
+                                    <i class="fas fa-clock mr-2"></i> Update Overdue
+                                </button>
+                                <a href="setup_cron.php" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105" title="Setup automatic defense status updates">
+                                    <i class="fas fa-cog mr-2"></i> Auto Setup
+                                </a>
                                 <button onclick="toggleModal()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
                                     <i class="fas fa-plus mr-2"></i> Schedule Defense
                                 </button>
@@ -2180,6 +2216,17 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.innerHTML = `<input type="hidden" name="defense_id" value="${defenseId}"><input type="hidden" name="mark_failed" value="1">`;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+        
+        // Function to update overdue defenses
+        function updateOverdueDefenses() {
+            if (confirm('Update all overdue defenses to evaluation status? This will move all scheduled defenses that have passed their end time to the evaluation tab.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = `<input type="hidden" name="update_overdue_defenses" value="1">`;
                 document.body.appendChild(form);
                 form.submit();
             }

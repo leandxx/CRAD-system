@@ -35,6 +35,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['error_message'] = "End time must be after start time.";
             header("Location: admin-defense.php");
             exit();
+        } elseif ($defense_type == 'final') {
+            // Validate that group has completed pre-oral defense
+            $pre_oral_check = "SELECT COUNT(*) as pre_oral_completed 
+                              FROM defense_schedules 
+                              WHERE group_id = '$group_id' 
+                              AND defense_type = 'pre_oral' 
+                              AND status = 'completed'";
+            $pre_oral_result = mysqli_query($conn, $pre_oral_check);
+            $pre_oral_data = mysqli_fetch_assoc($pre_oral_result);
+            
+            if ($pre_oral_data['pre_oral_completed'] == 0) {
+                $_SESSION['error_message'] = "Group must complete pre-oral defense before scheduling final defense.";
+                header("Location: admin-defense.php");
+                exit();
+            }
+            
+            // Check if final defense already exists
+            $final_check = "SELECT COUNT(*) as final_exists 
+                           FROM defense_schedules 
+                           WHERE group_id = '$group_id' 
+                           AND defense_type = 'final' 
+                           AND status IN ('scheduled', 'passed', 'completed')";
+            $final_result = mysqli_query($conn, $final_check);
+            $final_data = mysqli_fetch_assoc($final_result);
+            
+            if ($final_data['final_exists'] > 0) {
+                $_SESSION['error_message'] = "Final defense already exists for this group.";
+                header("Location: admin-defense.php");
+                exit();
+            }
         } else {
             // Check if all group members have paid required fees
             $unpaid_check = "SELECT COUNT(*) as unpaid_count 
@@ -433,6 +463,29 @@ $groups = [];
 
 while ($group = mysqli_fetch_assoc($groups_result)) {
     $groups[] = $group;
+}
+
+// Get groups eligible for final defense (completed pre-oral defense)
+$final_defense_eligible_query = "SELECT g.*, p.title as proposal_title,
+                                ds.id as pre_oral_defense_id,
+                                ds.defense_date as pre_oral_date
+                                FROM groups g 
+                                JOIN proposals p ON g.id = p.group_id 
+                                JOIN defense_schedules ds ON g.id = ds.group_id
+                                WHERE p.status IN ('Completed', 'Approved')
+                                AND ds.defense_type = 'pre_oral' 
+                                AND ds.status = 'completed'
+                                AND g.id NOT IN (
+                                    SELECT group_id FROM defense_schedules 
+                                    WHERE defense_type = 'final' 
+                                    AND status IN ('scheduled', 'passed', 'completed')
+                                )
+                                ORDER BY g.name";
+$final_defense_eligible_result = mysqli_query($conn, $final_defense_eligible_query);
+$final_defense_eligible_groups = [];
+
+while ($group = mysqli_fetch_assoc($final_defense_eligible_result)) {
+    $final_defense_eligible_groups[] = $group;
 }
 
 // Get all faculty members (Admin and Faculty roles)
@@ -1357,6 +1410,47 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                     <?php endif; ?>
                 </div>
+                
+                <!-- Final Defense Eligible Groups -->
+                <?php if (!empty($final_defense_eligible_groups)): ?>
+                <div class="bg-white rounded-xl shadow-sm border border-purple-200 mb-8">
+                    <div class="p-4 border-b border-purple-200">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-purple-600">
+                                <i class="fas fa-graduation-cap mr-2"></i>Final Defense Eligible Groups
+                                <span class="text-sm text-gray-500 ml-2">(<?php echo count($final_defense_eligible_groups); ?> groups ready for final defense)</span>
+                            </h3>
+                            <i class="fas fa-chevron-down transition-transform cursor-pointer" id="final-defense-icon" onclick="toggleFinalDefenseSection()"></i>
+                        </div>
+                    </div>
+                    <div class="p-4 hidden" id="final-defense-content">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <?php foreach ($final_defense_eligible_groups as $group): ?>
+                            <div class="bg-gradient-to-br from-purple-50 to-indigo-100 border border-purple-200 rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="flex-1">
+                                        <h4 class="font-semibold text-gray-800 text-sm"><?php echo $group['name']; ?></h4>
+                                        <p class="text-xs text-gray-600 mt-1"><?php echo $group['proposal_title']; ?></p>
+                                        <p class="text-xs text-purple-600 mt-1">
+                                            <i class="fas fa-check-circle mr-1"></i>Pre-oral completed on <?php echo date('M j, Y', strtotime($group['pre_oral_date'])); ?>
+                                        </p>
+                                    </div>
+                                    <div class="ml-2">
+                                        <span class="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full">Ready</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex gap-2">
+                                    <button onclick="scheduleFinalDefenseForGroup(<?php echo $group['id']; ?>, '<?php echo addslashes($group['name']); ?>', '<?php echo addslashes($group['proposal_title']); ?>', <?php echo $group['pre_oral_defense_id']; ?>)" class="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105">
+                                        <i class="fas fa-graduation-cap mr-1"></i>Schedule Final Defense
+                                    </button>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
                 
                 <?php if (empty($defense_by_program)): ?>
                 <div class="bg-white rounded-lg shadow p-8 text-center">
@@ -3325,8 +3419,10 @@ window.populateEditForm = populateEditForm;
 window.switchEditPanelTab = switchEditPanelTab;
 window.viewUpcomingDefense = viewUpcomingDefense;
 window.scheduleDefenseForGroup = scheduleDefenseForGroup;
+window.scheduleFinalDefenseForGroup = scheduleFinalDefenseForGroup;
 window.scheduleFinalDefense = scheduleFinalDefense;
 window.scheduleRedefense = scheduleRedefense;
+window.toggleFinalDefenseSection = toggleFinalDefenseSection;
 
 /* ========= PROGRAM/CLUSTER TOGGLE FUNCTIONS ========= */
 function toggleFailedProgram(program) {
@@ -3499,6 +3595,33 @@ function scheduleDefenseForGroup(groupId, groupName, proposalTitle) {
     filterPanelMembersByGroup(groupId);
     
     toggleModal();
+}
+
+function scheduleFinalDefenseForGroup(groupId, groupName, proposalTitle, preOralDefenseId) {
+    document.getElementById('defense_type').value = 'final';
+    document.getElementById('parent_defense_id').value = preOralDefenseId;
+    document.getElementById('group_id').value = groupId;
+    document.getElementById('selected_group_display').textContent = groupName + ' - ' + proposalTitle;
+    document.getElementById('redefense_reason_div').classList.add('hidden');
+    document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Schedule Final Defense';
+    
+    // Filter panel members by group's program
+    filterPanelMembersByGroup(groupId);
+    
+    toggleModal();
+}
+
+function toggleFinalDefenseSection() {
+    const content = document.getElementById('final-defense-content');
+    const icon = document.getElementById('final-defense-icon');
+    
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.classList.add('hidden');
+        icon.style.transform = 'rotate(0deg)';
+    }
 }
 
 /* ========= PANEL MEMBER FILTERING ========= */

@@ -3539,12 +3539,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof switchPanelTab === 'function') switchPanelTab('chairperson');
     switchEditPanelTab('edit_chairperson');
 
-    // Refresh availability tab if needed
-    <?php if (isset($_SESSION['refresh_availability'])): ?>
-        if (typeof switchMainTab === 'function') switchMainTab('availability');
-        <?php unset($_SESSION['refresh_availability']); ?>
-    <?php endif; ?>
 });
+
+<?php if (isset($_SESSION['refresh_availability'])): ?>
+<script>
+if (typeof switchMainTab === 'function') switchMainTab('availability');
+</script>
+<?php unset($_SESSION['refresh_availability']); ?>
+<?php endif; ?>
 
 // ========= NEW DEFENSE CONFIRMATION FUNCTIONS =========
 function markDefensePassed(defenseId) {

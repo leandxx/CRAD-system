@@ -1616,26 +1616,64 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
                 
                 <div class="space-y-6 mb-8 animate-fade-in">
-                    <?php foreach ($completed_by_program as $program => $clusters): ?>
+                    <?php foreach ($completed_by_program as $program => $program_data): ?>
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                         <div class="p-4 border-b border-gray-200 cursor-pointer" onclick="toggleCompletedProgram('<?php echo $program; ?>')">
                             <div class="flex items-center justify-between">
-                                <h3 class="text-lg font-semibold text-green-700"><?php echo $program; ?> - Completed Defenses</h3>
+                                <h3 class="text-lg font-semibold text-green-700">
+                                    <i class="fas fa-graduation-cap mr-2"></i><?php echo $program; ?>
+                                    <span class="text-sm text-gray-500 ml-2">
+                                        <?php 
+                                        $total_completed = 0;
+                                        foreach ($program_data['advisers'] as $adviser_id => $adviser_data) {
+                                            foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
+                                                $total_completed += count($cluster_data['defenses']);
+                                            }
+                                        }
+                                        echo "($total_completed completed defense" . ($total_completed > 1 ? 's' : '') . ")";
+                                        ?>
+                                    </span>
+                                </h3>
                                 <i class="fas fa-chevron-down transition-transform" id="completed-icon-<?php echo $program; ?>"></i>
                             </div>
                         </div>
                         <div class="program-content" id="completed-content-<?php echo $program; ?>" style="display: none;">
-                            <?php foreach ($clusters as $cluster => $schedules): ?>
+                            <?php foreach ($program_data['advisers'] as $adviser_id => $adviser_data): ?>
                             <div class="border-b border-gray-100 last:border-b-0">
-                                <div class="p-3 bg-green-50 cursor-pointer" onclick="toggleCompletedCluster('<?php echo $program . '-' . $cluster; ?>')">
+                                <div class="p-3 bg-green-50 cursor-pointer" onclick="toggleCompletedAdviser('<?php echo $program . '-' . $adviser_id; ?>')">
                                     <div class="flex items-center justify-between">
-                                        <h4 class="font-medium text-green-700">Cluster <?php echo $cluster; ?></h4>
-                                        <i class="fas fa-chevron-down transition-transform text-sm" id="completed-icon-<?php echo $program . '-' . $cluster; ?>"></i>
+                                        <h4 class="font-medium text-green-700">
+                                            <i class="fas fa-user-tie mr-2"></i><?php echo $adviser_data['adviser_name']; ?>
+                                            <span class="text-sm text-gray-500 ml-2">
+                                                <?php 
+                                                $adviser_completed = 0;
+                                                foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
+                                                    $adviser_completed += count($cluster_data['defenses']);
+                                                }
+                                                echo "($adviser_completed completed defense" . ($adviser_completed > 1 ? 's' : '') . ")";
+                                                ?>
+                                            </span>
+                                        </h4>
+                                        <i class="fas fa-chevron-down transition-transform text-sm" id="completed-adviser-icon-<?php echo $program . '-' . $adviser_id; ?>"></i>
                                     </div>
                                 </div>
-                                <div class="cluster-content" id="completed-content-<?php echo $program . '-' . $cluster; ?>" style="display: none;">
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
-                                        <?php foreach ($schedules as $completed): ?>
+                                <div class="adviser-content" id="completed-adviser-content-<?php echo $program . '-' . $adviser_id; ?>" style="display: none;">
+                                    <?php foreach ($adviser_data['clusters'] as $cluster => $cluster_data): ?>
+                                    <div class="border-b border-gray-100 last:border-b-0">
+                                        <div class="p-3 bg-green-50 cursor-pointer" onclick="toggleCompletedCluster('<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>')">
+                                            <div class="flex items-center justify-between">
+                                                <h5 class="font-medium text-green-600">
+                                                    <i class="fas fa-layer-group mr-2"></i>Cluster <?php echo $cluster; ?>
+                                                    <span class="text-sm text-gray-500 ml-2">
+                                                        (<?php echo count($cluster_data['defenses']); ?> completed defense<?php echo count($cluster_data['defenses']) > 1 ? 's' : ''; ?>)
+                                                    </span>
+                                                </h5>
+                                                <i class="fas fa-chevron-down transition-transform text-sm" id="completed-cluster-icon-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>"></i>
+                                            </div>
+                                        </div>
+                                        <div class="cluster-content" id="completed-cluster-content-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>" style="display: none;">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                                                <?php foreach ($cluster_data['defenses'] as $completed): ?>
                                         <div class="defense-card bg-gradient-to-br from-white via-green-50 to-emerald-100 border border-green-200 rounded-2xl shadow-lg p-6 relative overflow-hidden">
                                             <div class="absolute top-0 right-0 w-20 h-20 bg-green-400/10 rounded-full -translate-y-10 translate-x-10"></div>
                                             <div class="absolute bottom-0 left-0 w-16 h-16 bg-emerald-400/10 rounded-full translate-y-8 -translate-x-8"></div>
@@ -1695,6 +1733,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
+                                        </div>
                                         </div>
                                         <?php endforeach; ?>
                                     </div>

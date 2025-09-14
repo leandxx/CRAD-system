@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             @$conn->query("ALTER TABLE proposals ADD COLUMN final_defense_open TINYINT(1) NOT NULL DEFAULT 0 AFTER reviewed_at");
         }
 
+
         // Update all proposals
         $stmt = $conn->prepare("UPDATE proposals SET final_defense_open = ?");
         $stmt->bind_param("i", $open);

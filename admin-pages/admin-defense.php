@@ -934,12 +934,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     <input type="text" id="searchInput" placeholder="Search proposals..." onkeyup="handleSearch()" class="pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
                                     <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                                 </div>
-                                <button onclick="updateOverdueDefenses()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105" title="Update overdue defenses to evaluation status">
-                                    <i class="fas fa-clock mr-2"></i> Update Overdue
+                                <button onclick="updateOverdueDefenses()" id="updateOverdueBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105" title="Update overdue defenses to evaluation status">
+                                    <i class="fas fa-clock mr-2"></i> <span id="overdueText">Update Overdue</span> <span id="overdueCount" class="ml-1 bg-red-500 text-white text-xs rounded-full px-2 py-1 hidden">0</span>
                                 </button>
-                                <a href="setup_cron.php" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105" title="Setup automatic defense status updates">
-                                    <i class="fas fa-cog mr-2"></i> Auto Setup
-                                </a>
                                 <button onclick="toggleModal()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
                                     <i class="fas fa-plus mr-2"></i> Schedule Defense
                                 </button>
@@ -1018,7 +1015,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <!-- Scheduled Defense Card -->
                     <div class="defense-card bg-gradient-to-br from-white via-blue-50 to-indigo-100 border border-blue-200 rounded-2xl shadow-lg p-6 flex flex-col justify-between relative overflow-hidden" 
                          data-status="<?php echo $schedule['status']; ?>" 
-                         data-defense-id="<?php echo $schedule['id']; ?>">
+                         data-defense-id="<?php echo $schedule['id']; ?>"
+                         data-defense-date="<?php echo $schedule['defense_date']; ?>"
+                         data-end-time="<?php echo $schedule['end_time']; ?>">
                         
                         <!-- Decorative elements -->
                         <div class="absolute top-0 right-0 w-20 h-20 bg-blue-400/10 rounded-full -translate-y-10 translate-x-10"></div>
@@ -2223,7 +2222,34 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         
         // Function to update overdue defenses
         function updateOverdueDefenses() {
-            if (confirm('Update all overdue defenses to evaluation status? This will move all scheduled defenses that have passed their end time to the evaluation tab.')) {
+            // Count overdue defenses first
+            const scheduledDefenses = document.querySelectorAll('[data-status="scheduled"]');
+            const currentTime = new Date();
+            let overdueCount = 0;
+            
+            scheduledDefenses.forEach(defense => {
+                const defenseDate = defense.getAttribute('data-defense-date');
+                const endTime = defense.getAttribute('data-end-time');
+                if (defenseDate && endTime) {
+                    const defenseEndTime = new Date(defenseDate + ' ' + endTime);
+                    if (defenseEndTime <= currentTime) {
+                        overdueCount++;
+                    }
+                }
+            });
+            
+            if (overdueCount === 0) {
+                alert('No overdue defenses found. All scheduled defenses are still within their time limits.');
+                return;
+            }
+            
+            if (confirm(`Found ${overdueCount} overdue defense(s). Update them to evaluation status? This will move them to the evaluation tab.`)) {
+                // Show loading state
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Updating...';
+                button.disabled = true;
+                
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.innerHTML = `<input type="hidden" name="update_overdue_defenses" value="1">`;
@@ -3570,6 +3596,74 @@ window.toggleConfirmedProgram = toggleConfirmedProgram;
 window.toggleConfirmedCluster = toggleConfirmedCluster;
 window.toggleCompletedProgram = toggleCompletedProgram;
 window.toggleCompletedCluster = toggleCompletedCluster;
+
+// Auto-refresh mechanism to check for overdue defenses
+let lastCheckTime = Date.now();
+const CHECK_INTERVAL = 30000; // Check every 30 seconds
+
+function checkForOverdueDefenses() {
+    const now = Date.now();
+    if (now - lastCheckTime >= CHECK_INTERVAL) {
+        lastCheckTime = now;
+        
+        // Check if there are any scheduled defenses that should be overdue
+        const scheduledDefenses = document.querySelectorAll('[data-status="scheduled"]');
+        const currentTime = new Date();
+        
+        let overdueCount = 0;
+        scheduledDefenses.forEach(defense => {
+            const defenseDate = defense.getAttribute('data-defense-date');
+            const endTime = defense.getAttribute('data-end-time');
+            if (defenseDate && endTime) {
+                const defenseEndTime = new Date(defenseDate + ' ' + endTime);
+                if (defenseEndTime <= currentTime) {
+                    overdueCount++;
+                }
+            }
+        });
+        
+        // Update the button to show count
+        const overdueCountElement = document.getElementById('overdueCount');
+        const updateOverdueBtn = document.getElementById('updateOverdueBtn');
+        
+        if (overdueCount > 0) {
+            overdueCountElement.textContent = overdueCount;
+            overdueCountElement.classList.remove('hidden');
+            updateOverdueBtn.classList.add('animate-pulse');
+            
+            // Show a subtle notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-orange-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            notification.innerHTML = `<i class="fas fa-clock mr-2"></i>${overdueCount} defense(s) are overdue. Click "Update Overdue" to move them to evaluation.`;
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 5000);
+        } else {
+            overdueCountElement.classList.add('hidden');
+            updateOverdueBtn.classList.remove('animate-pulse');
+        }
+    }
+}
+
+// Start the auto-check
+setInterval(checkForOverdueDefenses, 10000); // Check every 10 seconds
+
+// Run check immediately when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    checkForOverdueDefenses();
+});
+
+// Also check when the page becomes visible (user switches back to tab)
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+        checkForOverdueDefenses();
+    }
+});
 </script>
 
 </body>

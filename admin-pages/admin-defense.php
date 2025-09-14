@@ -318,6 +318,7 @@ $defense_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, r.roo
                  LEFT JOIN proposals p ON g.id = p.group_id
                  LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
                  LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
+                 WHERE ds.status = 'scheduled' AND CONCAT(ds.defense_date, ' ', ds.end_time) > NOW()
                  GROUP BY ds.id
                  ORDER BY g.program, c.cluster, ds.defense_date, ds.start_time";
 $defense_result = mysqli_query($conn, $defense_query);
@@ -338,35 +339,6 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
         $panel_members[] = $panel;
     }
 
-    // If defense has finished → mark as passed (ready for evaluation)
-    $current_datetime = date('Y-m-d H:i:s');
-    $defense_datetime = $schedule['defense_date'] . ' ' . $schedule['end_time'];
-    
-    // Check if defense has ended and update status
-    if ($schedule['status'] == 'scheduled' && strtotime($defense_datetime) <= strtotime($current_datetime)) {
-        // Update status to passed (ready for evaluation)
-        $update_query = "UPDATE defense_schedules 
-                        SET status = 'passed', 
-                            updated_at = NOW() 
-                        WHERE id = '{$schedule['id']}'";
-        if (mysqli_query($conn, $update_query)) {
-            $schedule['status'] = 'passed';
-            
-            // Send notification
-            $notification_title = "Defense Ready for Evaluation";
-            $notification_message = "The defense for group {$schedule['group_name']} has concluded and is ready for evaluation.";
-            notifyAllUsers($conn, $notification_title, $notification_message, 'info');
-            
-            // Log the status change
-            error_log("Defense ID {$schedule['id']} automatically moved to evaluation. Defense time: $defense_datetime, Current time: $current_datetime");
-            
-            // Set a flag to refresh the page to show updated status
-            $_SESSION['defense_status_updated'] = true;
-        } else {
-            error_log("Error updating defense status: " . mysqli_error($conn));
-        }
-    }
-
     $schedule['panel_members'] = $panel_members;
     $defense_schedules[] = $schedule;
     
@@ -374,6 +346,38 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
     $program = $schedule['program'] ?: 'Unknown';
     $cluster = $schedule['cluster'] ?: 'No Cluster';
     $defense_by_program[$program][$cluster][] = $schedule;
+}
+
+// Handle automatic status updates for overdue defenses
+$current_datetime = date('Y-m-d H:i:s');
+$overdue_query = "SELECT ds.id, ds.group_id, g.name as group_name, ds.defense_date, ds.end_time
+                  FROM defense_schedules ds 
+                  LEFT JOIN groups g ON ds.group_id = g.id 
+                  WHERE ds.status = 'scheduled' 
+                  AND CONCAT(ds.defense_date, ' ', ds.end_time) <= '$current_datetime'";
+$overdue_result = mysqli_query($conn, $overdue_query);
+
+while ($overdue_defense = mysqli_fetch_assoc($overdue_result)) {
+    // Update status to passed (ready for evaluation)
+    $update_query = "UPDATE defense_schedules 
+                    SET status = 'passed', 
+                        updated_at = NOW() 
+                    WHERE id = '{$overdue_defense['id']}'";
+    if (mysqli_query($conn, $update_query)) {
+        // Send notification
+        $notification_title = "Defense Ready for Evaluation";
+        $notification_message = "The defense for group {$overdue_defense['group_name']} has concluded and is ready for evaluation.";
+        notifyAllUsers($conn, $notification_title, $notification_message, 'info');
+        
+        // Log the status change
+        $defense_datetime = $overdue_defense['defense_date'] . ' ' . $overdue_defense['end_time'];
+        error_log("Defense ID {$overdue_defense['id']} automatically moved to evaluation. Defense time: $defense_datetime, Current time: $current_datetime");
+        
+        // Set a flag to refresh the page to show updated status
+        $_SESSION['defense_status_updated'] = true;
+    } else {
+        error_log("Error updating defense status: " . mysqli_error($conn));
+    }
 }
 
 // Get all groups with completed/approved proposals
@@ -575,7 +579,7 @@ while ($completed = mysqli_fetch_assoc($completed_result)) {
 
 // Get stats for dashboard
 $total_proposals = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM proposals WHERE status IN ('Completed', 'Approved')"));
-$scheduled_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'scheduled'"));
+$scheduled_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'scheduled' AND CONCAT(defense_date, ' ', end_time) > NOW()"));
 $confirmed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'passed'"));
 $pending_defenses = $total_proposals - $scheduled_defenses;
 $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status = 'completed'"));
@@ -825,7 +829,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             
             <?php if (isset($_SESSION['defense_status_updated'])): ?>
                 <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4" role="alert">
-                    <span class="block sm:inline">Some defenses have been automatically moved to evaluation status. Please refresh the page to see the updated status.</span>
+                    <span class="block sm:inline">Some defenses have been automatically moved to evaluation status. They will no longer appear in the Defense Schedule tab.</span>
                     <button onclick="location.reload()" class="ml-4 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Refresh Now</button>
                 </div>
                 <?php unset($_SESSION['defense_status_updated']); ?>
@@ -1260,6 +1264,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                     <?php endforeach; ?>
                 </div>
+                
+                <?php if (empty($defense_by_program)): ?>
+                <div class="bg-white rounded-lg shadow p-8 text-center">
+                    <i class="far fa-calendar-alt text-4xl text-gray-400 mb-3"></i>
+                    <p class="text-gray-500">No scheduled defenses found. All defenses have either been completed or moved to evaluation.</p>
+                </div>
+                <?php endif; ?>
             </div>
             
             <!-- Room Availability Cards -->
@@ -2243,7 +2254,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 return;
             }
             
-            if (confirm(`Found ${overdueCount} overdue defense(s). Update them to evaluation status? This will move them to the evaluation tab.`)) {
+            if (confirm(`Found ${overdueCount} overdue defense(s). Update them to evaluation status? This will move them from the Defense Schedule tab to the Defense Evaluation tab.`)) {
                 // Show loading state
                 const button = event.target;
                 const originalText = button.innerHTML;

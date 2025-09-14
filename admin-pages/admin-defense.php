@@ -1039,8 +1039,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <button onclick="updateOverdueDefenses()" id="updateOverdueBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105" title="Update overdue defenses to evaluation status">
                                     <i class="fas fa-clock mr-2"></i> <span id="overdueText">Update Overdue</span> <span id="overdueCount" class="ml-1 bg-red-500 text-white text-xs rounded-full px-2 py-1 hidden">0</span>
                                 </button>
-                                <button onclick="openDefenseTypeSelectionModal()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
-                                    <i class="fas fa-cog mr-2"></i> Enable Type of Defense
+                                <button onclick="scrollToGroupsSection()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
+                                    <i class="fas fa-users mr-2"></i> Schedule Defense
                                 </button>
                             </div>
                         </div>
@@ -2062,62 +2062,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         </main>  <!-- Close main tag here -->
     </div>    
 
-    <!-- Defense Type Selection Modal -->
-    <div id="defenseTypeSelectionModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
-        <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
-            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            <div class="inline-block bg-gradient-to-br from-white via-blue-50 to-indigo-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-md w-full modal-content border-0">
-                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 border-0">
-                    <h3 class="text-xl font-bold flex items-center">
-                        <div class="bg-white/20 p-3 rounded-lg mr-4">
-                            <i class="fas fa-cog text-white text-lg"></i>
-                        </div>
-                        Enable Type of Defense
-                    </h3>
-                    <p class="text-blue-100 mt-2">Choose the type of defense you want to enable for scheduling.</p>
-                </div>
-                <div class="p-6">
-                    <div class="space-y-4">
-                        <!-- Pre-Oral Defense Option -->
-                        <button onclick="selectDefenseType('pre_oral')" class="w-full p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all duration-300 group">
-                            <div class="flex items-center">
-                                <div class="bg-blue-500 p-3 rounded-lg mr-4 group-hover:bg-blue-600 transition-colors">
-                                    <i class="fas fa-graduation-cap text-white text-xl"></i>
-                                </div>
-                                <div class="text-left">
-                                    <h4 class="font-semibold text-gray-800 text-lg">Pre-Oral Defense</h4>
-                                    <p class="text-gray-600 text-sm mt-1">Enable scheduling for initial defense sessions</p>
-                                </div>
-                                <i class="fas fa-chevron-right text-gray-400 ml-auto group-hover:text-blue-500 transition-colors"></i>
-                            </div>
-                        </button>
-                        
-                        <!-- Final Defense Option -->
-                        <button onclick="selectDefenseType('final')" class="w-full p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl hover:from-purple-100 hover:to-pink-100 hover:border-purple-300 transition-all duration-300 group">
-                            <div class="flex items-center">
-                                <div class="bg-purple-500 p-3 rounded-lg mr-4 group-hover:bg-purple-600 transition-colors">
-                                    <i class="fas fa-trophy text-white text-xl"></i>
-                                </div>
-                                <div class="text-left">
-                                    <h4 class="font-semibold text-gray-800 text-lg">Final Defense</h4>
-                                    <p class="text-gray-600 text-sm mt-1">Enable scheduling for final defense sessions</p>
-                                </div>
-                                <i class="fas fa-chevron-right text-gray-400 ml-auto group-hover:text-purple-500 transition-colors"></i>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
-                    <button onclick="closeModal('defenseTypeSelectionModal')" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors">
-                        Cancel
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Schedule Defense Modal -->
     <div id="proposalModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
         <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
@@ -2515,32 +2459,15 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         }
 
         // ===== MODAL FUNCTIONS =====
-        function openDefenseTypeSelectionModal() {
-            // Open the defense type selection modal
-            openModal('defenseTypeSelectionModal');
-        }
-
-        function selectDefenseType(defenseType) {
-            // Close the selection modal
-            closeModal('defenseTypeSelectionModal');
-            
-            // Set up the scheduling modal based on defense type
-            document.getElementById('defense_type').value = defenseType;
-            document.getElementById('parent_defense_id').value = '';
-            document.getElementById('group_id').value = '';
-            document.getElementById('selected_group_display').textContent = 'No group selected';
-            document.getElementById('redefense_reason_div').classList.add('hidden');
-            
-            if (defenseType === 'pre_oral') {
-                document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Enable Pre-Oral Defense';
-                document.getElementById('modal-description').textContent = 'Schedule a pre-oral defense session for groups with approved proposals.';
-            } else if (defenseType === 'final') {
-                document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-trophy text-white text-sm"></i></div>Enable Final Defense';
-                document.getElementById('modal-description').textContent = 'Schedule a final defense session for groups who have completed pre-oral defense.';
+        function scrollToGroupsSection() {
+            // Scroll to the groups section where defense scheduling happens
+            const groupsSection = document.querySelector('.space-y-6');
+            if (groupsSection) {
+                groupsSection.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
             }
-            
-            // Open the scheduling modal
-            openModal('proposalModal');
         }
 
         function openModal(modalId) {
@@ -3525,8 +3452,7 @@ window.scheduleFinalDefense = scheduleFinalDefense;
 window.scheduleRedefense = scheduleRedefense;
 window.toggleFinalDefenseSection = toggleFinalDefenseSection;
 window.openFinalDefenseModal = openFinalDefenseModal;
-window.openDefenseTypeSelectionModal = openDefenseTypeSelectionModal;
-window.selectDefenseType = selectDefenseType;
+window.scrollToGroupsSection = scrollToGroupsSection;
 
 /* ========= PROGRAM/CLUSTER TOGGLE FUNCTIONS ========= */
 function toggleFailedProgram(program) {

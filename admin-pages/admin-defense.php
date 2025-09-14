@@ -1031,7 +1031,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <button onclick="filterStatus('scheduled')" data-filter="scheduled" class="filter-btn px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold transition-all hover:scale-105 hover:bg-gray-200">Scheduled</button>
                                 <button onclick="filterStatus('pending')" data-filter="pending" class="filter-btn px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold transition-all hover:scale-105 hover:bg-gray-200">Pending</button>
                             </div>
-                            <div class="flex gap-3">
+                            <div class="flex gap-3 relative z-50">
                                 <div class="relative">
                                     <input type="text" id="searchInput" placeholder="Search proposals..." onkeyup="handleSearch()" class="pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
                                     <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -1039,15 +1039,15 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <button onclick="updateOverdueDefenses()" id="updateOverdueBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105" title="Update overdue defenses to evaluation status">
                                     <i class="fas fa-clock mr-2"></i> <span id="overdueText">Update Overdue</span> <span id="overdueCount" class="ml-1 bg-red-500 text-white text-xs rounded-full px-2 py-1 hidden">0</span>
                                 </button>
-                                <div class="relative group">
+                                <div class="relative group z-50">
                                     <button onclick="toggleDefenseTypeDropdown()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
                                         <i class="fas fa-cog mr-2"></i> Enable Type of Defense
                                         <i class="fas fa-chevron-down ml-2 text-sm"></i>
                                     </button>
                                     
                                     <!-- Dropdown Menu -->
-                                    <div id="defenseTypeDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-                                        <div class="py-2">
+                                    <div id="defenseTypeDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-[9999] transform -translate-y-2 group-hover:translate-y-0 overflow-hidden">
+                                        <div class="py-2 relative z-[10000]">
                                             <button onclick="openDefenseModal('pre_oral')" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center transition-colors">
                                                 <i class="fas fa-graduation-cap mr-3 text-blue-500"></i>
                                                 <div>
@@ -1116,7 +1116,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
 
                 <!-- Cards Grid -->
-                <div class="space-y-6">
+                <div class="space-y-6 relative z-10">
                     <?php foreach ($defense_by_program as $program => $program_data): ?>
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                         <div class="p-4 border-b border-gray-200 cursor-pointer" onclick="toggleProgram('<?php echo $program; ?>')">

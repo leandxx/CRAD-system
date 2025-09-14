@@ -2482,6 +2482,31 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         }
 
         // ===== MODAL FUNCTIONS =====
+        function openDefenseModal(defenseType) {
+            // Close dropdown
+            const dropdown = document.getElementById('defenseTypeDropdown');
+            dropdown.classList.add('opacity-0', 'invisible');
+            dropdown.classList.remove('opacity-100', 'visible');
+            
+            // Set up the modal based on defense type
+            document.getElementById('defense_type').value = defenseType;
+            document.getElementById('parent_defense_id').value = '';
+            document.getElementById('group_id').value = '';
+            document.getElementById('selected_group_display').textContent = 'No group selected';
+            document.getElementById('redefense_reason_div').classList.add('hidden');
+            
+            if (defenseType === 'pre_oral') {
+                document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Enable Pre-Oral Defense';
+                document.getElementById('modal-description').textContent = 'Schedule a pre-oral defense session for groups with approved proposals.';
+            } else if (defenseType === 'final') {
+                document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-trophy text-white text-sm"></i></div>Enable Final Defense';
+                document.getElementById('modal-description').textContent = 'Schedule a final defense session for groups who have completed pre-oral defense.';
+            }
+            
+            // Open the modal
+            openModal('proposalModal');
+        }
+
         function openModal(modalId) {
             const modal = document.getElementById(modalId);
             if (modal) {
@@ -3352,30 +3377,6 @@ function toggleDefenseTypeDropdown() {
     }
 }
 
-function openDefenseModal(defenseType) {
-    // Close dropdown
-    const dropdown = document.getElementById('defenseTypeDropdown');
-    dropdown.classList.add('opacity-0', 'invisible');
-    dropdown.classList.remove('opacity-100', 'visible');
-    
-    // Set up the modal based on defense type
-    document.getElementById('defense_type').value = defenseType;
-    document.getElementById('parent_defense_id').value = '';
-    document.getElementById('group_id').value = '';
-    document.getElementById('selected_group_display').textContent = 'No group selected';
-    document.getElementById('redefense_reason_div').classList.add('hidden');
-    
-    if (defenseType === 'pre_oral') {
-        document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Enable Pre-Oral Defense';
-        document.getElementById('modal-description').textContent = 'Schedule a pre-oral defense session for groups with approved proposals.';
-    } else if (defenseType === 'final') {
-        document.getElementById('modal-title').innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-trophy text-white text-sm"></i></div>Enable Final Defense';
-        document.getElementById('modal-description').textContent = 'Schedule a final defense session for groups who have completed pre-oral defense.';
-    }
-    
-    // Open the modal
-    openModal('proposalModal');
-}
 
 function openFinalDefenseModal() {
     // Set up the modal for final defense

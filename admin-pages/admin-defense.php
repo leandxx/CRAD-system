@@ -1039,9 +1039,32 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <button onclick="updateOverdueDefenses()" id="updateOverdueBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105" title="Update overdue defenses to evaluation status">
                                     <i class="fas fa-clock mr-2"></i> <span id="overdueText">Update Overdue</span> <span id="overdueCount" class="ml-1 bg-red-500 text-white text-xs rounded-full px-2 py-1 hidden">0</span>
                                 </button>
-                                <button onclick="scrollToGroupsSection()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
-                                    <i class="fas fa-users mr-2"></i> Schedule Defense
-                                </button>
+                                <div class="relative group">
+                                    <button onclick="toggleDefenseTypeDropdown()" class="gradient-blue text-white px-6 py-3 rounded-xl flex items-center font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105">
+                                        <i class="fas fa-play mr-2"></i> Open Defense
+                                        <i class="fas fa-chevron-down ml-2 text-sm"></i>
+                                    </button>
+                                    
+                                    <!-- Defense Type Dropdown -->
+                                    <div id="defenseTypeDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-[9999] transform -translate-y-2 group-hover:translate-y-0 overflow-hidden">
+                                        <div class="py-2 relative z-[10000]">
+                                            <button onclick="openDefenseType('pre_oral')" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center transition-colors">
+                                                <i class="fas fa-graduation-cap mr-3 text-blue-500"></i>
+                                                <div>
+                                                    <div class="font-medium">Pre-Oral Defense</div>
+                                                    <div class="text-sm text-gray-500">Open pre-oral defense for all groups</div>
+                                                </div>
+                                            </button>
+                                            <button onclick="openDefenseType('final')" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-700 flex items-center transition-colors">
+                                                <i class="fas fa-trophy mr-3 text-purple-500"></i>
+                                                <div>
+                                                    <div class="font-medium">Final Defense</div>
+                                                    <div class="text-sm text-gray-500">Open final defense for completed pre-oral groups</div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2459,8 +2482,34 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         }
 
         // ===== MODAL FUNCTIONS =====
-        function scrollToGroupsSection() {
-            // Scroll to the groups section where defense scheduling happens
+        function toggleDefenseTypeDropdown() {
+            const dropdown = document.getElementById('defenseTypeDropdown');
+            if (dropdown.classList.contains('opacity-0')) {
+                dropdown.classList.remove('opacity-0', 'invisible');
+                dropdown.classList.add('opacity-100', 'visible');
+            } else {
+                dropdown.classList.add('opacity-0', 'invisible');
+                dropdown.classList.remove('opacity-100', 'visible');
+            }
+        }
+
+        function openDefenseType(defenseType) {
+            // Close dropdown
+            const dropdown = document.getElementById('defenseTypeDropdown');
+            dropdown.classList.add('opacity-0', 'invisible');
+            dropdown.classList.remove('opacity-100', 'visible');
+            
+            if (defenseType === 'pre_oral') {
+                // Open pre-oral defense for all groups
+                openPreOralDefenseForAllGroups();
+            } else if (defenseType === 'final') {
+                // Open final defense for completed pre-oral groups only
+                openFinalDefenseForEligibleGroups();
+            }
+        }
+
+        function openPreOralDefenseForAllGroups() {
+            // Scroll to groups section and show all groups for pre-oral defense
             const groupsSection = document.querySelector('.space-y-6');
             if (groupsSection) {
                 groupsSection.scrollIntoView({ 
@@ -2468,6 +2517,32 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     block: 'start'
                 });
             }
+            
+            // Show success message
+            showNotification('Pre-Oral Defense opened for all groups', 'success');
+        }
+
+        function openFinalDefenseForEligibleGroups() {
+            // Scroll to final defense eligible section
+            const finalDefenseSection = document.getElementById('final-defense-eligible');
+            if (finalDefenseSection) {
+                finalDefenseSection.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            } else {
+                // If section doesn't exist, scroll to groups section
+                const groupsSection = document.querySelector('.space-y-6');
+                if (groupsSection) {
+                    groupsSection.scrollIntoView({ 
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            }
+            
+            // Show success message
+            showNotification('Final Defense opened for eligible groups (completed pre-oral)', 'success');
         }
 
         function openModal(modalId) {
@@ -3452,7 +3527,10 @@ window.scheduleFinalDefense = scheduleFinalDefense;
 window.scheduleRedefense = scheduleRedefense;
 window.toggleFinalDefenseSection = toggleFinalDefenseSection;
 window.openFinalDefenseModal = openFinalDefenseModal;
-window.scrollToGroupsSection = scrollToGroupsSection;
+window.toggleDefenseTypeDropdown = toggleDefenseTypeDropdown;
+window.openDefenseType = openDefenseType;
+window.openPreOralDefenseForAllGroups = openPreOralDefenseForAllGroups;
+window.openFinalDefenseForEligibleGroups = openFinalDefenseForEligibleGroups;
 
 /* ========= PROGRAM/CLUSTER TOGGLE FUNCTIONS ========= */
 function toggleFailedProgram(program) {
@@ -3783,6 +3861,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof switchMainTab === 'function') switchMainTab('availability');
         <?php unset($_SESSION['refresh_availability']); ?>
     <?php endif; ?>
+
+    // Close defense type dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('defenseTypeDropdown');
+        const button = event.target.closest('[onclick="toggleDefenseTypeDropdown()"]');
+        
+        if (!button && dropdown && !dropdown.contains(event.target)) {
+            dropdown.classList.add('opacity-0', 'invisible');
+            dropdown.classList.remove('opacity-100', 'visible');
+        }
+    });
 });
 
 // ========= NEW DEFENSE CONFIRMATION FUNCTIONS =========

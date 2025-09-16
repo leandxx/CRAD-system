@@ -40,34 +40,57 @@ if ($existing_profile && $existing_profile['faculty_id']) {
     $adviser_stmt->close();
 }
 
+// Check group membership to determine if program should be locked
+$group_assignment = null;
+$in_group = false;
+$group_program = null;
+$group_cluster_id = null;
+try {
+    $grp_sql = "SELECT g.program, g.cluster_id FROM groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.student_id = ? LIMIT 1";
+    $grp_stmt = $conn->prepare($grp_sql);
+    $grp_stmt->bind_param("i", $user_id);
+    $grp_stmt->execute();
+    $grp_res = $grp_stmt->get_result();
+    $group_assignment = $grp_res ? $grp_res->fetch_assoc() : null;
+    $grp_stmt->close();
+    if ($group_assignment) {
+        $in_group = true;
+        $group_program = $group_assignment['program'];
+        $group_cluster_id = $group_assignment['cluster_id'];
+    }
+} catch (Exception $e) {}
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $school_id = $_POST['school_id'];
     $full_name = $_POST['full_name'];
-    $program = $_POST['program'];
     $school_year = $_POST['school_year'];
     
-    // Get cluster assignment from admin based on course and school year
-    $cluster_query = "
-        SELECT cluster 
-        FROM clusters 
-        WHERE program = ? AND school_year = ? AND status = 'active'
-        LIMIT 1
-    ";
-    
-    $cluster_stmt = $conn->prepare($cluster_query);
-    $cluster_stmt->bind_param("ss", $program, $school_year);
-    $cluster_stmt->execute();
-    $cluster_result = $cluster_stmt->get_result();
-    
-    if ($cluster_result && $cluster_result->num_rows > 0) {
-        $cluster_data = $cluster_result->fetch_assoc();
-        $cluster = $cluster_data['cluster'];
+    // Program/Cluster logic
+    // - If student is in a group, force program to group's program; cluster follows group's cluster if assigned
+    // - If not in a group, allow selecting program; cluster stays as-is or 'Not Assigned' on first creation
+    if ($in_group) {
+        $program = $group_program;
+        if (!empty($group_cluster_id)) {
+            $csql = "SELECT cluster, faculty_id FROM clusters WHERE id = ?";
+            $cstmt = $conn->prepare($csql);
+            $cstmt->bind_param("i", $group_cluster_id);
+            $cstmt->execute();
+            $cres = $cstmt->get_result();
+            $cinfo = $cres ? $cres->fetch_assoc() : null;
+            $cstmt->close();
+            if ($cinfo) {
+                $cluster = $cinfo['cluster'];
+            } else {
+                $cluster = isset($existing_profile['cluster']) && $existing_profile['cluster'] !== '' ? $existing_profile['cluster'] : 'Not Assigned';
+            }
+        } else {
+            $cluster = isset($existing_profile['cluster']) && $existing_profile['cluster'] !== '' ? $existing_profile['cluster'] : 'Not Assigned';
+        }
     } else {
-        // If no cluster is assigned by admin, set a default value
-        $cluster = 'Not Assigned';
+        $program = isset($_POST['program']) ? $_POST['program'] : ($existing_profile['program'] ?? '');
+        $cluster = $existing_profile ? ($existing_profile['cluster'] ?? 'Not Assigned') : 'Not Assigned';
     }
-    $cluster_stmt->close();
     
     if ($existing_profile) {
         // Update existing profile
@@ -112,6 +135,53 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $stmt->close();
 }
 $profile_check->close();
+
+// After processing, ensure displayed cluster reflects group assignment if applicable
+// If the student is a member of a group that has a cluster_id, mirror that cluster into student_profiles for consistency
+try {
+    $group_sql = "SELECT g.cluster_id FROM groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.student_id = ? LIMIT 1";
+    $group_stmt = $conn->prepare($group_sql);
+    $group_stmt->bind_param("i", $user_id);
+    $group_stmt->execute();
+    $group_result = $group_stmt->get_result();
+    $group_data = $group_result ? $group_result->fetch_assoc() : null;
+    $group_stmt->close();
+
+    if ($group_data && !empty($group_data['cluster_id'])) {
+        $cid = (int)$group_data['cluster_id'];
+        $csql = "SELECT cluster, faculty_id, program FROM clusters WHERE id = ?";
+        $cstmt = $conn->prepare($csql);
+        $cstmt->bind_param("i", $cid);
+        $cstmt->execute();
+        $cres = $cstmt->get_result();
+        $cinfo = $cres ? $cres->fetch_assoc() : null;
+        $cstmt->close();
+
+        if ($cinfo) {
+            // If profile exists but has different cluster/program, update it to match admin/group assignment
+            if ($existing_profile) {
+                $needs_update = ($existing_profile['cluster'] !== $cinfo['cluster']) || ($existing_profile['program'] !== $cinfo['program']) || ((int)$existing_profile['faculty_id'] !== (int)$cinfo['faculty_id']);
+                if ($needs_update) {
+                    $usql = "UPDATE student_profiles SET cluster = ?, program = ?, faculty_id = ? WHERE user_id = ?";
+                    $ustmt = $conn->prepare($usql);
+                    $fid = $cinfo['faculty_id'] ? (int)$cinfo['faculty_id'] : null;
+                    $ustmt->bind_param("ssii", $cinfo['cluster'], $cinfo['program'], $fid, $user_id);
+                    $ustmt->execute();
+                    $ustmt->close();
+                    // Refresh existing_profile reference for rendering
+                    $profile_check = $conn->prepare("SELECT * FROM student_profiles WHERE user_id = ?");
+                    $profile_check->bind_param("i", $user_id);
+                    $profile_check->execute();
+                    $profile_result = $profile_check->get_result();
+                    $existing_profile = $profile_result->fetch_assoc();
+                    $profile_check->close();
+                }
+            }
+        }
+    }
+} catch (Exception $e) {
+    // Silent fail for display sync; avoid breaking profile page
+}
 ?>
 
 <!DOCTYPE html>
@@ -363,23 +433,28 @@ $profile_check->close();
                                     id="program" 
                                     name="program" 
                                     class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition input-field"
+                                    <?php echo ($in_group ? 'disabled' : ''); ?>
                                     required
                                 >
-                                   <option value="">Select Program</option>
-                                    <option value="BS Information Technology" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Information Technology') ? 'selected' : ''; ?>>BS Information Technology (BSIT)</option>
-                                    <option value="BS Hospitality Management" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Hospitality Management') ? 'selected' : ''; ?>>BS Hospitality Management (BSHM)</option>
-                                    <option value="BS Office Administration" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Office Administration') ? 'selected' : ''; ?>>BS Office Administration (BSOA)</option>
-                                    <option value="BS Business Administration" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Business Administration') ? 'selected' : ''; ?>>BS Business Administration (BSBA)</option>
-                                    <option value="BS Criminology" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Criminology') ? 'selected' : ''; ?>>BS Criminology (BSCRIM)</option>
-                                    <option value="Bachelor of Elementary Education" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'Bachelor of Elementary Education') ? 'selected' : ''; ?>>Bachelor of Elementary Education (BEED)</option>
-                                    <option value="Bachelor of Secondary Education" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'Bachelor of Secondary Education') ? 'selected' : ''; ?>>Bachelor of Secondary Education (BSED)</option>
-                                    <option value="BS Computer Engineering" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Computer Engineering') ? 'selected' : ''; ?>>BS Computer Engineering (BSCE)</option>
-                                    <option value="BS Tourism Management" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Tourism Management') ? 'selected' : ''; ?>>BS Tourism Management (BSTM)</option>
-                                    <option value="BS Entrepreneurship" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Entrepreneurship') ? 'selected' : ''; ?>>BS Entrepreneurship (BSE)</option>
-                                    <option value="BS Accounting Information System" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Accounting Information System') ? 'selected' : ''; ?>>BS Accounting Information System (BSAIS)</option>
-                                    <option value="BS Psychology" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BS Psychology') ? 'selected' : ''; ?>>BS Psychology (BSPSYCH)</option>
-                                    <option value="BL Information Science" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BL Information Science') ? 'selected' : ''; ?>>BL Information Science (BLIS)</option>
+                                   <option value="" <?php echo (empty($existing_profile['program']) ? 'selected' : ''); ?>>Select Program</option>
+                                    <option value="BSIT" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSIT') ? 'selected' : ''; ?>>BS Information Technology (BSIT)</option>
+                                    <option value="BSHM" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSHM') ? 'selected' : ''; ?>>BS Hospitality Management (BSHM)</option>
+                                    <option value="BSOA" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSOA') ? 'selected' : ''; ?>>BS Office Administration (BSOA)</option>
+                                    <option value="BSBA" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSBA') ? 'selected' : ''; ?>>BS Business Administration (BSBA)</option>
+                                    <option value="BSCRIM" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSCRIM') ? 'selected' : ''; ?>>BS Criminology (BSCRIM)</option>
+                                    <option value="BEED" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BEED') ? 'selected' : ''; ?>>Bachelor of Elementary Education (BEED)</option>
+                                    <option value="BSED" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSED') ? 'selected' : ''; ?>>Bachelor of Secondary Education (BSED)</option>
+                                    <option value="BSCE" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSCE') ? 'selected' : ''; ?>>BS Computer Engineering (BSCE)</option>
+                                    <option value="BSTM" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSTM') ? 'selected' : ''; ?>>BS Tourism Management (BSTM)</option>
+                                    <option value="BSE" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSE') ? 'selected' : ''; ?>>BS Entrepreneurship (BSE)</option>
+                                    <option value="BSAIS" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSAIS') ? 'selected' : ''; ?>>BS Accounting Information System (BSAIS)</option>
+                                    <option value="BSPSYCH" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSPSYCH') ? 'selected' : ''; ?>>BS Psychology (BSPSYCH)</option>
+                                    <option value="BLIS" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BLIS') ? 'selected' : ''; ?>>BL Information Science (BLIS)</option>
                                 </select>
+                                <?php if ($in_group): ?>
+                                <input type="hidden" name="program" value="<?php echo htmlspecialchars($group_program); ?>">
+                                <p class="text-xs text-gray-500 mt-1">Program is set by your group and cannot be changed here.</p>
+                                <?php endif; ?>
                             </div>
                             
                             <div>
@@ -393,12 +468,7 @@ $profile_check->close();
                                     }
                                     ?>
                                 </div>
-                                <input 
-                                    type="hidden" 
-                                    id="cluster" 
-                                    name="cluster" 
-                                    value="<?php echo isset($existing_profile['cluster']) ? htmlspecialchars($existing_profile['cluster']) : ''; ?>"
-                                >
+                                
                             </div>
                             
                             <div>

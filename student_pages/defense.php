@@ -33,7 +33,7 @@ if ($has_group) {
     $group = mysqli_fetch_assoc($group_result);
     $group_id = $group['id'];
     
-    // Check defense schedule - get latest active defense for the group (scheduled or re_defense)
+    // Check defense schedule - get latest active defense for the group (including redefense variants)
     $defense_query = "SELECT ds.*, r.room_name, r.building
                      FROM defense_schedules ds 
                      LEFT JOIN rooms r ON ds.room_id = r.id 
@@ -63,9 +63,13 @@ if ($has_group) {
         $show_schedule = false;
         // Check defense type from database  
         $defense_type = isset($temp_schedule['defense_type']) ? $temp_schedule['defense_type'] : 'pre_oral';
-        $is_pre_oral = ($defense_type === 'pre_oral');
+        $is_pre_oral = ($defense_type === 'pre_oral' || $defense_type === 'pre_oral_redefense');
+        $is_redefense = ($defense_type === 'pre_oral_redefense' || $defense_type === 'final_redefense');
         
-        if ($is_pre_oral) {
+        if ($is_redefense) {
+            // Redefense schedule becomes visible once approved/scheduled by admin
+            $show_schedule = true;
+        } elseif ($is_pre_oral) {
             // Pre-oral defense - need research forum and pre-oral payments
             $show_schedule = $has_research_forum_payment && $has_pre_oral_payment;
         } else {
@@ -512,7 +516,12 @@ if ($has_group) {
                             </div>
                             <div>
                                 <h3 class="font-medium text-gray-600 text-sm">Defense Type & Date</h3>
-                                <p class="text-gray-900 font-medium"><?php echo ucfirst(str_replace('_', ' ', $defense_schedule['defense_type'])); ?> Defense</p>
+                                <p class="text-gray-900 font-medium"><?php 
+                                    $t = $defense_schedule['defense_type'];
+                                    if ($t === 'pre_oral_redefense') echo 'Pre-Oral Redefense';
+                                    elseif ($t === 'final_redefense') echo 'Final Redefense';
+                                    else echo ucfirst(str_replace('_', ' ', $t)) . ' Defense';
+                                ?></p>
                                 <p class="text-gray-700"><?php echo date('F j, Y', strtotime($defense_schedule['defense_date'])); ?></p>
                                 <p class="text-gray-600 text-sm"><?php echo date('g:i A', strtotime($defense_schedule['start_time'])); ?> – <?php echo date('g:i A', strtotime($defense_schedule['end_time'])); ?></p>
                             </div>

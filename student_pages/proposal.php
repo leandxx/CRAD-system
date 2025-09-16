@@ -85,22 +85,63 @@ if ($has_group) {
     // Visibility: Final Defense only appears if admin opens it for this group
     $final_defense_open = ($has_proposal && isset($proposal['final_defense_open']) && (int)$proposal['final_defense_open'] === 1);
 
-    // Fetch latest payment rows for status display (none/pending/approved/rejected)
+    // Fetch latest payment rows for status display (separating base and redefense)
     $rf_row = null; $rf_status = 'none';
     $pre_row = null; $pre_status = 'none';
     $final_row = null; $final_status = 'none';
+    $pre_redef_row = null; $final_redef_row = null;
+    $pre_base_status = 'none';
+    $final_base_status = 'none';
     
     $rf_latest_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = 'research_forum' ORDER BY p.payment_date DESC LIMIT 1";
     $rf_latest_r = mysqli_query($conn, $rf_latest_q);
     if ($rf_latest_r && mysqli_num_rows($rf_latest_r) > 0) { $rf_row = mysqli_fetch_assoc($rf_latest_r); $rf_status = $rf_row['status']; }
     
-    $pre_latest_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = 'pre_oral_defense' ORDER BY p.payment_date DESC LIMIT 1";
-    $pre_latest_r = mysqli_query($conn, $pre_latest_q);
-    if ($pre_latest_r && mysqli_num_rows($pre_latest_r) > 0) { $pre_row = mysqli_fetch_assoc($pre_latest_r); $pre_status = $pre_row['status']; }
+    // Pull several recent rows for base
+    $pre_rows_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = 'pre_oral_defense' ORDER BY p.payment_date DESC LIMIT 5";
+    $pre_rows_r = mysqli_query($conn, $pre_rows_q);
+    $pre_rows = [];
+    if ($pre_rows_r && mysqli_num_rows($pre_rows_r) > 0) {
+        while ($r = mysqli_fetch_assoc($pre_rows_r)) { $pre_rows[] = $r; }
+        $pre_row = $pre_rows[0];
+        $pre_status = $pre_row['status'];
+    }
     
-    $final_latest_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = 'final_defense' ORDER BY p.payment_date DESC LIMIT 1";
-    $final_latest_r = mysqli_query($conn, $final_latest_q);
-    if ($final_latest_r && mysqli_num_rows($final_latest_r) > 0) { $final_row = mysqli_fetch_assoc($final_latest_r); $final_status = $final_row['status']; }
+    $final_rows_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = 'final_defense' ORDER BY p.payment_date DESC LIMIT 5";
+    $final_rows_r = mysqli_query($conn, $final_rows_q);
+    $final_rows = [];
+    if ($final_rows_r && mysqli_num_rows($final_rows_r) > 0) {
+        while ($r = mysqli_fetch_assoc($final_rows_r)) { $final_rows[] = $r; }
+        $final_row = $final_rows[0];
+        $final_status = $final_row['status'];
+    }
+    
+    // Detect failed defenses and require re-upload until a newer receipt exists (redefense attachments)
+    $needs_preoral_reupload = false;
+    $needs_final_reupload = false;
+    $preoral_redefense_status = 'none';
+    $final_redefense_status = 'none';
+
+    // Pre-Oral failure check
+    $failed_pre_q = "SELECT * FROM defense_schedules WHERE group_id = '$group_id' AND defense_type = 'pre_oral' AND status = 'failed' ORDER BY updated_at DESC, defense_date DESC LIMIT 1";
+    $failed_pre_r = mysqli_query($conn, $failed_pre_q);
+    // Determine redefense strictly by explicit redefense rows
+    $pre_redef_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = 'pre_oral_redefense' ORDER BY p.payment_date DESC LIMIT 1";
+    $pre_redef_r = mysqli_query($conn, $pre_redef_q);
+    if ($pre_redef_r && mysqli_num_rows($pre_redef_r) > 0) { $pre_redef_row = mysqli_fetch_assoc($pre_redef_r); $preoral_redefense_status = $pre_redef_row['status']; }
+    // Base status is latest base row
+    if ($pre_base_status === 'none' && $pre_status !== 'none') { $pre_base_status = $pre_status; }
+    // Require reupload if there is a recorded failure and no redefense row yet
+    if ($failed_pre_r && mysqli_num_rows($failed_pre_r) > 0) { $needs_preoral_reupload = ($preoral_redefense_status === 'none'); }
+
+    // Final Defense failure check
+    $failed_final_q = "SELECT * FROM defense_schedules WHERE group_id = '$group_id' AND defense_type = 'final' AND status = 'failed' ORDER BY updated_at DESC, defense_date DESC LIMIT 1";
+    $failed_final_r = mysqli_query($conn, $failed_final_q);
+    $final_redef_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = 'final_redefense' ORDER BY p.payment_date DESC LIMIT 1";
+    $final_redef_r = mysqli_query($conn, $final_redef_q);
+    if ($final_redef_r && mysqli_num_rows($final_redef_r) > 0) { $final_redef_row = mysqli_fetch_assoc($final_redef_r); $final_redefense_status = $final_redef_row['status']; }
+    if ($final_base_status === 'none' && $final_status !== 'none') { $final_base_status = $final_status; }
+    if ($failed_final_r && mysqli_num_rows($failed_final_r) > 0) { $needs_final_reupload = ($final_redefense_status === 'none'); }
     
     // Gate proposal submission strictly on approved research forum payment
     $can_submit_proposal = ($rf_status === 'approved');
@@ -143,6 +184,42 @@ if ($has_group) {
 
 // Handle other form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // AJAX: delete a specific payment image (only if not approved / or for redefense case)
+    if (isset($_POST['ajax_delete_payment_image'])) {
+        header('Content-Type: application/json');
+        if (!$has_group) { echo json_encode(['ok'=>false,'error'=>'No group']); exit(); }
+        $payment_type = mysqli_real_escape_string($conn, $_POST['payment_type'] ?? '');
+        $image_index = (int)($_POST['image_index'] ?? -1);
+        if (!in_array($payment_type, ['research_forum','pre_oral_defense','final_defense','pre_oral_redefense','final_redefense']) || $image_index < 0) {
+            echo json_encode(['ok'=>false,'error'=>'Invalid parameters']); exit();
+        }
+        // Locate latest payment row for this group and type
+        $q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = '$payment_type' ORDER BY p.payment_date DESC LIMIT 1";
+        $r = mysqli_query($conn, $q);
+        $row = $r ? mysqli_fetch_assoc($r) : null;
+        if (!$row) { echo json_encode(['ok'=>false,'error'=>'Payment not found']); exit(); }
+        // Only allow deletion if not approved
+        if ($row['status'] === 'approved') { echo json_encode(['ok'=>false,'error'=>'Approved payments cannot be modified']); exit(); }
+        $images = !empty($row['image_receipts']) ? (json_decode($row['image_receipts'], true) ?: []) : [];
+        if (!isset($images[$image_index])) { echo json_encode(['ok'=>false,'error'=>'Image index out of bounds']); exit(); }
+        $to_delete = $images[$image_index];
+        array_splice($images, 1 * $image_index, 1);
+        // Remove file from disk if exists
+        if ($to_delete && file_exists($to_delete)) { @unlink($to_delete); }
+        if (empty($images)) {
+            // No images left: remove the group's payment rows for this type entirely so status reverts to none
+            $del = "DELETE p FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = '$group_id' AND p.payment_type = '$payment_type'";
+            mysqli_query($conn, $del);
+            echo json_encode(['ok'=>true,'images'=>[]]);
+            exit();
+        }
+        $new_json = mysqli_real_escape_string($conn, json_encode($images));
+        // Persist to all group members and keep status pending for review
+        $upd = "UPDATE payments p JOIN group_members gm ON p.student_id = gm.student_id SET p.image_receipts = '$new_json', p.status = 'pending', p.admin_approved = 0 WHERE gm.group_id = '$group_id' AND p.payment_type = '$payment_type'";
+        mysqli_query($conn, $upd);
+        echo json_encode(['ok'=>true,'images'=>$images]);
+        exit();
+    }
     if (isset($_POST['submit_proposal'])) {
         // Check if proposal already exists to prevent duplicates
         if ($has_proposal) {
@@ -346,10 +423,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     if (isset($_POST['upload_payment'])) {
         $payment_type = mysqli_real_escape_string($conn, $_POST['payment_type']);
-        $payment_amount = 100.00;
+        // Distinguish redefense as its own type
+        $is_redefense_upload = ($payment_type === 'pre_oral_redefense' || $payment_type === 'final_redefense') ? 1 : 0;
 
         // Prevent Final Defense uploads unless admin has opened it
-        if ($payment_type === 'final_defense' && !$final_defense_open) {
+        if (($payment_type === 'final_defense' || $payment_type === 'final_redefense') && !$final_defense_open) {
             $error_message = "Final Defense payment uploads are currently closed.";
         } else {
 
@@ -411,23 +489,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $image_receipts_json = json_encode($uploaded_files);
                 
                 if ($existing_payment) {
-                    // Delete old image files
-                    if ($existing_payment['image_receipts']) {
-                        $old_images = json_decode($existing_payment['image_receipts'], true);
-                        if ($old_images) {
-                            foreach ($old_images as $old_image) {
-                                if (file_exists($old_image)) {
-                                    unlink($old_image);
-                                }
-                            }
-                        }
+                    // Append new images to existing without deleting old ones
+                    $merged_images = [];
+                    if (!empty($existing_payment['image_receipts'])) {
+                        $old = json_decode($existing_payment['image_receipts'], true);
+                        if (is_array($old)) { $merged_images = $old; }
                     }
+                    $merged_images = array_merge($merged_images, $uploaded_files);
+                    $merged_json = mysqli_real_escape_string($conn, json_encode($merged_images));
                     
                     // Update existing payment for all group members
-                    // Reset status to pending for review, clear admin flags and feedback on update
+                    // Reset status to pending for review, clear admin flags and feedback on update (keep per-image reviews intact)
                     $update_query = "UPDATE payments p 
                                     JOIN group_members gm ON p.student_id = gm.student_id 
-                                    SET p.image_receipts = '$image_receipts_json', p.payment_date = NOW(), p.status = 'pending', p.admin_approved = 0, p.review_feedback = NULL 
+                                    SET p.image_receipts = '$merged_json', p.payment_date = NOW(), p.status = 'pending', p.admin_approved = 0, p.review_feedback = NULL 
                                     WHERE gm.group_id = '$group_id' AND p.payment_type = '$payment_type'";
                     mysqli_query($conn, $update_query);
                     $success_message = "Group payment receipt images updated successfully!";
@@ -438,8 +513,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                     while ($member = mysqli_fetch_assoc($members_result)) {
                         $member_id = $member['student_id'];
-                        $payment_query = "INSERT INTO payments (student_id, payment_type, amount, image_receipts, status, payment_date) 
-                                         VALUES ('$member_id', '$payment_type', '$payment_amount', '$image_receipts_json', 'pending', NOW())";
+                        $payment_query = "INSERT INTO payments (student_id, payment_type, amount, image_receipts, status, payment_date, image_review) 
+                                         VALUES ('$member_id', '$payment_type', '$payment_amount', '$image_receipts_json', 'pending', NOW(), " . ($is_redefense_upload ? "'{\"redefense\":true}'" : "NULL") . ")";
                         mysqli_query($conn, $payment_query);
                     }
                     $success_message = "Group payment receipt images uploaded successfully!";
@@ -924,16 +999,44 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                     <?php endif; ?>
                                     <div class="flex items-center justify-between">
                                         <span class="text-xs text-gray-600">Pre-Oral Defense:</span>
-                                        <?php echo renderStatusBadge($pre_status); ?>
+                                        <?php echo renderStatusBadge($pre_base_status); ?>
                                     </div>
+                                    <?php if ($failed_pre_r && mysqli_num_rows($failed_pre_r) > 0): ?>
+                                        <div class="flex items-center justify-between mt-1">
+                                            <span class="text-xs text-gray-600">Pre-Oral Redefense:</span>
+                                            <?php echo renderStatusBadge($preoral_redefense_status); ?>
+                                        </div>
+                                        <?php if ($needs_preoral_reupload): ?>
+                                            <div class="mt-1 bg-yellow-50 border border-yellow-200 text-yellow-800 text-xs px-2 py-1 rounded">
+                                                Redefense required: Upload a new Pre-Oral receipt.
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if ($preoral_redefense_status === 'rejected' && !empty($pre_row['review_feedback'])): ?>
+                                            <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($pre_row['review_feedback']); ?></div>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
                                     <?php if ($pre_status === 'rejected' && !empty($pre_row['review_feedback'])): ?>
                                         <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($pre_row['review_feedback']); ?></div>
                                     <?php endif; ?>
                                     <?php if ($final_defense_open): ?>
                                         <div class="flex items-center justify-between">
                                             <span class="text-xs text-gray-600">Final Defense:</span>
-                                            <?php echo renderStatusBadge($final_status); ?>
+                                            <?php echo renderStatusBadge($final_base_status); ?>
                                         </div>
+                                        <?php if ($failed_final_r && mysqli_num_rows($failed_final_r) > 0): ?>
+                                            <div class="flex items-center justify-between mt-1">
+                                                <span class="text-xs text-gray-600">Final Defense Redefense:</span>
+                                                <?php echo renderStatusBadge($final_redefense_status); ?>
+                                            </div>
+                                            <?php if ($needs_final_reupload): ?>
+                                                <div class="mt-1 bg-yellow-50 border border-yellow-200 text-yellow-800 text-xs px-2 py-1 rounded">
+                                                    Redefense required: Upload a new Final Defense receipt.
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if ($final_redefense_status === 'rejected' && !empty($final_row['review_feedback'])): ?>
+                                                <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($final_row['review_feedback']); ?></div>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
                                         <?php if ($final_status === 'rejected' && !empty($final_row['review_feedback'])): ?>
                                             <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($final_row['review_feedback']); ?></div>
                                         <?php endif; ?>
@@ -1288,8 +1391,14 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                         <option value="">Select payment type</option>
                         <option value="research_forum">Research Forum <?php echo $has_research_forum_payment ? '(Uploaded)' : ''; ?></option>
                         <option value="pre_oral_defense">Pre-Oral Defense <?php echo $has_pre_oral_payment ? '(Uploaded)' : ''; ?></option>
+                        <?php if ($failed_pre_r && mysqli_num_rows($failed_pre_r) > 0): ?>
+                        <option value="pre_oral_redefense">Pre-Oral Redefense</option>
+                        <?php endif; ?>
                         <?php if ($final_defense_open): ?>
                         <option value="final_defense">Final Defense <?php echo $has_final_defense_payment ? '(Uploaded)' : ''; ?></option>
+                        <?php if ($failed_final_r && mysqli_num_rows($failed_final_r) > 0): ?>
+                        <option value="final_redefense">Final Redefense</option>
+                        <?php endif; ?>
                         <?php endif; ?>
                     </select>
                 </div>
@@ -1421,6 +1530,58 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
             modal.classList.remove('flex');
         }
         
+        // Cache for current payment type data to allow in-place updates without refresh
+        let _paymentDataCache = window._paymentDataCache || {};
+
+        function renderExistingImages(paymentType) {
+            const existingImagesDiv = document.getElementById('existingImages');
+            const currentImagesGrid = document.getElementById('currentImagesGrid');
+            const uploadButtonText = document.getElementById('uploadButtonText');
+            currentImagesGrid.innerHTML = '';
+            
+            const cache = _paymentDataCache[paymentType];
+            if (!cache || !cache.images || cache.images.length === 0) {
+                existingImagesDiv.classList.add('hidden');
+                uploadButtonText.textContent = 'Upload Images';
+                return;
+            }
+
+                existingImagesDiv.classList.remove('hidden');
+                uploadButtonText.textContent = 'Update Images';
+
+            const images = cache.images;
+            const reviewMap = cache.reviewMap || {};
+                
+                images.forEach((imagePath, index) => {
+                    const webPath = imagePath.replace('../assets/', '/CRAD-system/assets/');
+                    const rv = reviewMap && reviewMap[index] ? reviewMap[index] : null;
+                    const statusBadge = rv ? (rv.status === 'approved' 
+                        ? '<span class="bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full">Approved</span>' 
+                        : '<span class="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">Rejected</span>') : '';
+                    const feedbackText = rv && rv.feedback ? rv.feedback : '';
+                    const imageDiv = document.createElement('div');
+                imageDiv.className = 'relative transition';
+                    imageDiv.onclick = () => viewImage(webPath, `Receipt ${index + 1}`);
+                    imageDiv.innerHTML = `
+                        <img src="${webPath}" class="w-full h-20 object-cover rounded-lg border" alt="Receipt ${index + 1}">
+                        <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg">
+                            Receipt ${index + 1}
+                        </div>
+                        <div class="absolute top-1 left-1">${statusBadge}</div>
+                    ${feedbackText ? `<div class=\"absolute top-1 right-1 bg-white bg-opacity-90 text-[10px] text-red-700 px-1.5 py-0.5 rounded shadow\">${feedbackText}</div>` : ''}
+                    <div class="absolute top-1 right-1 flex gap-1">
+                      <button type="button" class="bg-black bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-70" title="View" onclick="event.stopPropagation(); viewImage('${webPath}', 'Receipt ${index + 1}')">
+                            <i class="fas fa-eye text-xs"></i>
+                      </button>
+                      ${(!rv || rv.status !== 'approved') ? `<button type=\"button\" class=\"bg-red-600 text-white rounded-full p-1 hover:bg-red-700\" title=\"Delete\" onclick=\"event.stopPropagation(); deletePaymentImage('${paymentType}', ${index}, true)\">
+                        <i class=\"fas fa-trash-alt text-xs\"></i>
+                      </button>` : ''}
+                        </div>
+                    `;
+                    currentImagesGrid.appendChild(imageDiv);
+                });
+        }
+
         function showExistingImages() {
             const paymentType = document.getElementById('paymentTypeSelect').value;
             const existingImagesDiv = document.getElementById('existingImages');
@@ -1431,45 +1592,29 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
             const paymentData = {
                 'research_forum': <?php echo json_encode($rf_row); ?>,
                 'pre_oral_defense': <?php echo json_encode($pre_row); ?>,
-                'final_defense': <?php echo json_encode($final_row); ?>
+                'final_defense': <?php echo json_encode($final_row); ?>,
+                'pre_oral_redefense': <?php echo json_encode($pre_redef_row); ?>,
+                'final_redefense': <?php echo json_encode($final_redef_row); ?>
             };
-            
-            currentImagesGrid.innerHTML = '';
-            
-            if (paymentType && paymentData[paymentType] && paymentData[paymentType].image_receipts) {
-                const images = JSON.parse(paymentData[paymentType].image_receipts);
-                const reviewMap = paymentData[paymentType].image_review ? JSON.parse(paymentData[paymentType].image_review) : {};
-                existingImagesDiv.classList.remove('hidden');
-                uploadButtonText.textContent = 'Update Images';
-                
-                images.forEach((imagePath, index) => {
-                    // Convert path to web-accessible format
-                    const webPath = imagePath.replace('../assets/', '/CRAD-system/assets/');
-                    const rv = reviewMap && reviewMap[index] ? reviewMap[index] : null;
-                    const statusBadge = rv ? (rv.status === 'approved' 
-                        ? '<span class="bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full">Approved</span>' 
-                        : '<span class="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">Rejected</span>') : '';
-                    const feedbackText = rv && rv.feedback ? rv.feedback : '';
-                    const imageDiv = document.createElement('div');
-                    imageDiv.className = 'relative cursor-pointer hover:opacity-80 transition';
-                    imageDiv.onclick = () => viewImage(webPath, `Receipt ${index + 1}`);
-                    imageDiv.innerHTML = `
-                        <img src="${webPath}" class="w-full h-20 object-cover rounded-lg border" alt="Receipt ${index + 1}">
-                        <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg">
-                            Receipt ${index + 1}
-                        </div>
-                        <div class="absolute top-1 left-1">${statusBadge}</div>
-                        ${feedbackText ? `<div class="absolute top-1 right-1 bg-white bg-opacity-90 text-[10px] text-red-700 px-1.5 py-0.5 rounded shadow">${feedbackText}</div>` : ''}
-                        <div class="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1">
-                            <i class="fas fa-eye text-xs"></i>
-                        </div>
-                    `;
-                    currentImagesGrid.appendChild(imageDiv);
-                });
+            const isRedefense = (t) => (t === 'pre_oral_redefense' || t === 'final_redefense');
+            const mapType = (t) => {
+            if (t === 'pre_oral_redefense') return 'pre_oral_redefense';
+            if (t === 'final_redefense') return 'final_redefense';
+            return t;
+            };
+            const effectiveType = mapType(paymentType);
+            // Prime cache for selected type
+            _paymentDataCache = _paymentDataCache || {};
+            if (effectiveType && paymentData[effectiveType] && paymentData[effectiveType].image_receipts) {
+                _paymentDataCache[paymentType] = {
+                    images: JSON.parse(paymentData[effectiveType].image_receipts),
+                    reviewMap: paymentData[effectiveType].image_review ? JSON.parse(paymentData[effectiveType].image_review) : {}
+                };
             } else {
-                existingImagesDiv.classList.add('hidden');
-                uploadButtonText.textContent = 'Upload Images';
+                _paymentDataCache[paymentType] = { images: [], reviewMap: {} };
             }
+            window._paymentDataCache = _paymentDataCache;
+            renderExistingImages(paymentType);
 
             // Update payment status badges on student side when all images approved
             try {
@@ -1488,6 +1633,29 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                     const statusCard = document.querySelector('.stats-card .text-blue-800');
                 }
             } catch (e) {}
+        }
+
+        async function deletePaymentImage(paymentType, imageIndex, updateUIOnly = false) {
+            if (!confirm('Remove this image?')) return;
+            try {
+                const form = new FormData();
+                form.append('ajax_delete_payment_image','1');
+                form.append('payment_type', paymentType);
+                form.append('image_index', String(imageIndex));
+                const resp = await fetch(window.location.href, { method:'POST', body: form });
+                const data = await resp.json();
+                if (!data.ok) { alert(data.error || 'Failed to delete image'); return; }
+                // Update cache and re-render without refresh
+                if (window._paymentDataCache && window._paymentDataCache[paymentType]) {
+                    const cache = window._paymentDataCache[paymentType];
+                    cache.images.splice(imageIndex, 1);
+                    renderExistingImages(paymentType);
+                } else {
+                    showExistingImages();
+                }
+            } catch (e) {
+                alert('Network error');
+            }
         }
     </script>
 </body>

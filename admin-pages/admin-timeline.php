@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $decision = $_POST['decision'] ?? '';
         $feedback = trim($_POST['feedback'] ?? '');
 
-        if (!$proposal_id || $image_index < 0 || !in_array($payment_type, ['research_forum','pre_oral_defense','final_defense']) || !in_array($decision, ['approved','rejected'])) {
+        if (!$proposal_id || $image_index < 0 || !in_array($payment_type, ['research_forum','pre_oral_defense','final_defense','pre_oral_redefense','final_redefense']) || !in_array($decision, ['approved','rejected'])) {
             echo json_encode(['ok' => false, 'error' => 'Invalid parameters']);
             exit();
         }
@@ -303,7 +303,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $payment_check = checkGroupPaymentStatus($conn, $proposal['group_id']);
             
             if (!$payment_check['has_research_forum_payment']) {
-                $_SESSION['error_message'] = "Cannot mark as complete: Group has not submitted Research Forum payment receipt.";
+                $_SESSION['error_message'] = "Cannot approve: Research Forum receipt must be approved first.";
+            } else if (empty($payment_check['has_pre_oral_payment'])) {
+                $_SESSION['error_message'] = "Cannot approve proposal: Pre-Oral Defense receipt must be approved first.";
             } else {
                 // Mark as complete when admin clicks the button
                 $stmt = $conn->prepare("UPDATE proposals SET status = 'Completed', reviewed_at = NOW() WHERE id = ?");
@@ -368,6 +370,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $defense_venue = $_POST['defense_venue'] ?? '';
         
         if ($proposal_id && $defense_date && $defense_time && $defense_venue) {
+            // Gate scheduling: require approved pre-oral defense payment
+            $stmt = $conn->prepare("SELECT group_id FROM proposals WHERE id = ?");
+            $stmt->bind_param("i", $proposal_id);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $pRow = $res->fetch_assoc();
+            $stmt->close();
+            if ($pRow) {
+                $payment_check = checkGroupPaymentStatus($conn, (int)$pRow['group_id']);
+                if (empty($payment_check['has_pre_oral_payment'])) {
+                    $_SESSION['error_message'] = "Cannot schedule defense: Pre-Oral Defense receipt must be approved first.";
+                    header("Location: " . $_SERVER['REQUEST_URI']);
+                    exit();
+                }
+            }
             $defense_datetime = $defense_date . ' ' . $defense_time;
             
             // Update proposal with defense details
@@ -473,17 +490,17 @@ function checkGroupPaymentStatus($conn, $group_id) {
         $member = $members_result->fetch_assoc();
         $student_id = $member['student_id'];
         
-        // Check for research forum payment (required for proposal completion)
-        $research_forum_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'research_forum' AND status = 'approved'";
+        // Check for research forum payment (any member in group approved)
+        $research_forum_query = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = 'research_forum' AND p.status = 'approved'";
         $stmt = $conn->prepare($research_forum_query);
-        $stmt->bind_param("i", $student_id);
+        $stmt->bind_param("i", $group_id);
         $stmt->execute();
         $research_result = $stmt->get_result();
         $payment_status['has_research_forum_payment'] = $research_result->num_rows > 0;
-        // Always show latest uploaded images (any status) for admin review
-        $rf_latest_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'research_forum' ORDER BY payment_date DESC LIMIT 1";
+        // Always show latest uploaded images across group (any status) for admin review
+        $rf_latest_query = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = 'research_forum' ORDER BY p.payment_date DESC LIMIT 1";
         $stmt = $conn->prepare($rf_latest_query);
-        $stmt->bind_param("i", $student_id);
+        $stmt->bind_param("i", $group_id);
         $stmt->execute();
         $rf_latest = $stmt->get_result();
         if ($rf_latest->num_rows > 0) {
@@ -508,21 +525,46 @@ function checkGroupPaymentStatus($conn, $group_id) {
         }
         $stmt->close();
         
-        // Check for pre-oral defense payment
-        $pre_oral_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'pre_oral_defense' AND status = 'approved'";
+        // Derive latest failed timestamps for pre-oral and final to identify redefense uploads
+        $failed_pre_ts = 0; $failed_final_ts = 0;
+        $fail_q = "SELECT defense_type, updated_at, defense_date FROM defense_schedules WHERE group_id = ? AND status = 'failed' ORDER BY updated_at DESC, defense_date DESC";
+        $stmt = $conn->prepare($fail_q);
+        $stmt->bind_param("i", $group_id);
+        $stmt->execute();
+        $fail_res = $stmt->get_result();
+        while ($f = $fail_res->fetch_assoc()) {
+            $ts = !empty($f['updated_at']) ? strtotime($f['updated_at']) : strtotime($f['defense_date']);
+            if ($f['defense_type'] === 'pre_oral' && $failed_pre_ts === 0) { $failed_pre_ts = $ts; }
+            if ($f['defense_type'] === 'final' && $failed_final_ts === 0) { $failed_final_ts = $ts; }
+        }
+        $stmt->close();
+
+        // Check for pre-oral defense payment (approved by any member)
+        $pre_oral_query = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = 'pre_oral_defense' AND p.status = 'approved'";
         $stmt = $conn->prepare($pre_oral_query);
-        $stmt->bind_param("i", $student_id);
+        $stmt->bind_param("i", $group_id);
         $stmt->execute();
         $pre_oral_result = $stmt->get_result();
         $payment_status['has_pre_oral_payment'] = $pre_oral_result->num_rows > 0;
-        // Always show latest uploaded images (any status)
-        $pre_latest_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'pre_oral_defense' ORDER BY payment_date DESC LIMIT 1";
+        // Always show latest uploaded images across group; separate redefense type explicitly
+        $pre_latest_query = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = 'pre_oral_defense' ORDER BY p.payment_date DESC LIMIT 5";
         $stmt = $conn->prepare($pre_latest_query);
-        $stmt->bind_param("i", $student_id);
+        $stmt->bind_param("i", $group_id);
         $stmt->execute();
         $pre_latest = $stmt->get_result();
         if ($pre_latest->num_rows > 0) {
-            $payment_data = $pre_latest->fetch_assoc();
+            $rows = $pre_latest->fetch_all(MYSQLI_ASSOC);
+            // pick first row after failure timestamp if exists, else most recent
+            $payment_data = $rows[0];
+            // Separate query for explicit redefense rows
+            $redefense_data = null;
+            $pre_redef_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = 'pre_oral_redefense' ORDER BY p.payment_date DESC LIMIT 1";
+            $stmt = $conn->prepare($pre_redef_q);
+            $stmt->bind_param("i", $group_id);
+            $stmt->execute();
+            $pre_redef_res = $stmt->get_result();
+            if ($pre_redef_res && $pre_redef_res->num_rows > 0) { $redefense_data = $pre_redef_res->fetch_assoc(); }
+            // Base/latest images
             if (!empty($payment_data['image_receipts'])) {
                 $images = json_decode($payment_data['image_receipts'], true);
                 if (is_array($images)) {
@@ -539,24 +581,54 @@ function checkGroupPaymentStatus($conn, $group_id) {
                     $payment_status['payment_image_review']['pre_oral_defense'] = $review;
                 }
             }
+            // Redefense images (separate section) if present
+            if ($redefense_data && !empty($redefense_data['image_receipts'])) {
+                $images = json_decode($redefense_data['image_receipts'], true);
+                if (is_array($images)) {
+                    $web_paths = array_map(function($path) {
+                        $filename = basename($path);
+                        return '/CRAD-system/assets/uploads/receipts/' . $filename;
+                    }, $images);
+                    $payment_status['payment_images']['pre_oral_redefense'] = $web_paths;
+                    $payment_status['has_pre_oral_redefense'] = true;
+                }
+                // expose redefense status for UI badge logic
+                if (!empty($redefense_data['status'])) {
+                    $payment_status['pre_oral_redefense_status'] = $redefense_data['status'];
+                }
+                if (!empty($redefense_data['image_review'])) {
+                    $review = json_decode($redefense_data['image_review'], true);
+                    if (is_array($review)) {
+                        $payment_status['payment_image_review']['pre_oral_redefense'] = $review;
+                    }
+                }
+            }
         }
         $stmt->close();
         
-        // Check for final defense payment
-        $final_defense_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'final_defense' AND status = 'approved'";
+        // Check for final defense payment (approved by any member)
+        $final_defense_query = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = 'final_defense' AND p.status = 'approved'";
         $stmt = $conn->prepare($final_defense_query);
-        $stmt->bind_param("i", $student_id);
+        $stmt->bind_param("i", $group_id);
         $stmt->execute();
         $final_result = $stmt->get_result();
         $payment_status['has_final_defense_payment'] = $final_result->num_rows > 0;
-        // Always show latest uploaded images (any status)
-        $final_latest_query = "SELECT * FROM payments WHERE student_id = ? AND payment_type = 'final_defense' ORDER BY payment_date DESC LIMIT 1";
+        // Always show latest uploaded images across group; separate redefense type explicitly
+        $final_latest_query = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = 'final_defense' ORDER BY p.payment_date DESC LIMIT 5";
         $stmt = $conn->prepare($final_latest_query);
-        $stmt->bind_param("i", $student_id);
+        $stmt->bind_param("i", $group_id);
         $stmt->execute();
         $final_latest = $stmt->get_result();
         if ($final_latest->num_rows > 0) {
-            $payment_data = $final_latest->fetch_assoc();
+            $rows = $final_latest->fetch_all(MYSQLI_ASSOC);
+            $payment_data = $rows[0];
+            $redefense_data = null;
+            $final_redef_q = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = 'final_redefense' ORDER BY p.payment_date DESC LIMIT 1";
+            $stmt = $conn->prepare($final_redef_q);
+            $stmt->bind_param("i", $group_id);
+            $stmt->execute();
+            $final_redef_res = $stmt->get_result();
+            if ($final_redef_res && $final_redef_res->num_rows > 0) { $redefense_data = $final_redef_res->fetch_assoc(); }
             if (!empty($payment_data['image_receipts'])) {
                 $images = json_decode($payment_data['image_receipts'], true);
                 if (is_array($images)) {
@@ -571,6 +643,26 @@ function checkGroupPaymentStatus($conn, $group_id) {
                 $review = json_decode($payment_data['image_review'], true);
                 if (is_array($review)) {
                     $payment_status['payment_image_review']['final_defense'] = $review;
+                }
+            }
+            if ($redefense_data && !empty($redefense_data['image_receipts'])) {
+                $images = json_decode($redefense_data['image_receipts'], true);
+                if (is_array($images)) {
+                    $web_paths = array_map(function($path) {
+                        $filename = basename($path);
+                        return '/CRAD-system/assets/uploads/receipts/' . $filename;
+                    }, $images);
+                    $payment_status['payment_images']['final_redefense'] = $web_paths;
+                    $payment_status['has_final_redefense'] = true;
+                }
+                if (!empty($redefense_data['status'])) {
+                    $payment_status['final_redefense_status'] = $redefense_data['status'];
+                }
+                if (!empty($redefense_data['image_review'])) {
+                    $review = json_decode($redefense_data['image_review'], true);
+                    if (is_array($review)) {
+                        $payment_status['payment_image_review']['final_redefense'] = $review;
+                    }
                 }
             }
         }
@@ -1286,14 +1378,6 @@ $isoDeadline = $current_milestone
       ?>
       
       <div class="proposal-card bg-gradient-to-br from-white via-blue-50 to-indigo-100 border border-blue-200 rounded-xl shadow-md hover:shadow-lg p-4 flex flex-col justify-between relative overflow-hidden min-h-[300px] transition-all duration-300">
-        
-        <div class="absolute top-3 right-3">
-          <?php if ($proposal['status'] === 'Completed'): ?>
-            <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-          <?php else: ?>
-            <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-          <?php endif; ?>
-        </div>
       
         <div class="relative z-10">
           <!-- Header -->
@@ -1307,9 +1391,26 @@ $isoDeadline = $current_milestone
                 <p class="text-xs text-blue-600 font-medium truncate"><?php echo htmlspecialchars($proposal['group_name']); ?></p>
               </div>
             </div>
-            <span class="px-3 py-1 text-xs font-medium rounded-full <?php echo $status_class; ?>">
-              <?php echo $status_text; ?>
-            </span>
+            <div class="flex flex-col items-end gap-1">
+              <span class="px-3 py-1 text-xs font-medium rounded-full <?php echo $status_class; ?>">
+                <?php echo $status_text; ?>
+              </span>
+              <?php 
+                $redefenseBadge = '';
+                if (!empty($payment_status['has_pre_oral_redefense'])) {
+                  $status = $payment_status['pre_oral_redefense_status'] ?? 'pending';
+                  if ($status !== 'approved') {
+                    $redefenseBadge = '<span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-700 border border-rose-200" title="Pre-Oral Redefense"><i class="fas fa-redo mr-1"></i>Pre-Oral Redefense</span>';
+                  }
+                } elseif (!empty($payment_status['has_final_redefense'])) {
+                  $status = $payment_status['final_redefense_status'] ?? 'pending';
+                  if ($status !== 'approved') {
+                    $redefenseBadge = '<span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-700 border border-rose-200" title="Final Redefense"><i class="fas fa-redo mr-1"></i>Final Redefense</span>';
+                  }
+                }
+                if (!empty($redefenseBadge)) { echo $redefenseBadge; }
+              ?>
+            </div>
           </div>
 
           <!-- Details Section -->
@@ -1951,11 +2052,11 @@ $isoDeadline = $current_milestone
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-            <input type="text" name="milestone_title[]" value="${milestone.title || ''}" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+            <input type="text" name="milestone_title[]" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-            <input type="datetime-local" name="milestone_deadline[]" value="${milestone.deadline || ''}" class="w-full px-3 py-2 border border-gray-300 rounded-md flatpickr" required>
+            <input type="datetime-local" name="milestone_deadline[]" class="w-full px-3 py-2 border border-gray-300 rounded-md flatpickr" required>
           </div>
         </div>
         <div>
@@ -2113,6 +2214,28 @@ $isoDeadline = $current_milestone
           color: 'green'
         }
       ];
+
+      // Conditionally append redefense statuses if present in payload
+      if (proposal.payment_status?.has_pre_oral_redefense) {
+        paymentTypes.splice(2, 0, {
+          key: 'has_pre_oral_redefense',
+          label: 'Pre-Oral Redefense',
+          description: 'Receipt for pre-oral redefense',
+          required: false,
+          imageKey: 'pre_oral_redefense',
+          color: 'pink'
+        });
+      }
+      if (proposal.payment_status?.has_final_redefense) {
+        paymentTypes.push({
+          key: 'has_final_redefense',
+          label: 'Final Defense Redefense',
+          description: 'Receipt for final defense redefense',
+          required: false,
+          imageKey: 'final_redefense',
+          color: 'rose'
+        });
+      }
       
       paymentTypes.forEach(payment => {
         const isPaid = proposal.payment_status?.[payment.key] || false;
@@ -2161,21 +2284,34 @@ $isoDeadline = $current_milestone
         imagesContainer.innerHTML = '<p class="text-gray-500 text-sm">No payment receipt images uploaded.</p>';
         return;
       }
+
+      // If redefense images exist, hide corresponding base images to avoid mixing
+      const imagesMap = { ...paymentImages };
+      if (imagesMap['pre_oral_redefense'] && imagesMap['pre_oral_redefense'].length > 0) {
+        delete imagesMap['pre_oral_defense'];
+      }
+      if (imagesMap['final_redefense'] && imagesMap['final_redefense'].length > 0) {
+        delete imagesMap['final_defense'];
+      }
       
       const paymentTypeLabels = {
         'research_forum': 'Research Forum',
         'pre_oral_defense': 'Pre-Oral Defense', 
-        'final_defense': 'Final Defense'
+        'final_defense': 'Final Defense',
+        'pre_oral_redefense': 'Pre-Oral Redefense',
+        'final_redefense': 'Final Defense Redefense'
       };
       
       const paymentTypeColors = {
         'research_forum': 'bg-blue-100 text-blue-800 border-blue-200',
         'pre_oral_defense': 'bg-purple-100 text-purple-800 border-purple-200',
-        'final_defense': 'bg-green-100 text-green-800 border-green-200'
+        'final_defense': 'bg-green-100 text-green-800 border-green-200',
+        'pre_oral_redefense': 'bg-pink-100 text-pink-800 border-pink-200',
+        'final_redefense': 'bg-rose-100 text-rose-800 border-rose-200'
       };
       
-      Object.keys(paymentImages).forEach(paymentType => {
-        const images = paymentImages[paymentType];
+      Object.keys(imagesMap).forEach(paymentType => {
+        const images = imagesMap[paymentType];
         if (images && images.length > 0) {
           const sectionDiv = document.createElement('div');
           sectionDiv.className = `border-2 rounded-xl p-4 ${paymentTypeColors[paymentType] || 'border-gray-200'}`;

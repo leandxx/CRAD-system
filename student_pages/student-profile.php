@@ -1,6 +1,5 @@
 <?php
 include('../includes/connection.php');
-include('../includes/notification-helper.php');
 session_start();
 
 // Debug: Check what's in the session
@@ -40,57 +39,34 @@ if ($existing_profile && $existing_profile['faculty_id']) {
     $adviser_stmt->close();
 }
 
-// Check group membership to determine if program should be locked
-$group_assignment = null;
-$in_group = false;
-$group_program = null;
-$group_cluster_id = null;
-try {
-    $grp_sql = "SELECT g.program, g.cluster_id FROM groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.student_id = ? LIMIT 1";
-    $grp_stmt = $conn->prepare($grp_sql);
-    $grp_stmt->bind_param("i", $user_id);
-    $grp_stmt->execute();
-    $grp_res = $grp_stmt->get_result();
-    $group_assignment = $grp_res ? $grp_res->fetch_assoc() : null;
-    $grp_stmt->close();
-    if ($group_assignment) {
-        $in_group = true;
-        $group_program = $group_assignment['program'];
-        $group_cluster_id = $group_assignment['cluster_id'];
-    }
-} catch (Exception $e) {}
-
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $school_id = $_POST['school_id'];
     $full_name = $_POST['full_name'];
+    $program = $_POST['program'];
     $school_year = $_POST['school_year'];
     
-    // Program/Cluster logic
-    // - If student is in a group, force program to group's program; cluster follows group's cluster if assigned
-    // - If not in a group, allow selecting program; cluster stays as-is or 'Not Assigned' on first creation
-    if ($in_group) {
-        $program = $group_program;
-        if (!empty($group_cluster_id)) {
-            $csql = "SELECT cluster, faculty_id FROM clusters WHERE id = ?";
-            $cstmt = $conn->prepare($csql);
-            $cstmt->bind_param("i", $group_cluster_id);
-            $cstmt->execute();
-            $cres = $cstmt->get_result();
-            $cinfo = $cres ? $cres->fetch_assoc() : null;
-            $cstmt->close();
-            if ($cinfo) {
-                $cluster = $cinfo['cluster'];
-            } else {
-                $cluster = isset($existing_profile['cluster']) && $existing_profile['cluster'] !== '' ? $existing_profile['cluster'] : 'Not Assigned';
-            }
-        } else {
-            $cluster = isset($existing_profile['cluster']) && $existing_profile['cluster'] !== '' ? $existing_profile['cluster'] : 'Not Assigned';
-        }
+    // Get cluster assignment from admin based on course and school year
+    $cluster_query = "
+        SELECT cluster 
+        FROM clusters 
+        WHERE program = ? AND school_year = ? AND status = 'active'
+        LIMIT 1
+    ";
+    
+    $cluster_stmt = $conn->prepare($cluster_query);
+    $cluster_stmt->bind_param("ss", $program, $school_year);
+    $cluster_stmt->execute();
+    $cluster_result = $cluster_stmt->get_result();
+    
+    if ($cluster_result && $cluster_result->num_rows > 0) {
+        $cluster_data = $cluster_result->fetch_assoc();
+        $cluster = $cluster_data['cluster'];
     } else {
-        $program = isset($_POST['program']) ? $_POST['program'] : ($existing_profile['program'] ?? '');
-        $cluster = $existing_profile ? ($existing_profile['cluster'] ?? 'Not Assigned') : 'Not Assigned';
+        // If no cluster is assigned by admin, set a default value
+        $cluster = 'Not Assigned';
     }
+    $cluster_stmt->close();
     
     if ($existing_profile) {
         // Update existing profile
@@ -135,53 +111,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $stmt->close();
 }
 $profile_check->close();
-
-// After processing, ensure displayed cluster reflects group assignment if applicable
-// If the student is a member of a group that has a cluster_id, mirror that cluster into student_profiles for consistency
-try {
-    $group_sql = "SELECT g.cluster_id FROM groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.student_id = ? LIMIT 1";
-    $group_stmt = $conn->prepare($group_sql);
-    $group_stmt->bind_param("i", $user_id);
-    $group_stmt->execute();
-    $group_result = $group_stmt->get_result();
-    $group_data = $group_result ? $group_result->fetch_assoc() : null;
-    $group_stmt->close();
-
-    if ($group_data && !empty($group_data['cluster_id'])) {
-        $cid = (int)$group_data['cluster_id'];
-        $csql = "SELECT cluster, faculty_id, program FROM clusters WHERE id = ?";
-        $cstmt = $conn->prepare($csql);
-        $cstmt->bind_param("i", $cid);
-        $cstmt->execute();
-        $cres = $cstmt->get_result();
-        $cinfo = $cres ? $cres->fetch_assoc() : null;
-        $cstmt->close();
-
-        if ($cinfo) {
-            // If profile exists but has different cluster/program, update it to match admin/group assignment
-            if ($existing_profile) {
-                $needs_update = ($existing_profile['cluster'] !== $cinfo['cluster']) || ($existing_profile['program'] !== $cinfo['program']) || ((int)$existing_profile['faculty_id'] !== (int)$cinfo['faculty_id']);
-                if ($needs_update) {
-                    $usql = "UPDATE student_profiles SET cluster = ?, program = ?, faculty_id = ? WHERE user_id = ?";
-                    $ustmt = $conn->prepare($usql);
-                    $fid = $cinfo['faculty_id'] ? (int)$cinfo['faculty_id'] : null;
-                    $ustmt->bind_param("ssii", $cinfo['cluster'], $cinfo['program'], $fid, $user_id);
-                    $ustmt->execute();
-                    $ustmt->close();
-                    // Refresh existing_profile reference for rendering
-                    $profile_check = $conn->prepare("SELECT * FROM student_profiles WHERE user_id = ?");
-                    $profile_check->bind_param("i", $user_id);
-                    $profile_check->execute();
-                    $profile_result = $profile_check->get_result();
-                    $existing_profile = $profile_result->fetch_assoc();
-                    $profile_check->close();
-                }
-            }
-        }
-    }
-} catch (Exception $e) {
-    // Silent fail for display sync; avoid breaking profile page
-}
 ?>
 
 <!DOCTYPE html>
@@ -190,7 +119,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Profile</title>
-    <link rel="icon" href="assets/img/sms-logo.png" type="image/png">
+    <link rel="icon" href="../assets/img/sms-logo.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
@@ -209,168 +138,28 @@ try {
         }
     </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: #ffffff;
-        }
-        
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            animation: slideInUp 0.6s ease-out;
-        }
-        
-        .glass-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
-        }
-        
         .profile-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
             transition: all 0.3s ease;
-            animation: slideInUp 0.6s ease-out;
         }
-        
         .profile-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         }
-        
-        .enhanced-header {
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.9) 0%, rgba(124, 58, 237, 0.9) 100%);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .info-card {
-            background: rgba(249, 250, 251, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .info-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .info-card:hover::before {
-            left: 100%;
-        }
-        
-        .info-card:hover {
-            transform: translateY(-2px) scale(1.02);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
-        
-        .input-field {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(209, 213, 219, 0.5);
-            transition: all 0.3s ease;
-        }
-        
         .input-field:focus {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(15px);
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-            border-color: rgba(37, 99, 235, 0.5);
         }
-        
         .cluster-display {
-            background: rgba(243, 244, 246, 0.8);
-            backdrop-filter: blur(10px);
+            background-color: #f3f4f6;
             padding: 0.75rem 1rem;
             border-radius: 0.5rem;
-            border: 1px solid rgba(209, 213, 219, 0.5);
+            border: 1px solid #d1d5db;
             min-height: 3rem;
             display: flex;
             align-items: center;
         }
-        
-        .enhanced-button {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .enhanced-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .enhanced-button:hover::before {
-            left: 100%;
-        }
-        
-        .enhanced-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-        }
-        
-        .adviser-card {
-            background: rgba(249, 250, 251, 0.8);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            transition: all 0.3s ease;
-        }
-        
-        .adviser-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-        }
-        
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-        
-        .animate-delay-1 { animation-delay: 0.1s; }
-        .animate-delay-2 { animation-delay: 0.2s; }
-        .animate-delay-3 { animation-delay: 0.3s; }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 text-gray-800 font-sans h-screen overflow-hidden">
+<body class="bg-gray-50 text-gray-800 font-sans h-screen overflow-hidden">
 
     <div class="min-h-screen flex">
         <!-- Sidebar/header -->
@@ -395,8 +184,8 @@ try {
                     </div>
                 <?php endif; ?>
 
-                <div class="profile-card rounded-xl overflow-hidden animate-delay-1">
-                    <div class="enhanced-header p-6 text-white">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden profile-card">
+                    <div class="bg-gradient-to-r from-primary to-secondary p-6 text-white">
                         <h2 class="text-2xl font-semibold">Personal Information</h2>
                         <p class="opacity-90">Please provide accurate information as it appears in school records</p>
                     </div>
@@ -433,28 +222,15 @@ try {
                                     id="program" 
                                     name="program" 
                                     class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition input-field"
-                                    <?php echo ($in_group ? 'disabled' : ''); ?>
                                     required
                                 >
-                                   <option value="" <?php echo (empty($existing_profile['program']) ? 'selected' : ''); ?>>Select Program</option>
-                                    <option value="BSIT" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSIT') ? 'selected' : ''; ?>>BS Information Technology (BSIT)</option>
-                                    <option value="BSHM" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSHM') ? 'selected' : ''; ?>>BS Hospitality Management (BSHM)</option>
-                                    <option value="BSOA" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSOA') ? 'selected' : ''; ?>>BS Office Administration (BSOA)</option>
-                                    <option value="BSBA" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSBA') ? 'selected' : ''; ?>>BS Business Administration (BSBA)</option>
-                                    <option value="BSCRIM" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSCRIM') ? 'selected' : ''; ?>>BS Criminology (BSCRIM)</option>
-                                    <option value="BEED" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BEED') ? 'selected' : ''; ?>>Bachelor of Elementary Education (BEED)</option>
-                                    <option value="BSED" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSED') ? 'selected' : ''; ?>>Bachelor of Secondary Education (BSED)</option>
-                                    <option value="BSCE" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSCE') ? 'selected' : ''; ?>>BS Computer Engineering (BSCE)</option>
-                                    <option value="BSTM" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSTM') ? 'selected' : ''; ?>>BS Tourism Management (BSTM)</option>
-                                    <option value="BSE" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSE') ? 'selected' : ''; ?>>BS Entrepreneurship (BSE)</option>
-                                    <option value="BSAIS" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSAIS') ? 'selected' : ''; ?>>BS Accounting Information System (BSAIS)</option>
-                                    <option value="BSPSYCH" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSPSYCH') ? 'selected' : ''; ?>>BS Psychology (BSPSYCH)</option>
-                                    <option value="BLIS" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BLIS') ? 'selected' : ''; ?>>BL Information Science (BLIS)</option>
+                                   <option value="">Select Program</option>
+                                    <option value="BSCS" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSCS') ? 'selected' : ''; ?>>BSCS - Computer Science</option>
+                                    <option value="BSBA" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSBA') ? 'selected' : ''; ?>>BSBA - Business Administration</option>
+                                    <option value="BSED" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSED') ? 'selected' : ''; ?>>BSED - Education</option>
+                                    <option value="BSIT" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSIT') ? 'selected' : ''; ?>>BSIT - Information Technology</option>
+                                    <option value="BSCRIM" <?php echo (isset($existing_profile['program']) && $existing_profile['program'] == 'BSCRIM') ? 'selected' : ''; ?>>BSCRIM - Criminology</option>
                                 </select>
-                                <?php if ($in_group): ?>
-                                <input type="hidden" name="program" value="<?php echo htmlspecialchars($group_program); ?>">
-                                <p class="text-xs text-gray-500 mt-1">Program is set by your group and cannot be changed here.</p>
-                                <?php endif; ?>
                             </div>
                             
                             <div>
@@ -468,26 +244,39 @@ try {
                                     }
                                     ?>
                                 </div>
-                                
+                                <input 
+                                    type="hidden" 
+                                    id="cluster" 
+                                    name="cluster" 
+                                    value="<?php echo isset($existing_profile['cluster']) ? htmlspecialchars($existing_profile['cluster']) : ''; ?>"
+                                >
                             </div>
                             
                             <div>
                                 <label for="school_year" class="block text-sm font-medium text-gray-700 mb-1">School Year</label>
-                                <input 
-                                    type="text" 
+                                <select 
                                     id="school_year" 
                                     name="school_year" 
-                                    value="<?php echo isset($existing_profile['school_year']) ? htmlspecialchars($existing_profile['school_year']) : date('Y') . '-' . (date('Y') + 1); ?>" 
                                     class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition input-field"
                                     required
                                 >
+                                    <option value="">Select School Year</option>
+                                    <?php
+                                    $current_year = date('Y');
+                                    for ($i = 0; $i < 5; $i++) {
+                                        $year_option = ($current_year - $i) . '-' . ($current_year - $i + 1);
+                                        $selected = (isset($existing_profile['school_year']) && $existing_profile['school_year'] == $year_option) ? 'selected' : '';
+                                        echo "<option value=\"$year_option\" $selected>$year_option</option>";
+                                    }
+                                    ?>
+                                </select>
                             </div>
                         </div>
                         
                         <div class="flex justify-end pt-4">
                             <button 
                                 type="submit" 
-                                class="enhanced-button px-6 py-3 text-white font-medium rounded-lg transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 flex items-center"
+                                class="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 flex items-center"
                             >
                                 <i class="fas fa-save mr-2"></i>
                                 Save Profile

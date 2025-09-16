@@ -12,7 +12,7 @@ try {
 
     $date = mysqli_real_escape_string($conn, $_POST['date']);
 
-    $rooms_query = "SELECT id, room_name, building FROM rooms ORDER BY building, room_name";
+    $rooms_query = "SELECT id, room_name, building, 50 as capacity FROM rooms ORDER BY building, room_name";
     $rooms_result = mysqli_query($conn, $rooms_query);
 
     if (!$rooms_result) {
@@ -22,9 +22,10 @@ try {
 
     $rooms = [];
     while ($room = mysqli_fetch_assoc($rooms_result)) {
-        $schedules_query = "SELECT ds.start_time, ds.end_time, g.name as group_name 
+        $schedules_query = "SELECT ds.start_time, ds.end_time, g.name as group_name, g.program, c.cluster 
                            FROM defense_schedules ds 
                            JOIN groups g ON ds.group_id = g.id 
+                           LEFT JOIN clusters c ON g.cluster_id = c.id
                            WHERE ds.room_id = '{$room['id']}' 
                            AND ds.defense_date = '$date' 
                            AND ds.status IN ('scheduled', 'completed')
@@ -37,7 +38,9 @@ try {
                 $schedules[] = [
                     'start_time' => date('H:i', strtotime($schedule['start_time'])),
                     'end_time' => date('H:i', strtotime($schedule['end_time'])),
-                    'group_name' => $schedule['group_name']
+                    'group_name' => $schedule['group_name'],
+                    'program' => $schedule['program'] ?: 'Not specified',
+                    'cluster' => $schedule['cluster'] ?: 'Not specified'
                 ];
             }
         }

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1: 3308
--- Generation Time: Sep 10, 2025 at 08:31 PM
+-- Generation Time: Sep 14, 2025 at 05:06 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -45,136 +45,7 @@ CREATE TABLE `clusters` (
 --
 
 INSERT INTO `clusters` (`id`, `program`, `cluster`, `school_year`, `faculty_id`, `assigned_date`, `student_count`, `capacity`, `status`, `created_date`) VALUES
-(225, 'BSIT', '41001', '2025-2026', NULL, NULL, 7, 50, 'unassigned', '2025-09-10 13:59:32'),
-(226, 'BSIT', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(227, 'BSIT', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(228, 'BSIT', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(229, 'BSIT', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(230, 'BSIT', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(231, 'BSIT', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(232, 'BSIT', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(233, 'BSIT', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(234, 'BSIT', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(235, 'BSHM', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(236, 'BSHM', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(237, 'BSHM', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(238, 'BSHM', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(239, 'BSHM', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(240, 'BSHM', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(241, 'BSHM', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(242, 'BSHM', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(243, 'BSHM', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(244, 'BSHM', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(245, 'BSOA', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(246, 'BSOA', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(247, 'BSOA', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(248, 'BSOA', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(249, 'BSOA', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(250, 'BSOA', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(251, 'BSOA', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(252, 'BSOA', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(253, 'BSOA', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(254, 'BSOA', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(255, 'BSBA', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(256, 'BSBA', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(257, 'BSBA', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(258, 'BSBA', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(259, 'BSBA', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(260, 'BSBA', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(261, 'BSBA', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(262, 'BSBA', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(263, 'BSBA', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(264, 'BSBA', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(265, 'BSED', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(266, 'BSED', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(267, 'BSED', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(268, 'BSED', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(269, 'BSED', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(270, 'BSED', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(271, 'BSED', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(272, 'BSED', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(273, 'BSED', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(274, 'BSED', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(275, 'BSCRIM', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(276, 'BSCRIM', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(277, 'BSCRIM', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(278, 'BSCRIM', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(279, 'BSCRIM', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(280, 'BSCRIM', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(281, 'BSCRIM', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(282, 'BSCRIM', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(283, 'BSCRIM', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(284, 'BSCRIM', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(285, 'BEED', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(286, 'BEED', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(287, 'BEED', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(288, 'BEED', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(289, 'BEED', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(290, 'BEED', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(291, 'BEED', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(292, 'BEED', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(293, 'BEED', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(294, 'BEED', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(295, 'BSCpE', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(296, 'BSCpE', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(297, 'BSCpE', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(298, 'BSCpE', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(299, 'BSCpE', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(300, 'BSCpE', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(301, 'BSCpE', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(302, 'BSCpE', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(303, 'BSCpE', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(304, 'BSCpE', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(305, 'BSTM', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(306, 'BSTM', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(307, 'BSTM', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(308, 'BSTM', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(309, 'BSTM', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(310, 'BSTM', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(311, 'BSTM', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(312, 'BSTM', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(313, 'BSTM', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(314, 'BSTM', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(315, 'BSEntrep', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(316, 'BSEntrep', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(317, 'BSEntrep', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(318, 'BSEntrep', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(319, 'BSEntrep', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(320, 'BSEntrep', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(321, 'BSEntrep', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(322, 'BSEntrep', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(323, 'BSEntrep', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(324, 'BSEntrep', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(325, 'BSAIS', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(326, 'BSAIS', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(327, 'BSAIS', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(328, 'BSAIS', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(329, 'BSAIS', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(330, 'BSAIS', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(331, 'BSAIS', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(332, 'BSAIS', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(333, 'BSAIS', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(334, 'BSAIS', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(335, 'BSPsych', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(336, 'BSPsych', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(337, 'BSPsych', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(338, 'BSPsych', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(339, 'BSPsych', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(340, 'BSPsych', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(341, 'BSPsych', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(342, 'BSPsych', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(343, 'BSPsych', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(344, 'BSPsych', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(345, 'BLIS', '41001', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(346, 'BLIS', '41002', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(347, 'BLIS', '41003', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(348, 'BLIS', '41004', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(349, 'BLIS', '41005', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(350, 'BLIS', '41006', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(351, 'BLIS', '41007', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(352, 'BLIS', '41008', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(353, 'BLIS', '41009', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07'),
-(354, 'BLIS', '41010', '2025-2026', NULL, NULL, 0, 25, 'unassigned', '2025-09-06 11:21:07');
+(222, 'BSIT', '41006', '2025-2026', 2, '2025-09-08', 7, 50, 'assigned', '2025-09-08 14:45:02');
 
 -- --------------------------------------------------------
 
@@ -201,9 +72,9 @@ INSERT INTO `defense_panel` (`id`, `defense_id`, `faculty_id`, `role`, `created_
 (51, 3, 8, 'chair', '2025-09-01 16:37:40'),
 (52, 3, 11, 'member', '2025-09-01 16:37:40'),
 (53, 3, 10, 'member', '2025-09-01 16:37:40'),
-(166, 24, 8, 'chair', '2025-09-10 18:26:02'),
-(167, 24, 11, 'member', '2025-09-10 18:26:02'),
-(168, 24, 10, 'member', '2025-09-10 18:26:02');
+(186, 34, 8, 'chair', '2025-09-14 08:24:46'),
+(187, 34, 11, 'member', '2025-09-14 08:24:46'),
+(188, 34, 10, 'member', '2025-09-14 08:24:46');
 
 -- --------------------------------------------------------
 
@@ -218,37 +89,23 @@ CREATE TABLE `defense_schedules` (
   `start_time` time DEFAULT NULL,
   `end_time` time DEFAULT NULL,
   `room_id` int(11) DEFAULT NULL,
-  `status` enum('scheduled','confirmed','completed','cancelled','failed','passed') DEFAULT 'scheduled',
+  `status` enum('scheduled','completed','cancelled','failed','passed') DEFAULT 'scheduled',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `defense_type` enum('pre_oral','final') DEFAULT 'pre_oral',
+  `defense_type` enum('pre_oral','final','redefense') DEFAULT 'pre_oral',
   `defense_result` enum('pending','passed','failed','redefense') DEFAULT 'pending',
   `parent_defense_id` int(11) DEFAULT NULL,
   `redefense_reason` text DEFAULT NULL,
   `is_redefense` tinyint(1) DEFAULT 0,
-  `completed_at` timestamp NULL DEFAULT NULL
+  `completed_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Dumping data for table `defense_schedules`
 --
 
-INSERT INTO `defense_schedules` (`id`, `group_id`, `defense_date`, `start_time`, `end_time`, `room_id`, `status`, `created_at`, `defense_type`, `defense_result`, `parent_defense_id`, `redefense_reason`, `is_redefense`, `completed_at`) VALUES
-(24, 16, '2025-09-10', '09:00:00', '09:30:00', 1, 'completed', '2025-09-10 18:24:54', '', 'pending', NULL, NULL, 0, NULL);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `document_submissions`
---
-
-CREATE TABLE `document_submissions` (
-  `id` int(11) NOT NULL,
-  `group_id` int(11) DEFAULT NULL,
-  `document_id` int(11) DEFAULT NULL,
-  `file_path` varchar(255) DEFAULT NULL,
-  `submitted_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `status` enum('pending','approved','rejected') DEFAULT 'pending'
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+INSERT INTO `defense_schedules` (`id`, `group_id`, `defense_date`, `start_time`, `end_time`, `room_id`, `status`, `created_at`, `defense_type`, `defense_result`, `parent_defense_id`, `redefense_reason`, `is_redefense`, `completed_at`, `updated_at`) VALUES
+(34, 15, '2025-09-14', '09:00:00', '10:00:00', 1, 'completed', '2025-09-14 07:39:30', 'redefense', 'pending', NULL, 'eee', 1, NULL, '2025-09-14 08:25:01');
 
 -- --------------------------------------------------------
 
@@ -260,26 +117,25 @@ CREATE TABLE `faculty` (
   `id` int(11) NOT NULL,
   `fullname` varchar(100) NOT NULL,
   `department` varchar(50) NOT NULL,
-  `expertise` varchar(100) NOT NULL,
-  `email` varchar(50) NOT NULL
+  `expertise` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `faculty`
 --
 
-INSERT INTO `faculty` (`id`, `fullname`, `department`, `expertise`, `email`) VALUES
-(1, 'Dr. Maria Santos', 'Accounting Information System', 'Financial Accounting and Auditing', ''),
-(2, 'Prof. James Wilson', 'Information Technology', 'Web Development and Database Systems', ''),
-(3, 'Dr. Lisa Chen', 'Hospitality Management', 'Hotel Operations and Management', ''),
-(4, 'Prof. Robert Garcia', 'Criminology', 'Forensic Science and Criminal Investigation', ''),
-(5, 'Dr. Sarah Johnson', 'Tourism Management', 'Eco-Tourism and Travel Management', ''),
-(6, 'Dr. Michael Brown', 'Accounting Information System', 'Taxation and Business Law', ''),
-(7, 'Prof. Emily Williams', 'Information Technology', 'Cybersecurity and Network Administration', ''),
-(8, 'Dr. David Lee', 'Hospitality Management', 'Food and Beverage Management', ''),
-(9, 'Prof. Amanda Rodriguez', 'Criminology', 'Criminal Psychology and Behavior', ''),
-(10, 'Dr. Jennifer Kim', 'Tourism Management', 'Tourism Planning and Development', ''),
-(11, 'Dr. Justene Jean Siarez', 'Psychology', 'Medical Office Administration', '');
+INSERT INTO `faculty` (`id`, `fullname`, `department`, `expertise`) VALUES
+(1, 'Dr. Maria Santos', 'Accounting', 'Financial Accounting and Auditing'),
+(2, 'Prof. James Wilson', 'Information Technology', 'Web Development and Database Systems'),
+(3, 'Dr. Lisa Chen', 'Hospitality Management', 'Hotel Operations and Management'),
+(4, 'Prof. Robert Garcia', 'Criminology', 'Forensic Science and Criminal Investigation'),
+(5, 'Dr. Sarah Johnson', 'Tourism', 'Eco-Tourism and Travel Management'),
+(6, 'Dr. Michael Brown', 'Accounting', 'Taxation and Business Law'),
+(7, 'Prof. Emily Williams', 'Information Technology', 'Cybersecurity and Network Administration'),
+(8, 'Dr. David Lee', 'Hospitality Management', 'Food and Beverage Management'),
+(9, 'Prof. Amanda Rodriguez', 'Criminology', 'Criminal Psychology and Behavior'),
+(10, 'Dr. Jennifer Kim', 'Tourism', 'Tourism Planning and Development'),
+(11, 'Dr. Justene Jean Siarez', 'Psychology', 'Medical Office Administration');
 
 -- --------------------------------------------------------
 
@@ -301,8 +157,8 @@ CREATE TABLE `groups` (
 --
 
 INSERT INTO `groups` (`id`, `name`, `program`, `cluster_id`, `join_code`, `created_at`) VALUES
-(15, 'GRP 2', 'BSIT', 225, '5B97C1', '2025-08-29 05:08:49'),
-(16, 'GRP 1', 'BSIT', 225, 'C7E820', '2025-09-01 10:10:40');
+(15, 'GRP 2', 'BSIT', 222, '5B97C1', '2025-08-29 05:08:49'),
+(16, 'GRP 1', 'BSIT', 222, 'C7E820', '2025-09-01 10:10:40');
 
 -- --------------------------------------------------------
 
@@ -326,7 +182,7 @@ INSERT INTO `group_members` (`id`, `group_id`, `student_id`) VALUES
 (33, 15, 12),
 (35, 15, 13),
 (34, 15, 14),
-(45, 16, 7),
+(46, 16, 7),
 (44, 16, 9);
 
 -- --------------------------------------------------------
@@ -345,6 +201,10 @@ CREATE TABLE `notifications` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `notifications`
+--
 
 -- --------------------------------------------------------
 
@@ -369,8 +229,7 @@ INSERT INTO `panel_invitations` (`id`, `panel_id`, `token`, `status`, `invited_a
 (0, 8, 'f02432185b3a80a66691cd67336e800e32c170c099ec03d8c7e90f8549cd4fa6', 'rejected', '2025-08-25 22:31:46', '2025-08-25 22:33:52'),
 (0, 8, '2befe2d3c3c74a7b237e31e5cc78245b4d4a97b7bc3d536f6c41e82c3274a076', 'accepted', '2025-08-25 22:37:54', '2025-08-25 22:38:55'),
 (0, 9, '728ecda4f4f6fa58174a6e9f0e42be8aadf06823072c56df5ea92a5df1c31458', 'accepted', '2025-08-27 18:47:31', '2025-08-27 18:48:43'),
-(0, 8, 'b0c46e117a244b46d3e794218855b126ee3d202a32410d0e0e25ee3d0779f829', 'accepted', '2025-08-30 17:40:43', '2025-08-30 17:41:37'),
-(0, 12, '1ce27ec05dd010f7aec8bb1b526d87016d403edebffe94eba3b5c2007b3c1a91', 'pending', '2025-09-03 17:14:50', NULL);
+(0, 8, 'b0c46e117a244b46d3e794218855b126ee3d202a32410d0e0e25ee3d0779f829', 'accepted', '2025-08-30 17:40:43', '2025-08-30 17:41:37');
 
 -- --------------------------------------------------------
 
@@ -397,8 +256,9 @@ CREATE TABLE `panel_members` (
 
 INSERT INTO `panel_members` (`id`, `first_name`, `last_name`, `email`, `specialization`, `program`, `status`, `role`, `created_at`, `updated_at`) VALUES
 (8, 'John Marvic', 'Giray', 'girayjohnmarvic09@gmail.com', 'Information Technology', 'bsit', 'active', 'chairperson', '2025-08-25 14:31:40', '2025-08-25 14:31:40'),
+(9, 'Justene Jean', 'Siarez', 'justenesiarez@gmail.com', 'Medical Office Admin', 'general', 'active', 'chairperson', '2025-08-27 10:47:12', '2025-08-27 10:47:12'),
 (10, 'Prof. John Dela', 'Santos', 'leanlojero23@gmail.com', 'AI Expert', 'bsit', 'active', 'member', '2025-09-01 08:26:53', '2025-09-01 08:26:53'),
-(11, 'John', 'Hood', 'Haeri12n@gmail.com', 'Data Privacy & Cybersecurity', 'bsit', 'active', 'member', '2025-09-01 08:27:20', '2025-09-08 18:20:15'),
+(11, 'John', 'HOOD', 'Haeri12n@gmail.com', 'Data Privacy & Cybersecurity', 'bsit', 'active', 'member', '2025-09-01 08:27:20', '2025-09-01 08:27:38'),
 (12, 'John', 'Cruz', 'Haerin@gmail.com', 'Data Privacy & Cybersecurity', 'bsit', 'active', 'chairperson', '2025-09-01 16:52:34', '2025-09-01 16:52:34');
 
 -- --------------------------------------------------------
@@ -412,43 +272,26 @@ CREATE TABLE `payments` (
   `student_id` int(11) NOT NULL,
   `payment_type` enum('research_forum','pre_oral_defense','final_defense') NOT NULL,
   `amount` decimal(10,2) NOT NULL,
-  `pdf_receipt` varchar(255) DEFAULT NULL,
+  `pdf_receipt` varchar(255) DEFAULT NULL COMMENT 'Legacy PDF receipt field',
   `status` enum('pending','approved','rejected','completed','failed') NOT NULL DEFAULT 'pending',
   `admin_approved` tinyint(1) DEFAULT 0,
-  `payment_date` timestamp NOT NULL DEFAULT current_timestamp()
+  `review_feedback` text DEFAULT NULL,
+  `payment_date` timestamp NOT NULL DEFAULT current_timestamp(),
+  `image_receipts` text DEFAULT NULL COMMENT 'JSON array of image file paths',
+  `image_review` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Dumping data for table `payments`
 --
 
-INSERT INTO `payments` (`id`, `student_id`, `payment_type`, `amount`, `pdf_receipt`, `status`, `admin_approved`, `payment_date`) VALUES
-(29, 7, 'research_forum', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 15:21:17'),
-(30, 9, 'research_forum', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 15:21:17'),
-(31, 1, 'research_forum', 100.00, '../assets/uploads/receipts/Cap101-reviewer-Prelim.pdf', 'approved', 0, '2025-09-01 15:48:22'),
-(32, 2, 'research_forum', 100.00, '../assets/uploads/receipts/Cap101-reviewer-Prelim.pdf', 'approved', 0, '2025-09-01 15:48:22'),
-(33, 12, 'research_forum', 100.00, '../assets/uploads/receipts/Cap101-reviewer-Prelim.pdf', 'approved', 0, '2025-09-01 15:48:22'),
-(34, 13, 'research_forum', 100.00, '../assets/uploads/receipts/Cap101-reviewer-Prelim.pdf', 'approved', 0, '2025-09-01 15:48:22'),
-(35, 14, 'research_forum', 100.00, '../assets/uploads/receipts/Cap101-reviewer-Prelim.pdf', 'approved', 0, '2025-09-01 15:48:22'),
-(36, 1, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02'),
-(37, 2, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02'),
-(38, 12, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02'),
-(39, 13, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02'),
-(40, 14, 'research_forum', 100.00, '../assets/uploads/receipts/Sample-Interview-Questions (1).pdf', 'approved', 0, '2025-09-01 15:49:02'),
-(41, 7, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 16:14:35'),
-(42, 9, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 16:14:35'),
-(43, 7, 'final_defense', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 17:33:24'),
-(44, 9, 'final_defense', 100.00, '../assets/uploads/receipts/tbls crad.pdf', 'approved', 0, '2025-09-01 17:33:24'),
-(45, 1, 'final_defense', 100.00, '../assets/uploads/receipts/coc-cor.pdf', 'approved', 0, '2025-09-03 08:35:33'),
-(46, 2, 'final_defense', 100.00, '../assets/uploads/receipts/coc-cor.pdf', 'approved', 0, '2025-09-03 08:35:33'),
-(47, 12, 'final_defense', 100.00, '../assets/uploads/receipts/coc-cor.pdf', 'approved', 0, '2025-09-03 08:35:33'),
-(48, 13, 'final_defense', 100.00, '../assets/uploads/receipts/coc-cor.pdf', 'approved', 0, '2025-09-03 08:35:33'),
-(49, 14, 'final_defense', 100.00, '../assets/uploads/receipts/coc-cor.pdf', 'approved', 0, '2025-09-03 08:35:33'),
-(50, 1, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/coc-cor.pdf', 'approved', 0, '2025-09-03 08:49:04'),
-(51, 2, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/coc-cor.pdf', 'approved', 0, '2025-09-03 08:49:04'),
-(52, 12, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/coc-cor.pdf', 'approved', 0, '2025-09-03 08:49:04'),
-(53, 13, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/coc-cor.pdf', 'approved', 0, '2025-09-03 08:49:04'),
-(54, 14, 'pre_oral_defense', 100.00, '../assets/uploads/receipts/coc-cor.pdf', 'approved', 0, '2025-09-03 08:49:04');
+INSERT INTO `payments` (`id`, `student_id`, `payment_type`, `amount`, `pdf_receipt`, `status`, `admin_approved`, `review_feedback`, `payment_date`, `image_receipts`, `image_review`) VALUES
+(1, 1, 'pre_oral_defense', 100.00, NULL, 'approved', 1, NULL, '2025-09-13 11:30:00', '[\"../assets/uploads/receipts/1757763000_0_me.png\"]', '[{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-13T19:30:29+08:00\"}]'),
+(2, 1, 'research_forum', 100.00, NULL, 'approved', 1, NULL, '2025-09-13 11:31:38', '[\"../assets/uploads/receipts/1757763098_0_sms-logo.png\"]', '[{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-13T19:33:36+08:00\"}]'),
+(3, 2, 'research_forum', 100.00, NULL, 'approved', 1, NULL, '2025-09-13 11:31:38', '[\"../assets/uploads/receipts/1757763098_0_sms-logo.png\"]', '[{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-13T19:33:36+08:00\"}]'),
+(4, 12, 'research_forum', 100.00, NULL, 'approved', 1, NULL, '2025-09-13 11:31:38', '[\"../assets/uploads/receipts/1757763098_0_sms-logo.png\"]', '[{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-13T19:33:36+08:00\"}]'),
+(5, 13, 'research_forum', 100.00, NULL, 'approved', 1, NULL, '2025-09-13 11:31:38', '[\"../assets/uploads/receipts/1757763098_0_sms-logo.png\"]', '[{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-13T19:33:36+08:00\"}]'),
+(6, 14, 'research_forum', 100.00, NULL, 'approved', 1, NULL, '2025-09-13 11:31:38', '[\"../assets/uploads/receipts/1757763098_0_sms-logo.png\"]', '[{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-13T19:33:36+08:00\"}]');
 
 -- --------------------------------------------------------
 
@@ -464,16 +307,17 @@ CREATE TABLE `proposals` (
   `file_path` varchar(255) DEFAULT NULL,
   `submitted_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `status` enum('Pending','Completed') NOT NULL DEFAULT 'Pending',
-  `reviewed_at` timestamp NULL DEFAULT NULL
+  `reviewed_at` timestamp NULL DEFAULT NULL,
+  `final_defense_open` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Dumping data for table `proposals`
 --
 
-INSERT INTO `proposals` (`id`, `group_id`, `title`, `description`, `file_path`, `submitted_at`, `status`, `reviewed_at`) VALUES
-(18, 16, 'Smart Campus Navigator: An Indoor Positioning System Using QR Codes and Cloud Integration', 'This study aims to design and develop a campus navigation system that uses QR codes placed at key locations inside school buildings. The system will be integrated with a cloud database to provide real-time directions and facility information accessible through a mobile application. The project addresses the challenges of new students and visitors in locating rooms, offices, and facilities within the campus, thereby improving efficiency and user experience.', '../assets/uploads/proposals/Cap101-reviewer-Prelim.pdf', '2025-09-01 15:21:40', 'Completed', '2025-09-01 17:49:23'),
-(19, 15, 'Intelligent Progressive Research Submission ', 'This thesis investigates the relationship between social media usage and mental health outcomes in adolescents. Through qualitative interviews and quantitative surveys, it aims to identify patterns of social media behavior that correlate with anxiety, depression, and self-esteem levels. The study offers recommendations for healthier online habits and policy suggestions for social media platforms.', '../assets/uploads/proposals/Sample-Interview-Questions (1).pdf', '2025-09-01 15:49:14', 'Completed', '2025-09-03 09:21:24');
+INSERT INTO `proposals` (`id`, `group_id`, `title`, `description`, `file_path`, `submitted_at`, `status`, `reviewed_at`, `final_defense_open`) VALUES
+(18, 16, 'Smart Campus Navigator: An Indoor Positioning System Using QR Codes and Cloud Integration', 'This study aims to design and develop a campus navigation system that uses QR codes placed at key locations inside school buildings. The system will be integrated with a cloud database to provide real-time directions and facility information accessible through a mobile application. The project addresses the challenges of new students and visitors in locating rooms, offices, and facilities within the campus, thereby improving efficiency and user experience.', '../assets/uploads/proposals/Cap101-reviewer-Prelim.pdf', '2025-09-01 15:21:40', 'Completed', '2025-09-10 07:52:12', 0),
+(19, 15, 'The Impact of Social Media on Adolescent Mental Health: A Case Study Approach', 'This thesis investigates the relationship between social media usage and mental health outcomes in adolescents. Through qualitative interviews and quantitative surveys, it aims to identify patterns of social media behavior that correlate with anxiety, depression, and self-esteem levels. The study offers recommendations for healthier online habits and policy suggestions for social media platforms.', '../assets/uploads/proposals/Sample-Interview-Questions (1).pdf', '2025-09-01 15:49:14', 'Completed', '2025-09-13 11:33:41', 0);
 
 -- --------------------------------------------------------
 
@@ -497,19 +341,20 @@ CREATE TABLE `required_documents` (
 CREATE TABLE `rooms` (
   `id` int(11) NOT NULL,
   `room_name` varchar(50) DEFAULT NULL,
-  `building` varchar(100) DEFAULT NULL
+  `building` varchar(100) DEFAULT NULL,
+  `capacity` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Dumping data for table `rooms`
 --
 
-INSERT INTO `rooms` (`id`, `room_name`, `building`) VALUES
-(1, 'Defense Room 1', 'CRAD Office'),
-(2, 'Defense Room 2', 'CRAD Office'),
-(3, 'Defense Room 3', 'CRAD Office'),
-(4, 'Defense Room 4', 'CRAD Office'),
-(5, 'Defense Room 5', 'CRAD Office');
+INSERT INTO `rooms` (`id`, `room_name`, `building`, `capacity`) VALUES
+(1, 'Defense Room 1', 'CRAD Office', NULL),
+(2, 'Defense Room 2', 'CRAD Office', NULL),
+(3, 'Defense Room 3', 'CRAD Office', NULL),
+(4, 'Defense Room 4', 'CRAD Office', NULL),
+(5, 'Defense Room 5', 'CRAD Office', NULL);
 
 -- --------------------------------------------------------
 
@@ -535,14 +380,14 @@ CREATE TABLE `student_profiles` (
 --
 
 INSERT INTO `student_profiles` (`id`, `user_id`, `school_id`, `full_name`, `program`, `cluster`, `faculty_id`, `school_year`, `created_at`, `updated_at`) VALUES
-(14, 1, '21016692', 'John Marvic Giray', 'BSIT', '41001', NULL, '2025-2026', '2025-08-25 13:16:56', '2025-09-06 16:52:21'),
+(14, 1, '21016692', 'John Marvic Giray', 'BSIT', '41006', 2, '2025-2026', '2025-08-25 13:16:56', '2025-09-08 10:11:10'),
 (15, 11, '22101234', 'Leandro Lojero', 'BSIT', 'Not Assigned', NULL, '2025-2026', '2025-08-28 05:26:12', '2025-08-28 05:26:12'),
-(16, 12, '22105678', 'Angelito Pampanga', 'BSIT', '41001', NULL, '2025-2026', '2025-08-28 05:28:03', '2025-09-06 16:52:21'),
-(17, 13, '22107890', 'Geo Caranza', 'BSIT', '41001', NULL, '2025-2026', '2025-08-28 05:29:36', '2025-09-06 16:52:21'),
-(18, 14, '22010987', 'Erico Golay', 'BSIT', '41001', NULL, '2025-2026', '2025-08-28 05:31:02', '2025-09-06 16:52:21'),
-(19, 2, '12345678', 'Coby Bryant Giray', 'BSIT', '41001', NULL, '2025-2026', '2025-08-29 05:15:18', '2025-09-06 16:52:21'),
-(20, 7, '22011941', 'Hanni Pham', 'BSIT', '41001', NULL, '2025-2026', '2025-09-01 10:05:10', '2025-09-06 16:52:29'),
-(21, 9, '22014823', 'Kang Haerin', 'BSIT', '41001', NULL, '2025-2026', '2025-09-01 10:12:00', '2025-09-06 16:52:29');
+(16, 12, '22105678', 'Angelito Pampanga', 'BSIT', '41006', 2, '2025-2026', '2025-08-28 05:28:03', '2025-09-08 10:11:10'),
+(17, 13, '22107890', 'Geo Caranza', 'BSIT', '41006', 2, '2025-2026', '2025-08-28 05:29:36', '2025-09-08 10:11:10'),
+(18, 14, '22010987', 'Erico Golay', 'BSIT', '41006', 2, '2025-2026', '2025-08-28 05:31:02', '2025-09-08 10:11:10'),
+(19, 2, '12345678', 'Coby Bryant Giray', 'BSIT', '41006', 2, '2025-2026', '2025-08-29 05:15:18', '2025-09-08 10:11:10'),
+(20, 7, '22011941', 'Hanni Pham', 'BSIT', '41006', 2, '2025-2026', '2025-09-01 10:05:10', '2025-09-08 14:45:02'),
+(21, 9, '22014823', 'Kang Haerin', 'BSIT', '41006', 2, '2025-2026', '2025-09-01 10:12:00', '2025-09-08 10:11:10');
 
 -- --------------------------------------------------------
 
@@ -566,8 +411,7 @@ CREATE TABLE `submission_timelines` (
 INSERT INTO `submission_timelines` (`id`, `title`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
 (3, 'Capstone', 'Timeline', 0, '2025-08-25 13:15:48', '2025-08-27 19:37:22'),
 (4, 'Capstone', 'Timeline', 0, '2025-08-28 18:25:22', '2025-08-29 04:59:15'),
-(5, 'Capstone', '', 0, '2025-08-29 05:01:08', '2025-09-03 09:37:22'),
-(6, 'SUBMISSION ', '', 1, '2025-09-03 09:37:42', '2025-09-03 09:37:42');
+(5, 'Capstone', '', 0, '2025-08-29 05:01:08', '2025-09-10 07:34:23');
 
 -- --------------------------------------------------------
 
@@ -604,9 +448,8 @@ INSERT INTO `timeline_milestones` (`id`, `timeline_id`, `title`, `description`, 
 (11, 4, 'Chapter 2 Week 2', '', '2025-08-31 08:00:00', 'pending', '2025-08-28 18:25:22', '2025-08-28 18:25:22'),
 (12, 4, 'Chapter 3 Week 3', '', '2025-09-01 08:00:00', 'pending', '2025-08-28 18:25:22', '2025-08-28 18:25:22'),
 (13, 5, 'Chapter 1 Week 1', '', '2025-08-30 08:00:00', 'pending', '2025-08-29 05:01:08', '2025-08-29 05:01:08'),
-(14, 5, 'Chapter 2 Week 2', 'DAPAT TA{PS NA', '2025-08-31 08:00:00', 'pending', '2025-08-29 05:01:08', '2025-09-03 09:36:47'),
-(15, 5, 'Chapter 3 Week 3', '', '2025-09-01 08:00:00', 'pending', '2025-08-29 05:01:08', '2025-08-29 05:01:08'),
-(16, 6, 'PROPOSAL', 'dsds', '2025-09-25 12:00:00', 'pending', '2025-09-03 09:37:42', '2025-09-03 09:37:42');
+(14, 5, 'Chapter 2 Week 2', '', '2025-08-31 08:00:00', 'pending', '2025-08-29 05:01:08', '2025-08-29 05:01:08'),
+(15, 5, 'Chapter 3 Week 3', '', '2025-09-01 08:00:00', 'pending', '2025-08-29 05:01:08', '2025-08-29 05:01:08');
 
 -- --------------------------------------------------------
 
@@ -640,6 +483,16 @@ INSERT INTO `user_tbl` (`user_id`, `email`, `password`, `role`, `created_at`) VA
 (13, 'geo@gmail.com', '$2y$10$5msQtohhqAozmI7NSkqz6.EH49aK9q.pl9Ryo2j1bXMXWJ0uCStsC', 'Student', '2025-08-28 05:28:55'),
 (14, 'erico@gmail.com', '$2y$10$YlPdn0CdG5dofql9ToTJheb01UnUXgXuhF8iRiVYPtx4dZ2T0XGmO', 'Student', '2025-08-28 05:30:19');
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `_tmp_check`
+--
+
+CREATE TABLE `_tmp_check` (
+  `id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Indexes for dumped tables
 --
@@ -666,13 +519,6 @@ ALTER TABLE `defense_panel`
 ALTER TABLE `defense_schedules`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_parent_defense` (`parent_defense_id`);
-
---
--- Indexes for table `document_submissions`
---
-ALTER TABLE `document_submissions`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `group_id` (`group_id`);
 
 --
 -- Indexes for table `faculty`
@@ -721,3 +567,120 @@ ALTER TABLE `panel_members`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`);
 
+--
+-- Indexes for table `payments`
+--
+ALTER TABLE `payments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `student_id` (`student_id`);
+
+--
+-- Indexes for table `proposals`
+--
+ALTER TABLE `proposals`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `group_id` (`group_id`);
+
+--
+-- Indexes for table `required_documents`
+--
+ALTER TABLE `required_documents`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `rooms`
+--
+ALTER TABLE `rooms`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `student_profiles`
+--
+ALTER TABLE `student_profiles`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_user` (`user_id`),
+  ADD KEY `fk_student_profiles_faculty` (`faculty_id`),
+  ADD KEY `idx_student_profiles_cluster` (`cluster`),
+  ADD KEY `idx_student_profiles_program_year` (`program`,`school_year`);
+
+--
+-- Indexes for table `submission_timelines`
+--
+ALTER TABLE `submission_timelines`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `timeline_milestones`
+--
+ALTER TABLE `timeline_milestones`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `timeline_id` (`timeline_id`);
+
+--
+-- Indexes for table `user_tbl`
+--
+ALTER TABLE `user_tbl`
+  ADD PRIMARY KEY (`user_id`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- Indexes for table `_tmp_check`
+--
+ALTER TABLE `_tmp_check`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `clusters`
+--
+ALTER TABLE `clusters`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=224;
+
+--
+-- AUTO_INCREMENT for table `defense_panel`
+--
+ALTER TABLE `defense_panel`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=189;
+
+--
+-- AUTO_INCREMENT for table `defense_schedules`
+--
+ALTER TABLE `defense_schedules`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+
+--
+-- AUTO_INCREMENT for table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=839;
+
+--
+-- AUTO_INCREMENT for table `payments`
+--
+ALTER TABLE `payments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+DELIMITER $$
+--
+-- Events
+--
+CREATE DEFINER=`root`@`localhost` EVENT `defense_schedules` ON SCHEDULE EVERY 1 MINUTE STARTS '2025-08-23 11:13:12' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE defense_schedules
+  SET status = 'completed'
+  WHERE end_time < CURTIME() 
+    AND defense_date <= CURDATE()
+    AND status = 'scheduled'$$
+
+CREATE DEFINER=`root`@`localhost` EVENT `update_defense_status` ON SCHEDULE EVERY 1 MINUTE STARTS '2025-08-24 03:57:24' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE defense_schedules
+  SET status = 'completed'
+  WHERE status = 'scheduled'
+    AND TIMESTAMP(defense_date, end_time) < NOW()$$
+
+DELIMITER ;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

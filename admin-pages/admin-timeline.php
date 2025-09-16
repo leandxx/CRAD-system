@@ -1157,35 +1157,9 @@ $isoDeadline = $current_milestone
       <h2 class="text-2xl font-bold text-gray-800">Proposal Review</h2>
     </div>
     <div class="flex items-center gap-3">
-      <form method="POST" class="bg-white/60 backdrop-blur-sm rounded-xl p-2 border border-white/40 flex items-center gap-2">
-        <?php
-          // Determine global state: if any proposal is closed, show Open All; if all open (>=1), show Close All
-          $global_open = 0;
-          $has_final_defense_col = 0;
-          $colCheck = $conn->query("SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'proposals' AND COLUMN_NAME = 'final_defense_open'");
-          if ($colCheck && ($colRow = $colCheck->fetch_assoc())) {
-            $has_final_defense_col = (int)$colRow['cnt'];
-          }
-          if ($has_final_defense_col) {
-            $res = $conn->query("SELECT COUNT(*) AS total, SUM(final_defense_open = 1) AS open_count FROM proposals");
-            if ($res && ($row = $res->fetch_assoc())) {
-              $total = (int)$row['total'];
-              $open_count = (int)$row['open_count'];
-              if ($total > 0 && $open_count === $total) { $global_open = 1; }
-            }
-          }
-        ?>
-        <input type="hidden" name="final_defense_open_global" value="<?php echo $global_open ? '0' : '1'; ?>">
-        <button type="submit" name="toggle_final_defense_global" id="finalDefenseToggleBtnGlobal" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all <?php echo $global_open ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'; ?>">
-          <?php echo $global_open ? 'Close Final Defense (All Students)' : 'Open Final Defense (All Students)'; ?>
-        </button>
-        <span class="text-sm <?php echo $global_open ? 'text-green-700 font-medium' : 'text-gray-600'; ?>">
-          Current: <?php echo $global_open ? 'OPEN for all' : 'CLOSED (or mixed)'; ?>
-        </span>
-      </form>
-    <span class="gradient-green text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg">
-      <?php echo count($proposals); ?> Submitted
-    </span>
+      <span class="gradient-green text-white text-sm font-bold px-4 py-2 rounded-xl shadow-lg">
+        <?php echo count($proposals); ?> Submitted
+      </span>
     </div>
   </div>
 
@@ -2040,6 +2014,9 @@ $isoDeadline = $current_milestone
         feedbackTextarea.value = proposal.feedback;
       }
       
+      // Keep a working copy to allow live UI updates without refresh
+      try { window.currentProposal = JSON.parse(JSON.stringify(proposal)); } catch (e) { window.currentProposal = proposal; }
+
       // Update payment status summary
       updatePaymentStatusSummary(proposal);
       
@@ -2299,6 +2276,21 @@ $isoDeadline = $current_milestone
           const fb = feedback ? `<span class=\"text-gray-600 ml-2\">${feedback}</span>` : '';
           statusEl.innerHTML = tag + fb;
         }
+        // Update in-memory proposal and refresh UI so it reflects paid state immediately
+        try {
+          if (window.currentProposal) {
+            const ps = window.currentProposal.payment_status || (window.currentProposal.payment_status = {});
+            const pir = ps.payment_image_review || (ps.payment_image_review = {});
+            if (data.review) { pir[paymentType] = data.review; }
+            if (data.status) {
+              if (paymentType === 'research_forum') ps.has_research_forum_payment = (data.status === 'approved');
+              if (paymentType === 'pre_oral_defense') ps.has_pre_oral_payment = (data.status === 'approved');
+              if (paymentType === 'final_defense') ps.has_final_defense_payment = (data.status === 'approved');
+            }
+            updatePaymentStatusSummary(window.currentProposal);
+            updateApprovalButton(window.currentProposal);
+          }
+        } catch (e) {}
         // Update summary badges without full refresh
         try {
           if (paymentType === 'research_forum') {

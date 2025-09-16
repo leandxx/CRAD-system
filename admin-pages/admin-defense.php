@@ -222,8 +222,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if (isset($_POST['mark_passed'])) {
         $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
-        $update_query = "UPDATE defense_schedules SET status = 'completed' WHERE id = '$defense_id'";
+        // Mark completed
+        $update_query = "UPDATE defense_schedules SET status = 'completed', updated_at = NOW() WHERE id = '$defense_id'";
         if (mysqli_query($conn, $update_query)) {
+            // If this was a pre-oral, create a pending final defense shell to enable quick scheduling
+            $q = mysqli_query($conn, "SELECT group_id, defense_type FROM defense_schedules WHERE id = '$defense_id' LIMIT 1");
+            if ($q && mysqli_num_rows($q)>0) {
+                $row = mysqli_fetch_assoc($q);
+                if ($row['defense_type'] === 'pre_oral' || $row['defense_type'] === 'pre_oral_redefense') {
+                    // Create a pending final record only if none exists
+                    $exists = mysqli_query($conn, "SELECT 1 FROM defense_schedules WHERE group_id = '".$row['group_id']."' AND defense_type = 'final' AND status IN ('pending','scheduled','passed','completed') LIMIT 1");
+                    if ($exists && mysqli_num_rows($exists)==0) {
+                        mysqli_query($conn, "INSERT INTO defense_schedules (group_id, defense_type, status, created_at) VALUES ('".$row['group_id']."','final','pending', NOW())");
+                    }
+                }
+            }
             $_SESSION['success_message'] = "Defense marked as passed and completed.";
         } else {
             $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
@@ -918,6 +931,11 @@ $failed_query = "SELECT ds.*,
                 LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
                 LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
                 WHERE ds.status = 'failed'
+                AND NOT EXISTS (
+                    SELECT 1 FROM defense_schedules child
+                    WHERE child.parent_defense_id = ds.id
+                    AND child.status IN ('scheduled','passed','completed')
+                )
                 GROUP BY ds.id
                 ORDER BY g.program, f.fullname, ds.defense_date DESC";
 $failed_result = mysqli_query($conn, $failed_query);
@@ -1912,6 +1930,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     <button onclick="markDefensePassed(<?php echo $confirmed['id']; ?>)" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Passed">
                                         <i class="fas fa-check mr-1"></i>Pass
                                     </button>
+                                    <?php if ($confirmed['defense_type'] == 'pre_oral' || $confirmed['defense_type'] == 'pre_oral_redefense'): ?>
+                                    <button onclick="scheduleFinalDefense(<?php echo $confirmed['group_id']; ?>, <?php echo $confirmed['id']; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
+                                        <i class="fas fa-arrow-right mr-1"></i>Final Defense
+                                    </button>
+                                    <?php endif; ?>
                                     <button onclick="markDefenseFailed(<?php echo $confirmed['id']; ?>)" class="flex-1 bg-gradient-to-r from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Failed">
                                         <i class="fas fa-times mr-1"></i>Fail
                                     </button>

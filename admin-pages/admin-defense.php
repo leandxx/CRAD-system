@@ -686,21 +686,18 @@ if (isset($_POST['check_redefense_payment'])) {
     }
     
     $defense = mysqli_fetch_assoc($defense_r);
-    $fail_ts = !empty($defense['updated_at']) ? strtotime($defense['updated_at']) : strtotime($defense['defense_date']);
     $ptype = ($defense['defense_type'] === 'final') ? 'final_redefense' : 'pre_oral_redefense';
     
-    // Check if there's an approved redefense payment after the failure
-    $check_payment_q = "SELECT p.payment_date, p.status FROM payments p 
+    // Check if there's any approved redefense payment for this group
+    $check_payment_q = "SELECT COUNT(*) as count FROM payments p 
                         JOIN group_members gm ON p.student_id = gm.student_id 
-                        WHERE gm.group_id = '$group_id' AND p.payment_type = '$ptype' 
-                        ORDER BY p.payment_date DESC LIMIT 1";
+                        WHERE gm.group_id = '$group_id' AND p.payment_type = '$ptype' AND p.status = 'approved'";
     $check_payment_r = mysqli_query($conn, $check_payment_q);
     
     $ready_redefense = false;
-    if ($check_payment_r && mysqli_num_rows($check_payment_r) > 0) {
-        $payment = mysqli_fetch_assoc($check_payment_r);
-        $payment_ts = strtotime($payment['payment_date']);
-        if ($payment_ts > $fail_ts && $payment['status'] === 'approved') {
+    if ($check_payment_r) {
+        $payment_result = mysqli_fetch_assoc($check_payment_r);
+        if ($payment_result['count'] > 0) {
             $ready_redefense = true;
         }
     }
@@ -2029,6 +2026,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         <i class="fas fa-exclamation-triangle text-white text-xl"></i>
                     </div>
                     <h2 class="text-2xl font-bold text-gray-800">Failed Defenses (Redefense Required)</h2>
+                    <button onclick="window.refreshRedefenseButtons()" class="ml-4 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600" title="Refresh button states">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
                 </div>
                 <div class="space-y-6 mb-8 animate-fade-in">
                     <?php foreach ($failed_by_program as $program => $program_data): ?>
@@ -2094,18 +2094,32 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         $has_new_upload = false;
                         $ready_redefense = false;
                         if ($failed['defense_type'] === 'pre_oral' || $failed['defense_type'] === 'final') {
-                            $fail_ts = !empty($failed['updated_at']) ? strtotime($failed['updated_at']) : strtotime($failed['defense_date']);
                             $ptype = ($failed['defense_type'] === 'final') ? 'final_redefense' : 'pre_oral_redefense';
-                            $check_latest_q = "SELECT p.payment_date, p.status FROM payments p 
-                                                JOIN group_members gm ON p.student_id = gm.student_id 
-                                                WHERE gm.group_id = '{$failed['group_id']}' AND p.payment_type = '".$ptype."' 
-                                                ORDER BY p.payment_date DESC LIMIT 1";
-                            $check_latest_r = mysqli_query($conn, $check_latest_q);
-                            if ($check_latest_r && mysqli_num_rows($check_latest_r) > 0) {
-                                $latest = mysqli_fetch_assoc($check_latest_r);
-                                $latest_ts = strtotime($latest['payment_date']);
-                                if ($latest_ts > $fail_ts) { $has_new_upload = true; }
-                                if ($latest_ts > $fail_ts && $latest['status'] === 'approved') { $ready_redefense = true; }
+                            
+                            // Primary check: Look for any approved redefense payment for this group
+                            $check_approved_q = "SELECT COUNT(*) as count FROM payments p 
+                                               JOIN group_members gm ON p.student_id = gm.student_id 
+                                               WHERE gm.group_id = '{$failed['group_id']}' AND p.payment_type = '".$ptype."' AND p.status = 'approved'";
+                            $check_approved_r = mysqli_query($conn, $check_approved_q);
+                            if ($check_approved_r) {
+                                $approved_result = mysqli_fetch_assoc($check_approved_r);
+                                if ($approved_result['count'] > 0) {
+                                    $ready_redefense = true;
+                                }
+                            }
+                            
+                            // Also check for any pending payments (for status indicator)
+                            if (!$ready_redefense) {
+                                $check_pending_q = "SELECT COUNT(*) as count FROM payments p 
+                                                   JOIN group_members gm ON p.student_id = gm.student_id 
+                                                   WHERE gm.group_id = '{$failed['group_id']}' AND p.payment_type = '".$ptype."' AND p.status IN ('pending', 'under_review')";
+                                $check_pending_r = mysqli_query($conn, $check_pending_q);
+                                if ($check_pending_r) {
+                                    $pending_result = mysqli_fetch_assoc($check_pending_r);
+                                    if ($pending_result['count'] > 0) {
+                                        $has_new_upload = true;
+                                    }
+                                }
                             }
                         }
                         ?>
@@ -2271,6 +2285,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             // Function to check and update redefense button states
             async function checkAndUpdateRedefenseButtonStates() {
               const buttons = document.querySelectorAll('[id^="schedule-btn-"][disabled]');
+              console.log('Checking redefense buttons:', buttons.length, 'disabled buttons found');
               for (const btn of buttons) {
                 const btnId = btn.id;
                 const matches = btnId.match(/schedule-btn-(\d+)-(\d+)/);
@@ -2287,6 +2302,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     
                     const response = await fetch(window.location.href, { method: 'POST', body: formData });
                     const data = await response.json();
+                    
+                    console.log('Response for group', groupId, 'defense', defenseId, ':', data);
                     
                     if (data.ready_redefense) {
                       // Enable the button
@@ -2318,7 +2335,12 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             // Check button states when page loads
             document.addEventListener('DOMContentLoaded', function() {
               setTimeout(checkAndUpdateRedefenseButtonStates, 500);
+              // Also check periodically in case of timing issues
+              setTimeout(checkAndUpdateRedefenseButtonStates, 2000);
             });
+            
+            // Also add a manual refresh function that can be called
+            window.refreshRedefenseButtons = checkAndUpdateRedefenseButtonStates;
             
             async function openFailedPaymentViewer(groupId, defenseType, groupName, failedId){
               try{

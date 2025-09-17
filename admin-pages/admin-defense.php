@@ -2006,14 +2006,69 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     ?>
                                     
                                     <?php if ($is_pre_completed): ?>
-                                    <!-- Pre-oral is passed, show Schedule Final Defense option -->
+                                    <!-- Pre-oral is passed, show payment verification process -->
                                     <div class="flex-1 bg-green-100 text-green-800 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
                                         <i class="fas fa-check-circle mr-1"></i>Passed
                                     </div>
+                                    
                                     <?php if ($can_schedule_final): ?>
-                                    <button onclick="scheduleFinalDefenseAndComplete(<?php echo $confirmed['group_id']; ?>, <?php echo $confirmed['id']; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
+                                    <?php
+                                    // Check final defense payment status (same logic as redefense)
+                                    $has_final_payment = false;
+                                    $ready_final_defense = false;
+                                    $final_attach_count = 0;
+                                    
+                                    $final_payment_q = "SELECT p.payment_date, p.status FROM payments p 
+                                                       JOIN group_members gm ON p.student_id = gm.student_id 
+                                                       WHERE gm.group_id = '{$confirmed['group_id']}' AND p.payment_type = 'final_defense' 
+                                                       ORDER BY p.payment_date DESC LIMIT 1";
+                                    $final_payment_r = mysqli_query($conn, $final_payment_q);
+                                    if ($final_payment_r && mysqli_num_rows($final_payment_r) > 0) {
+                                        $payment = mysqli_fetch_assoc($final_payment_r);
+                                        $has_final_payment = true;
+                                        if ($payment['status'] === 'approved') {
+                                            $ready_final_defense = true;
+                                        }
+                                        
+                                        // Count attachments
+                                        $attach_q = "SELECT COUNT(*) as count FROM payments p 
+                                                    JOIN group_members gm ON p.student_id = gm.student_id 
+                                                    WHERE gm.group_id = '{$confirmed['group_id']}' AND p.payment_type = 'final_defense' 
+                                                    AND p.image_receipts IS NOT NULL AND p.image_receipts != ''";
+                                        $attach_r = mysqli_query($conn, $attach_q);
+                                        if ($attach_r) {
+                                            $attach_result = mysqli_fetch_assoc($attach_r);
+                                            $final_attach_count = $attach_result['count'];
+                                        }
+                                    }
+                                    ?>
+                                    
+                                    <?php if ($ready_final_defense): ?>
+                                    <button id="schedule-final-btn-<?php echo $confirmed['group_id']; ?>-<?php echo $confirmed['id']; ?>" onclick="scheduleFinalDefenseAndComplete(<?php echo $confirmed['group_id']; ?>, <?php echo $confirmed['id']; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
                                         <i class="fas fa-arrow-right mr-1"></i>Schedule Final Defense
                                     </button>
+                                    <?php else: ?>
+                                    <button id="schedule-final-btn-<?php echo $confirmed['group_id']; ?>-<?php echo $confirmed['id']; ?>" disabled class="flex-1 bg-gray-300 text-gray-600 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center cursor-not-allowed" title="Approve final defense receipt to enable scheduling">
+                                        <i class="fas fa-lock mr-1"></i>Schedule Final Defense
+                                    </button>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($final_attach_count > 0): ?>
+                                    <span class="inline-flex items-center px-2 py-1 text-[11px] font-semibold rounded-full bg-green-100 text-green-800 border border-green-200" title="Final defense attachments available">
+                                        <i class="fas fa-paperclip mr-1"></i><?php echo $final_attach_count; ?> attachment<?php echo $final_attach_count>1?'s':''; ?>
+                                    </span>
+                                    <button onclick="openFinalPaymentViewer(<?php echo $confirmed['group_id']; ?>, 'final', '<?php echo addslashes($confirmed['group_name']); ?>', <?php echo $confirmed['id']; ?>)" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-300 hover:shadow-lg" title="View Final Defense Receipts">
+                                        <i class="fas fa-file-image mr-1"></i>View Receipts
+                                    </button>
+                                    <?php elseif ($has_final_payment): ?>
+                                    <span class="inline-flex items-center px-2 py-1 text-[11px] font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200" title="Final defense receipt pending approval">
+                                        <i class="fas fa-hourglass-half mr-1"></i>Receipt Pending Approval
+                                    </span>
+                                    <?php else: ?>
+                                    <span class="inline-flex items-center px-2 py-1 text-[11px] font-semibold rounded-full bg-red-100 text-red-800 border border-red-200" title="No final defense payment yet">
+                                        <i class="fas fa-exclamation-circle mr-1"></i>No payment attachment yet
+                                    </span>
+                                    <?php endif; ?>
                                     <?php endif; ?>
                                     <?php else: ?>
                                     <!-- Initial state: Show Pass and Fail buttons for evaluation -->
@@ -2309,6 +2364,22 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
             </div>
 
+            <!-- Final Defense Payment Receipts Modal -->
+            <div id="finalPaymentViewer" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-height-[90vh] max-h-[90vh] overflow-y-auto">
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <div class="flex items-center">
+                            <div class="bg-green-500 p-2 rounded-lg mr-3"><i class="fas fa-file-invoice text-white"></i></div>
+                            <h3 class="text-xl font-bold text-gray-800">Review Final Defense Payment Receipts</h3>
+                        </div>
+                        <button onclick="toggleFinalViewer(false)" class="text-gray-600 hover:text-gray-800"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="p-4">
+                        <div id="finalViewerImages"></div>
+                    </div>
+                </div>
+            </div>
+
             <script>
             
             // Function to check and update redefense button states
@@ -2372,6 +2443,23 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             // Also add a manual refresh function that can be called
             window.refreshRedefenseButtons = checkAndUpdateRedefenseButtonStates;
             
+            async function openFinalPaymentViewer(groupId, defenseType, groupName, defenseId){
+              try{
+                const form = new FormData();
+                form.append('ajax_get_payment_images','1');
+                form.append('group_id', String(groupId));
+                if (defenseType) form.append('defense_type', defenseType);
+                const resp = await fetch(window.location.href, { method: 'POST', body: form });
+                const data = await resp.json();
+                if(!data.ok){ alert(data.error||'Failed to load'); return; }
+                const proposal = data.proposal;
+                window._finalProposalCtx = proposal;
+                window._finalDefenseCtx = { groupId, defenseType, defenseId, groupName: (groupName||'') };
+                renderFinalViewer(proposal, defenseType, groupName||'');
+                toggleFinalViewer(true);
+              }catch(e){ alert('Network error'); }
+            }
+            
             async function openFailedPaymentViewer(groupId, defenseType, groupName, failedId){
               try{
                 const form = new FormData();
@@ -2401,6 +2489,24 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     window._openScheduleAfterClose = null;
                     if (typeof scheduleRedefense==='function') {
                       scheduleRedefense(f.groupId, f.failedId, f.groupName||'', f.proposalTitle||'', f.baseType);
+                    }
+                  }
+                } catch(e){}
+              }
+            }
+            
+            function toggleFinalViewer(show){
+              const m = document.getElementById('finalPaymentViewer');
+              if(!m) return;
+              if(show){ m.classList.remove('hidden'); m.classList.add('flex'); }
+              else {
+                m.classList.add('hidden'); m.classList.remove('flex');
+                try {
+                  const f = window._openFinalScheduleAfterClose;
+                  if (f) {
+                    window._openFinalScheduleAfterClose = null;
+                    if (typeof scheduleFinalDefenseAndComplete==='function') {
+                      scheduleFinalDefenseAndComplete(f.groupId, f.defenseId, f.groupName||'', f.proposalTitle||'');
                     }
                   }
                 } catch(e){}
@@ -2470,6 +2576,83 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                   const st = rv[idx];
                   if(st){
                     const sEl = card.querySelector(`#failed-img-status-${requiredType}-${idx}`);
+                    if(sEl){ sEl.innerHTML = (st.status==='approved' ? '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded">Approved</span>' : '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded">Rejected</span>') + (st.feedback?`<span class="text-gray-600 ml-2">${st.feedback}</span>`:''); }
+                  }
+                  grid.appendChild(card);
+                });
+              section.appendChild(grid);
+              mount.appendChild(section);
+            }
+            
+            function renderFinalViewer(proposal, defenseType, groupName){
+              const mount = document.getElementById('finalViewerImages');
+              if(!mount) return;
+              mount.innerHTML = '';
+              const paymentImages = (proposal.payment_status && proposal.payment_status.payment_images) || {};
+              const paymentImageReview = (proposal.payment_status && proposal.payment_status.payment_image_review) || {};
+              
+              if (groupName) {
+                const ctx = document.createElement('div');
+                ctx.className = 'mb-4';
+                ctx.innerHTML = `<div class="text-sm text-gray-600">Group: <span class="font-semibold text-gray-800">${groupName}</span></div>`;
+                mount.appendChild(ctx);
+              }
+              
+              // For final defense payment, show final_defense or final_redefense
+              const requiredType = (defenseType === 'final') ? 'final_defense' : 'final_defense';
+              const imgs = paymentImages[requiredType] || [];
+              
+              if (imgs.length === 0) {
+                const notice = document.createElement('div');
+                notice.className = 'p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded';
+                notice.textContent = 'No Final Defense receipt uploaded yet.';
+                mount.appendChild(notice);
+                return;
+              }
+              
+              // Indicator showing attachment count
+              const info = document.createElement('div');
+              info.className = 'mb-3';
+              info.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-200"><i class=\"fas fa-paperclip mr-1\"></i>${imgs.length} attachment${imgs.length>1?'s':''} found</span>`;
+              mount.appendChild(info);
+              
+              const section = document.createElement('div');
+              section.className = 'mb-6';
+              const h = document.createElement('h4');
+              h.className = 'font-semibold text-gray-800 mb-2';
+              h.textContent = 'Final Defense Payment';
+              section.appendChild(h);
+              
+              const grid = document.createElement('div');
+              grid.className = 'grid grid-cols-2 md:grid-cols-3 gap-3';
+              const rv = paymentImageReview[requiredType] || {};
+              
+              imgs.forEach((p, idx)=>{
+                  const card = document.createElement('div');
+                  card.className = 'border rounded-lg p-2';
+                  const webP = (p||'').replace('../assets/', '/CRAD-system/assets/');
+                  card.innerHTML = `
+                    <div class="relative overflow-hidden rounded">
+                      <img src="${webP}" class="w-full h-28 object-cover" />
+                      <div class="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded">${idx+1}</div>
+                      <button class="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded" onclick="event.stopPropagation(); window.open('${webP}','_blank')"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <div class="mt-2 flex items-center gap-2">
+                      <button class="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onclick="finalReviewImage('${requiredType}', ${proposal.id}, ${idx}, 'approved')"><i class="fas fa-check mr-1"></i>Approve</button>
+                      <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="finalShowReject('${requiredType}', ${proposal.id}, ${idx})"><i class="fas fa-times mr-1"></i>Reject</button>
+                      <span class="text-xs ml-auto" id="final-img-status-${requiredType}-${idx}"></span>
+                    </div>
+                    <div id="final-reject-${requiredType}-${idx}" class="mt-2 hidden">
+                      <div class="flex items-center gap-2">
+                        <input type="text" id="final-reason-${requiredType}-${idx}" class="flex-1 px-2 py-1 border rounded text-xs" placeholder="Reason" />
+                        <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="finalSubmitReject('${requiredType}', ${proposal.id}, ${idx})">Confirm</button>
+                        <button class="px-2 py-1 text-xs rounded bg-gray-300 text-gray-800 hover:bg-gray-400" onclick="finalCancelReject('${requiredType}', ${idx})">Cancel</button>
+                      </div>
+                    </div>
+                  `;
+                  const st = rv[idx];
+                  if(st){
+                    const sEl = card.querySelector(`#final-img-status-${requiredType}-${idx}`);
                     if(sEl){ sEl.innerHTML = (st.status==='approved' ? '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded">Approved</span>' : '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded">Rejected</span>') + (st.feedback?`<span class="text-gray-600 ml-2">${st.feedback}</span>`:''); }
                   }
                   grid.appendChild(card);

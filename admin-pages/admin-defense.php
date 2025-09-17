@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                               FROM defense_schedules 
                               WHERE group_id = '$group_id' 
                               AND defense_type = 'pre_oral' 
-                              AND status = 'completed'";
+                              AND status IN ('completed','passed')";
             $pre_oral_result = mysqli_query($conn, $pre_oral_check);
             $pre_oral_data = mysqli_fetch_assoc($pre_oral_result);
             

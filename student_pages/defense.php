@@ -108,7 +108,7 @@ if ($has_group) {
     
     // Check requirements status
     // Determine if pre-oral defense has been completed (used by notices and timeline)
-    $preoral_completed_query = "SELECT 1 FROM defense_schedules WHERE group_id = '$group_id' AND defense_type = 'pre_oral' AND status = 'completed' LIMIT 1";
+    $preoral_completed_query = "SELECT 1 FROM defense_schedules WHERE group_id = '$group_id' AND defense_type = 'pre_oral' AND status IN ('completed','passed') LIMIT 1";
     $preoral_completed_result = mysqli_query($conn, $preoral_completed_query);
     $has_completed_preoral = $preoral_completed_result && mysqli_num_rows($preoral_completed_result) > 0;
 

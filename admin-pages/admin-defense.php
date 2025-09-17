@@ -1977,24 +1977,32 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     </div>
                                 </div>
 
-                                <div class="flex gap-2">
+                                <div class="flex gap-2" id="defense-buttons-<?php echo $confirmed['id']; ?>">
                                     <?php 
-                                    // Check if this is a redefense that's complete and should show "Defense Final Defense"
-                                    $is_redefense_complete = ($confirmed['defense_type'] == 'pre_oral_redefense' || $confirmed['defense_type'] == 'final_redefense');
-                                    $pass_button_text = $is_redefense_complete ? 'Defense Final Defense' : 'Pass';
-                                    $pass_button_title = $is_redefense_complete ? 'Mark as Passed and proceed to Final Defense' : 'Mark as Passed';
+                                    // Check if this defense is already passed (completed status)
+                                    $is_passed = ($confirmed['status'] == 'completed');
+                                    $can_schedule_final = ($confirmed['defense_type'] == 'pre_oral' || $confirmed['defense_type'] == 'pre_oral_redefense');
                                     ?>
-                                    <button onclick="markDefensePassed(<?php echo $confirmed['id']; ?>)" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="<?php echo $pass_button_title; ?>">
-                                        <i class="fas fa-check mr-1"></i><?php echo $pass_button_text; ?>
+                                    
+                                    <?php if (!$is_passed): ?>
+                                    <!-- Initial state: Pass and Fail buttons -->
+                                    <button id="pass-btn-<?php echo $confirmed['id']; ?>" onclick="markDefensePassedWithTransform(<?php echo $confirmed['id']; ?>, <?php echo $can_schedule_final ? 'true' : 'false'; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>', <?php echo $confirmed['group_id']; ?>)" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Passed">
+                                        <i class="fas fa-check mr-1"></i>Pass
                                     </button>
-                                    <?php if ($confirmed['defense_type'] == 'pre_oral'): ?>
-                                    <button onclick="scheduleFinalDefense(<?php echo $confirmed['group_id']; ?>, <?php echo $confirmed['id']; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
-                                        <i class="fas fa-arrow-right mr-1"></i>Final Defense
-                                    </button>
-                                    <?php endif; ?>
                                     <button onclick="markDefenseFailed(<?php echo $confirmed['id']; ?>)" class="flex-1 bg-gradient-to-r from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Failed">
                                         <i class="fas fa-times mr-1"></i>Fail
                                     </button>
+                                    <?php else: ?>
+                                    <!-- Passed state: Show Schedule Final Defense button for pre-oral defenses -->
+                                    <div class="flex-1 bg-green-100 text-green-800 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
+                                        <i class="fas fa-check-circle mr-1"></i>Passed
+                                    </div>
+                                    <?php if ($can_schedule_final): ?>
+                                    <button onclick="scheduleFinalDefense(<?php echo $confirmed['group_id']; ?>, <?php echo $confirmed['id']; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
+                                        <i class="fas fa-arrow-right mr-1"></i>Schedule Final Defense
+                                    </button>
+                                    <?php endif; ?>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -4782,6 +4790,47 @@ function markDefensePassed(defenseId) {
     });
 }
 
+function markDefensePassedWithTransform(defenseId, canScheduleFinal, groupName, proposalTitle, groupId) {
+    openInlineConfirm('Mark this defense as passed?', ()=>{
+        // First, mark as passed
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `<input type="hidden" name="defense_id" value="${defenseId}"><input type="hidden" name="mark_passed" value="1">`;
+        document.body.appendChild(form);
+        
+        // Transform the buttons immediately for better UX
+        transformButtonsAfterPass(defenseId, canScheduleFinal, groupName, proposalTitle, groupId);
+        
+        form.submit();
+    });
+}
+
+function transformButtonsAfterPass(defenseId, canScheduleFinal, groupName, proposalTitle, groupId) {
+    const buttonContainer = document.getElementById(`defense-buttons-${defenseId}`);
+    if (!buttonContainer) return;
+    
+    // Clear current buttons
+    buttonContainer.innerHTML = '';
+    
+    // Add "Passed" indicator
+    const passedDiv = document.createElement('div');
+    passedDiv.className = 'flex-1 bg-green-100 text-green-800 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center';
+    passedDiv.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Passed';
+    buttonContainer.appendChild(passedDiv);
+    
+    // Add "Schedule Final Defense" button if applicable
+    if (canScheduleFinal === 'true' || canScheduleFinal === true) {
+        const scheduleBtn = document.createElement('button');
+        scheduleBtn.className = 'flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105';
+        scheduleBtn.title = 'Schedule Final Defense';
+        scheduleBtn.innerHTML = '<i class="fas fa-arrow-right mr-1"></i>Schedule Final Defense';
+        scheduleBtn.onclick = function() {
+            scheduleFinalDefense(groupId, defenseId, groupName, proposalTitle);
+        };
+        buttonContainer.appendChild(scheduleBtn);
+    }
+}
+
 function markDefenseCompleted(defenseId) {
     openInlineConfirm('Mark this defense as completed? This will finalize the defense process.', ()=>{
         const form = document.createElement('form');
@@ -5035,6 +5084,8 @@ function toggleUpcomingCluster(programAdviserClusterKey) {
 
 // Make functions globally accessible
 window.markDefensePassed = markDefensePassed;
+window.markDefensePassedWithTransform = markDefensePassedWithTransform;
+window.transformButtonsAfterPass = transformButtonsAfterPass;
 window.markDefenseFailed = markDefenseFailed;
 window.confirmDefense = confirmDefense;
 window.toggleConfirmedProgram = toggleConfirmedProgram;

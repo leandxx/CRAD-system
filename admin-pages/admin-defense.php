@@ -1927,10 +1927,16 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 </div>
 
                                 <div class="flex gap-2">
-                                    <button onclick="markDefensePassed(<?php echo $confirmed['id']; ?>)" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Passed">
-                                        <i class="fas fa-check mr-1"></i>Pass
+                                    <?php 
+                                    // Check if this is a redefense that's complete and should show "Defense Final Defense"
+                                    $is_redefense_complete = ($confirmed['defense_type'] == 'pre_oral_redefense' || $confirmed['defense_type'] == 'final_redefense');
+                                    $pass_button_text = $is_redefense_complete ? 'Defense Final Defense' : 'Pass';
+                                    $pass_button_title = $is_redefense_complete ? 'Mark as Passed and proceed to Final Defense' : 'Mark as Passed';
+                                    ?>
+                                    <button onclick="markDefensePassed(<?php echo $confirmed['id']; ?>)" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="<?php echo $pass_button_title; ?>">
+                                        <i class="fas fa-check mr-1"></i><?php echo $pass_button_text; ?>
                                     </button>
-                                    <?php if ($confirmed['defense_type'] == 'pre_oral' || $confirmed['defense_type'] == 'pre_oral_redefense'): ?>
+                                    <?php if ($confirmed['defense_type'] == 'pre_oral'): ?>
                                     <button onclick="scheduleFinalDefense(<?php echo $confirmed['group_id']; ?>, <?php echo $confirmed['id']; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
                                         <i class="fas fa-arrow-right mr-1"></i>Final Defense
                                     </button>
@@ -2235,7 +2241,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                   if (f) {
                     window._openScheduleAfterClose = null;
                     if (typeof scheduleRedefense==='function') {
-                      scheduleRedefense(f.groupId, f.failedId, f.groupName||'', '', f.baseType);
+                      scheduleRedefense(f.groupId, f.failedId, f.groupName||'', f.proposalTitle||'', f.baseType);
                     }
                   }
                 } catch(e){}
@@ -2355,7 +2361,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         btn.title = 'Schedule Redefense';
                       }
                       // Flag to open schedule modal after the admin closes this modal
-                      window._openScheduleAfterClose = { groupId: ctx.groupId, failedId: ctx.failedId, groupName: ctx.groupName||'', baseType: ctx.defenseType };
+                      const proposalCtx = window._failedProposalCtx || {};
+                      const proposalTitle = proposalCtx.title || '';
+                      window._openScheduleAfterClose = { groupId: ctx.groupId, failedId: ctx.failedId, groupName: ctx.groupName||'', proposalTitle: proposalTitle, baseType: ctx.defenseType };
                     }
                   }
                 } catch(e){}
@@ -4590,7 +4598,7 @@ function openInlineConfirm(message, onConfirm){
     if (!modal) {
         modal = document.createElement('div');
         modal.id = id;
-        modal.className = 'fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4';
+        modal.className = 'fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4';
         modal.innerHTML = `
           <div class="bg-white rounded-2xl shadow-xl w-full max-w-md">
             <div class="p-4 border-b flex items-center justify-between">
@@ -4598,19 +4606,25 @@ function openInlineConfirm(message, onConfirm){
                 <div class="bg-blue-500 p-2 rounded-lg mr-3"><i class="fas fa-question text-white"></i></div>
                 <h3 class="text-lg font-semibold text-gray-800">Please Confirm</h3>
               </div>
-              <button class="text-gray-600 hover:text-gray-800" onclick="document.getElementById('${id}').classList.add('hidden')"><i class="fas fa-times"></i></button>
+              <button class="text-gray-600 hover:text-gray-800" onclick="document.getElementById('${id}').classList.add('hidden'); document.getElementById('${id}').classList.remove('flex');"><i class="fas fa-times"></i></button>
             </div>
             <div class="p-4 text-gray-700">${message}</div>
             <div class="p-4 border-t flex justify-end gap-2">
-              <button class="px-4 py-2 bg-gray-200 rounded-lg" onclick="document.getElementById('${id}').classList.add('hidden')">Cancel</button>
+              <button class="px-4 py-2 bg-gray-200 rounded-lg" onclick="document.getElementById('${id}').classList.add('hidden'); document.getElementById('${id}').classList.remove('flex');">Cancel</button>
               <button id="${id}-ok" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Confirm</button>
             </div>
           </div>`;
         document.body.appendChild(modal);
     }
     const ok = document.getElementById(id+'-ok');
-    ok.onclick = function(){ document.getElementById(id).classList.add('hidden'); if (typeof onConfirm==='function') onConfirm(); };
+    ok.onclick = function(){ 
+        const modal = document.getElementById(id);
+        modal.classList.add('hidden'); 
+        modal.classList.remove('flex');
+        if (typeof onConfirm==='function') onConfirm(); 
+    };
     modal.classList.remove('hidden');
+    modal.classList.add('flex');
 }
 
 function markDefensePassed(defenseId) {

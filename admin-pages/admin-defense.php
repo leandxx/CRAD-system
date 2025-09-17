@@ -240,11 +240,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($exists && mysqli_num_rows($exists)==0) {
                         mysqli_query($conn, "INSERT INTO defense_schedules (group_id, defense_type, status, created_at) VALUES ('".$row['group_id']."','final','pending', NOW())");
                     }
-                } elseif ($row['defense_type'] === 'final' && !empty($row['parent_defense_id'])) {
-                    // For final defenses, mark the parent pre-oral defense as completed
-                    $parent_id = mysqli_real_escape_string($conn, $row['parent_defense_id']);
-                    mysqli_query($conn, "UPDATE defense_schedules SET status = 'completed' WHERE id = '$parent_id'");
-                }
+                // Note: For final defenses, the parent pre-oral should already be completed
+                // when the final defense was scheduled
             }
             $_SESSION['success_message'] = "Defense marked as passed and completed.";
         } else {
@@ -2341,6 +2338,15 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
               // Also check periodically in case of timing issues
               setTimeout(checkAndUpdateRedefenseButtonStates, 2000);
               
+              // Check if we need to open final defense scheduling modal
+              const finalDefenseSchedule = sessionStorage.getItem('openFinalDefenseSchedule');
+              if (finalDefenseSchedule) {
+                sessionStorage.removeItem('openFinalDefenseSchedule');
+                const data = JSON.parse(finalDefenseSchedule);
+                setTimeout(() => {
+                  scheduleFinalDefense(data.groupId, data.parentDefenseId, data.groupName, data.proposalTitle);
+                }, 1000);
+              }
             });
             
             // Also add a manual refresh function that can be called
@@ -4831,9 +4837,23 @@ function transformButtonsAfterPass(defenseId, canScheduleFinal, groupName, propo
 }
 
 function scheduleFinalDefenseAndComplete(groupId, parentDefenseId, groupName, proposalTitle) {
-    // Just open the final defense scheduling modal directly
-    // Don't mark pre-oral as completed yet - that happens when final defense is passed
-    scheduleFinalDefense(groupId, parentDefenseId, groupName, proposalTitle);
+    // Mark the pre-oral defense as completed
+    const completeForm = document.createElement('form');
+    completeForm.method = 'POST';
+    completeForm.innerHTML = `<input type="hidden" name="defense_id" value="${parentDefenseId}"><input type="hidden" name="mark_passed" value="1">`;
+    completeForm.style.display = 'none';
+    document.body.appendChild(completeForm);
+    
+    // Store the final defense scheduling data to open modal after page reload
+    sessionStorage.setItem('openFinalDefenseSchedule', JSON.stringify({
+        groupId: groupId,
+        parentDefenseId: parentDefenseId,
+        groupName: groupName,
+        proposalTitle: proposalTitle
+    }));
+    
+    // Submit the completion form (this will refresh the page)
+    completeForm.submit();
 }
 
 function markDefenseCompleted(defenseId) {

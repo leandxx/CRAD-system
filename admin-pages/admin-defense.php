@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                               FROM defense_schedules 
                               WHERE group_id = '$group_id' 
                               AND defense_type = 'pre_oral' 
-                              AND status = 'completed'";
+                              AND status IN ('completed','passed')";
             $pre_oral_result = mysqli_query($conn, $pre_oral_check);
             $pre_oral_data = mysqli_fetch_assoc($pre_oral_result);
             
@@ -145,12 +145,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         } else {
             // Insert new defense schedule
+            $parent_defense_id_value = !empty($_POST['parent_defense_id']) ? "'" . mysqli_real_escape_string($conn, $_POST['parent_defense_id']) . "'" : 'NULL';
             $schedule_query = "INSERT INTO defense_schedules 
                               (group_id, defense_date, start_time, end_time, room_id, status, defense_type, parent_defense_id, redefense_reason, is_redefense) 
-                              VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status', '$defense_type', NULL, NULL, 0)";
+                              VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status', '$defense_type', $parent_defense_id_value, NULL, 0)";
             
             if (mysqli_query($conn, $schedule_query)) {
                 $defense_id = mysqli_insert_id($conn);
+                
+                // Note: Don't mark pre-oral as completed here
+                // It should only be marked as completed when the final defense is actually passed
             } else {
                 $_SESSION['error_message'] = "Failed to create defense schedule: " . mysqli_error($conn);
                 header("Location: admin-defense.php");
@@ -222,25 +226,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if (isset($_POST['mark_passed'])) {
         $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
-        // Mark completed
-        $update_query = "UPDATE defense_schedules SET status = 'completed', updated_at = NOW() WHERE id = '$defense_id'";
-        if (mysqli_query($conn, $update_query)) {
-            // If this was a pre-oral, create a pending final defense shell to enable quick scheduling
-            $q = mysqli_query($conn, "SELECT group_id, defense_type FROM defense_schedules WHERE id = '$defense_id' LIMIT 1");
-            if ($q && mysqli_num_rows($q)>0) {
-                $row = mysqli_fetch_assoc($q);
-                if ($row['defense_type'] === 'pre_oral' || $row['defense_type'] === 'pre_oral_redefense') {
-                    // Create a pending final record only if none exists
-                    $exists = mysqli_query($conn, "SELECT 1 FROM defense_schedules WHERE group_id = '".$row['group_id']."' AND defense_type = 'final' AND status IN ('pending','scheduled','passed','completed') LIMIT 1");
-                    if ($exists && mysqli_num_rows($exists)==0) {
-                        mysqli_query($conn, "INSERT INTO defense_schedules (group_id, defense_type, status, created_at) VALUES ('".$row['group_id']."','final','pending', NOW())");
-                    }
+        
+        // Get defense info to determine the right status
+        $q = mysqli_query($conn, "SELECT group_id, defense_type, parent_defense_id FROM defense_schedules WHERE id = '$defense_id' LIMIT 1");
+        if ($q && mysqli_num_rows($q)>0) {
+            $row = mysqli_fetch_assoc($q);
+            
+            if ($row['defense_type'] === 'pre_oral' || $row['defense_type'] === 'pre_oral_redefense') {
+                // For pre-oral defenses, mark as 'pre_completed' (passed but stay in evaluation section)
+                $update_query = "UPDATE defense_schedules SET status = 'pre_completed', updated_at = NOW() WHERE id = '$defense_id'";
+                $success_message = "Pre-oral defense marked as passed. You can now schedule the final defense.";
+                
+                // Create a pending final record only if none exists
+                $exists = mysqli_query($conn, "SELECT 1 FROM defense_schedules WHERE group_id = '".$row['group_id']."' AND defense_type = 'final' AND status IN ('pending','scheduled','passed','completed') LIMIT 1");
+                if ($exists && mysqli_num_rows($exists)==0) {
+                    mysqli_query($conn, "INSERT INTO defense_schedules (group_id, defense_type, status, created_at) VALUES ('".$row['group_id']."','final','pending', NOW())");
+                }
+            } else {
+                // For final defenses, mark as completed and also complete the parent pre-oral
+                $update_query = "UPDATE defense_schedules SET status = 'completed', updated_at = NOW() WHERE id = '$defense_id'";
+                $success_message = "Final defense marked as passed and completed.";
+                
+                // Also mark the parent pre-oral as completed (move to completed section)
+                if (!empty($row['parent_defense_id'])) {
+                    $parent_id = mysqli_real_escape_string($conn, $row['parent_defense_id']);
+                    mysqli_query($conn, "UPDATE defense_schedules SET status = 'completed' WHERE id = '$parent_id'");
                 }
             }
-            $_SESSION['success_message'] = "Defense marked as passed and completed.";
+            
+            if (mysqli_query($conn, $update_query)) {
+                $_SESSION['success_message'] = $success_message;
+            } else {
+                $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
+            }
         } else {
-            $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Defense not found.";
         }
+        
         header("Location: admin-defense.php");
         exit();
     }
@@ -665,6 +687,57 @@ if (isset($_POST['ajax_update_image_review'])) {
     exit();
 }
 
+// AJAX: Check if redefense payment is approved
+if (isset($_POST['check_redefense_payment'])) {
+    header('Content-Type: application/json');
+    $group_id = (int)($_POST['group_id'] ?? 0);
+    $defense_id = (int)($_POST['defense_id'] ?? 0);
+    
+    if (!$group_id || !$defense_id) {
+        echo json_encode(['ready_redefense' => false, 'error' => 'Invalid parameters']);
+        exit();
+    }
+    
+    // Get defense info
+    $defense_q = "SELECT defense_type, defense_date, updated_at FROM defense_schedules WHERE id = '$defense_id' AND group_id = '$group_id' LIMIT 1";
+    $defense_r = mysqli_query($conn, $defense_q);
+    
+    if (!$defense_r || mysqli_num_rows($defense_r) == 0) {
+        echo json_encode(['ready_redefense' => false, 'error' => 'Defense not found']);
+        exit();
+    }
+    
+    $defense = mysqli_fetch_assoc($defense_r);
+    $ptype = ($defense['defense_type'] === 'final') ? 'final_redefense' : 'pre_oral_redefense';
+    
+    // Check if there's any approved redefense payment for this group
+    $check_payment_q = "SELECT COUNT(*) as count FROM payments p 
+                        JOIN group_members gm ON p.student_id = gm.student_id 
+                        WHERE gm.group_id = '$group_id' AND p.payment_type = '$ptype' AND p.status = 'approved'";
+    $check_payment_r = mysqli_query($conn, $check_payment_q);
+    
+    $ready_redefense = false;
+    if ($check_payment_r) {
+        $payment_result = mysqli_fetch_assoc($check_payment_r);
+        if ($payment_result['count'] > 0) {
+            $ready_redefense = true;
+        }
+    }
+    
+    // Get additional info
+    $group_info_q = "SELECT g.group_name, p.title as proposal_title FROM research_groups g LEFT JOIN proposals p ON g.id = p.group_id WHERE g.id = '$group_id' LIMIT 1";
+    $group_info_r = mysqli_query($conn, $group_info_q);
+    $group_info = mysqli_fetch_assoc($group_info_r);
+    
+    echo json_encode([
+        'ready_redefense' => $ready_redefense,
+        'groupName' => $group_info['group_name'] ?? '',
+        'proposalTitle' => $group_info['proposal_title'] ?? '',
+        'defenseType' => $defense['defense_type']
+    ]);
+    exit();
+}
+
 // Get all defense schedules organized by program, adviser, and cluster
 $defense_query = "SELECT ds.*, 
                  pds.defense_type AS parent_defense_type,
@@ -899,7 +972,7 @@ $confirmed_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, p.t
                 LEFT JOIN rooms r ON ds.room_id = r.id 
                 LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
                 LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
-                WHERE ds.status = 'passed'
+                WHERE ds.status IN ('passed', 'pre_completed')
                 GROUP BY ds.id
                 ORDER BY g.program, f.fullname, ds.defense_date DESC";
 $confirmed_result = mysqli_query($conn, $confirmed_query);
@@ -1926,18 +1999,86 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     </div>
                                 </div>
 
-                                <div class="flex gap-2">
-                                    <button onclick="markDefensePassed(<?php echo $confirmed['id']; ?>)" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Passed">
-                                        <i class="fas fa-check mr-1"></i>Pass
+                                <div class="flex gap-2" id="defense-buttons-<?php echo $confirmed['id']; ?>">
+                                    <?php 
+                                    $can_schedule_final = ($confirmed['defense_type'] == 'pre_oral' || $confirmed['defense_type'] == 'pre_oral_redefense');
+                                    $is_pre_completed = ($confirmed['status'] == 'pre_completed');
+                                    ?>
+                                    
+                                    <?php if ($is_pre_completed): ?>
+                                    <!-- Pre-oral is passed, show payment verification process -->
+                                    <div class="flex-1 bg-green-100 text-green-800 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
+                                        <i class="fas fa-check-circle mr-1"></i>Passed
+                                    </div>
+                                    
+                                    <?php if ($can_schedule_final): ?>
+                                    <?php
+                                    // Check final defense payment status (same logic as redefense)
+                                    $has_final_payment = false;
+                                    $ready_final_defense = false;
+                                    $final_attach_count = 0;
+                                    
+                                    $final_payment_q = "SELECT p.payment_date, p.status FROM payments p 
+                                                       JOIN group_members gm ON p.student_id = gm.student_id 
+                                                       WHERE gm.group_id = '{$confirmed['group_id']}' AND p.payment_type = 'final_defense' 
+                                                       ORDER BY p.payment_date DESC LIMIT 1";
+                                    $final_payment_r = mysqli_query($conn, $final_payment_q);
+                                    if ($final_payment_r && mysqli_num_rows($final_payment_r) > 0) {
+                                        $payment = mysqli_fetch_assoc($final_payment_r);
+                                        $has_final_payment = true;
+                                        if ($payment['status'] === 'approved') {
+                                            $ready_final_defense = true;
+                                        }
+                                        
+                                        // Count attachments
+                                        $attach_q = "SELECT COUNT(*) as count FROM payments p 
+                                                    JOIN group_members gm ON p.student_id = gm.student_id 
+                                                    WHERE gm.group_id = '{$confirmed['group_id']}' AND p.payment_type = 'final_defense' 
+                                                    AND p.image_receipts IS NOT NULL AND p.image_receipts != ''";
+                                        $attach_r = mysqli_query($conn, $attach_q);
+                                        if ($attach_r) {
+                                            $attach_result = mysqli_fetch_assoc($attach_r);
+                                            $final_attach_count = $attach_result['count'];
+                                        }
+                                    }
+                                    ?>
+                                    
+                                    <?php if ($ready_final_defense): ?>
+                                    <button id="schedule-final-btn-<?php echo $confirmed['group_id']; ?>-<?php echo $confirmed['id']; ?>" onclick="scheduleFinalDefenseAndComplete(<?php echo $confirmed['group_id']; ?>, <?php echo $confirmed['id']; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
+                                        <i class="fas fa-arrow-right mr-1"></i>Schedule Final Defense
                                     </button>
-                                    <?php if ($confirmed['defense_type'] == 'pre_oral' || $confirmed['defense_type'] == 'pre_oral_redefense'): ?>
-                                    <button onclick="scheduleFinalDefense(<?php echo $confirmed['group_id']; ?>, <?php echo $confirmed['id']; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
-                                        <i class="fas fa-arrow-right mr-1"></i>Final Defense
+                                    <?php else: ?>
+                                    <button id="schedule-final-btn-<?php echo $confirmed['group_id']; ?>-<?php echo $confirmed['id']; ?>" disabled class="flex-1 bg-gray-300 text-gray-600 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center cursor-not-allowed" title="Approve final defense receipt to enable scheduling">
+                                        <i class="fas fa-lock mr-1"></i>Schedule Final Defense
                                     </button>
                                     <?php endif; ?>
+                                    
+                                    <?php if ($final_attach_count > 0): ?>
+                                    <span class="inline-flex items-center px-2 py-1 text-[11px] font-semibold rounded-full bg-green-100 text-green-800 border border-green-200" title="Final defense attachments available">
+                                        <i class="fas fa-paperclip mr-1"></i><?php echo $final_attach_count; ?> attachment<?php echo $final_attach_count>1?'s':''; ?>
+                                    </span>
+                                    <button onclick="openFinalPaymentViewer(<?php echo $confirmed['group_id']; ?>, 'final', '<?php echo addslashes($confirmed['group_name']); ?>', <?php echo $confirmed['id']; ?>)" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-300 hover:shadow-lg" title="View Final Defense Receipts">
+                                        <i class="fas fa-file-image mr-1"></i>View Receipts
+                                    </button>
+                                    <?php elseif ($has_final_payment): ?>
+                                    <span class="inline-flex items-center px-2 py-1 text-[11px] font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200" title="Final defense receipt pending approval">
+                                        <i class="fas fa-hourglass-half mr-1"></i>Receipt Pending Approval
+                                    </span>
+                                    <?php else: ?>
+                                    <span class="inline-flex items-center px-2 py-1 text-[11px] font-semibold rounded-full bg-red-100 text-red-800 border border-red-200" title="No final defense payment yet">
+                                        <i class="fas fa-exclamation-circle mr-1"></i>No payment attachment yet
+                                    </span>
+                                    <?php endif; ?>
+                                    <?php endif; ?>
+                                    <?php else: ?>
+                                    <!-- Initial state: Show Pass and Fail buttons for evaluation -->
+                                    <button id="pass-btn-<?php echo $confirmed['id']; ?>" onclick="markDefensePassedWithTransform(<?php echo $confirmed['id']; ?>, <?php echo $can_schedule_final ? 'true' : 'false'; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>', <?php echo $confirmed['group_id']; ?>)" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Passed">
+                                        <i class="fas fa-check mr-1"></i>Pass
+                                    </button>
                                     <button onclick="markDefenseFailed(<?php echo $confirmed['id']; ?>)" class="flex-1 bg-gradient-to-r from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Failed">
                                         <i class="fas fa-times mr-1"></i>Fail
                                     </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -1969,6 +2110,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         <i class="fas fa-exclamation-triangle text-white text-xl"></i>
                     </div>
                     <h2 class="text-2xl font-bold text-gray-800">Failed Defenses (Redefense Required)</h2>
+                    <button onclick="window.refreshRedefenseButtons()" class="ml-4 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600" title="Refresh button states">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
                 </div>
                 <div class="space-y-6 mb-8 animate-fade-in">
                     <?php foreach ($failed_by_program as $program => $program_data): ?>
@@ -2034,18 +2178,32 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                         $has_new_upload = false;
                         $ready_redefense = false;
                         if ($failed['defense_type'] === 'pre_oral' || $failed['defense_type'] === 'final') {
-                            $fail_ts = !empty($failed['updated_at']) ? strtotime($failed['updated_at']) : strtotime($failed['defense_date']);
                             $ptype = ($failed['defense_type'] === 'final') ? 'final_redefense' : 'pre_oral_redefense';
-                            $check_latest_q = "SELECT p.payment_date, p.status FROM payments p 
-                                                JOIN group_members gm ON p.student_id = gm.student_id 
-                                                WHERE gm.group_id = '{$failed['group_id']}' AND p.payment_type = '".$ptype."' 
-                                                ORDER BY p.payment_date DESC LIMIT 1";
-                            $check_latest_r = mysqli_query($conn, $check_latest_q);
-                            if ($check_latest_r && mysqli_num_rows($check_latest_r) > 0) {
-                                $latest = mysqli_fetch_assoc($check_latest_r);
-                                $latest_ts = strtotime($latest['payment_date']);
-                                if ($latest_ts > $fail_ts) { $has_new_upload = true; }
-                                if ($latest_ts > $fail_ts && $latest['status'] === 'approved') { $ready_redefense = true; }
+                            
+                            // Primary check: Look for any approved redefense payment for this group
+                            $check_approved_q = "SELECT COUNT(*) as count FROM payments p 
+                                               JOIN group_members gm ON p.student_id = gm.student_id 
+                                               WHERE gm.group_id = '{$failed['group_id']}' AND p.payment_type = '".$ptype."' AND p.status = 'approved'";
+                            $check_approved_r = mysqli_query($conn, $check_approved_q);
+                            if ($check_approved_r) {
+                                $approved_result = mysqli_fetch_assoc($check_approved_r);
+                                if ($approved_result['count'] > 0) {
+                                    $ready_redefense = true;
+                                }
+                            }
+                            
+                            // Also check for any pending payments (for status indicator)
+                            if (!$ready_redefense) {
+                                $check_pending_q = "SELECT COUNT(*) as count FROM payments p 
+                                                   JOIN group_members gm ON p.student_id = gm.student_id 
+                                                   WHERE gm.group_id = '{$failed['group_id']}' AND p.payment_type = '".$ptype."' AND p.status IN ('pending', 'under_review')";
+                                $check_pending_r = mysqli_query($conn, $check_pending_q);
+                                if ($check_pending_r) {
+                                    $pending_result = mysqli_fetch_assoc($check_pending_r);
+                                    if ($pending_result['count'] > 0) {
+                                        $has_new_upload = true;
+                                    }
+                                }
                             }
                         }
                         ?>
@@ -2085,11 +2243,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                         <i class="fas fa-times mr-1 text-xs"></i>Failed
                                     </span>
                                     <?php if (!empty($ready_redefense)): ?>
-                                    <span class="ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center">
+                                    <span class="ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center status-indicator" data-group="<?php echo $failed['group_id']; ?>" data-defense="<?php echo $failed['id']; ?>">
                                         <i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense
                                     </span>
                                     <?php elseif (!empty($has_new_upload)): ?>
-                                    <span class="ml-2 bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center">
+                                    <span class="ml-2 bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center status-indicator" data-group="<?php echo $failed['group_id']; ?>" data-defense="<?php echo $failed['id']; ?>">
                                         <i class="fas fa-hourglass-half mr-1 text-xs"></i>Receipt Pending Approval
                                     </span>
                                     <?php endif; ?>
@@ -2206,7 +2364,102 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
             </div>
 
+            <!-- Final Defense Payment Receipts Modal -->
+            <div id="finalPaymentViewer" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-height-[90vh] max-h-[90vh] overflow-y-auto">
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <div class="flex items-center">
+                            <div class="bg-green-500 p-2 rounded-lg mr-3"><i class="fas fa-file-invoice text-white"></i></div>
+                            <h3 class="text-xl font-bold text-gray-800">Review Final Defense Payment Receipts</h3>
+                        </div>
+                        <button onclick="toggleFinalViewer(false)" class="text-gray-600 hover:text-gray-800"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="p-4">
+                        <div id="finalViewerImages"></div>
+                    </div>
+                </div>
+            </div>
+
             <script>
+            
+            // Function to check and update redefense button states
+            async function checkAndUpdateRedefenseButtonStates() {
+              const buttons = document.querySelectorAll('[id^="schedule-btn-"][disabled]');
+              console.log('Checking redefense buttons:', buttons.length, 'disabled buttons found');
+              for (const btn of buttons) {
+                const btnId = btn.id;
+                const matches = btnId.match(/schedule-btn-(\d+)-(\d+)/);
+                if (matches) {
+                  const groupId = matches[1];
+                  const defenseId = matches[2];
+                  
+                  // Check if payment is approved for this group
+                  try {
+                    const formData = new FormData();
+                    formData.append('check_redefense_payment', '1');
+                    formData.append('group_id', groupId);
+                    formData.append('defense_id', defenseId);
+                    
+                    const response = await fetch(window.location.href, { method: 'POST', body: formData });
+                    const data = await response.json();
+                    
+                    console.log('Response for group', groupId, 'defense', defenseId, ':', data);
+                    
+                    if (data.ready_redefense) {
+                      // Enable the button
+                      btn.disabled = false;
+                      btn.classList.remove('bg-gray-300','text-gray-600','cursor-not-allowed');
+                      btn.classList.add('bg-gradient-to-r','from-green-400','to-green-600','hover:from-green-500','hover:to-green-700','text-white','transition-all','duration-300','hover:shadow-lg','transform','hover:scale-105');
+                      btn.title = 'Schedule Redefense';
+                      btn.innerHTML = '<i class="fas fa-redo mr-1"></i>Schedule Redefense';
+                      
+                      // Add onclick functionality
+                      btn.onclick = function() {
+                        scheduleRedefense(groupId, defenseId, data.groupName||'', data.proposalTitle||'', data.defenseType||'');
+                      };
+                      
+                      // Update status indicator
+                      const statusIndicator = document.querySelector(`[data-group="${groupId}"][data-defense="${defenseId}"].status-indicator`);
+                      if (statusIndicator && statusIndicator.textContent.includes('Receipt Pending')) {
+                        statusIndicator.className = 'ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center status-indicator';
+                        statusIndicator.innerHTML = '<i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense';
+                      }
+                    }
+                  } catch (e) {
+                    console.log('Error checking redefense payment status:', e);
+                  }
+                }
+              }
+            }
+            
+            // Check button states when page loads
+            document.addEventListener('DOMContentLoaded', function() {
+              setTimeout(checkAndUpdateRedefenseButtonStates, 500);
+              // Also check periodically in case of timing issues
+              setTimeout(checkAndUpdateRedefenseButtonStates, 2000);
+              
+            });
+            
+            // Also add a manual refresh function that can be called
+            window.refreshRedefenseButtons = checkAndUpdateRedefenseButtonStates;
+            
+            async function openFinalPaymentViewer(groupId, defenseType, groupName, defenseId){
+              try{
+                const form = new FormData();
+                form.append('ajax_get_payment_images','1');
+                form.append('group_id', String(groupId));
+                if (defenseType) form.append('defense_type', defenseType);
+                const resp = await fetch(window.location.href, { method: 'POST', body: form });
+                const data = await resp.json();
+                if(!data.ok){ alert(data.error||'Failed to load'); return; }
+                const proposal = data.proposal;
+                window._finalProposalCtx = proposal;
+                window._finalDefenseCtx = { groupId, defenseType, defenseId, groupName: (groupName||'') };
+                renderFinalViewer(proposal, defenseType, groupName||'');
+                toggleFinalViewer(true);
+              }catch(e){ alert('Network error'); }
+            }
+            
             async function openFailedPaymentViewer(groupId, defenseType, groupName, failedId){
               try{
                 const form = new FormData();
@@ -2235,7 +2488,25 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                   if (f) {
                     window._openScheduleAfterClose = null;
                     if (typeof scheduleRedefense==='function') {
-                      scheduleRedefense(f.groupId, f.failedId, f.groupName||'', '', f.baseType);
+                      scheduleRedefense(f.groupId, f.failedId, f.groupName||'', f.proposalTitle||'', f.baseType);
+                    }
+                  }
+                } catch(e){}
+              }
+            }
+            
+            function toggleFinalViewer(show){
+              const m = document.getElementById('finalPaymentViewer');
+              if(!m) return;
+              if(show){ m.classList.remove('hidden'); m.classList.add('flex'); }
+              else {
+                m.classList.add('hidden'); m.classList.remove('flex');
+                try {
+                  const f = window._openFinalScheduleAfterClose;
+                  if (f) {
+                    window._openFinalScheduleAfterClose = null;
+                    if (typeof scheduleFinalDefenseAndComplete==='function') {
+                      scheduleFinalDefenseAndComplete(f.groupId, f.defenseId, f.groupName||'', f.proposalTitle||'');
                     }
                   }
                 } catch(e){}
@@ -2312,6 +2583,83 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
               section.appendChild(grid);
               mount.appendChild(section);
             }
+            
+            function renderFinalViewer(proposal, defenseType, groupName){
+              const mount = document.getElementById('finalViewerImages');
+              if(!mount) return;
+              mount.innerHTML = '';
+              const paymentImages = (proposal.payment_status && proposal.payment_status.payment_images) || {};
+              const paymentImageReview = (proposal.payment_status && proposal.payment_status.payment_image_review) || {};
+              
+              if (groupName) {
+                const ctx = document.createElement('div');
+                ctx.className = 'mb-4';
+                ctx.innerHTML = `<div class="text-sm text-gray-600">Group: <span class="font-semibold text-gray-800">${groupName}</span></div>`;
+                mount.appendChild(ctx);
+              }
+              
+              // For final defense payment, show final_defense or final_redefense
+              const requiredType = (defenseType === 'final') ? 'final_defense' : 'final_defense';
+              const imgs = paymentImages[requiredType] || [];
+              
+              if (imgs.length === 0) {
+                const notice = document.createElement('div');
+                notice.className = 'p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded';
+                notice.textContent = 'No Final Defense receipt uploaded yet.';
+                mount.appendChild(notice);
+                return;
+              }
+              
+              // Indicator showing attachment count
+              const info = document.createElement('div');
+              info.className = 'mb-3';
+              info.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-200"><i class=\"fas fa-paperclip mr-1\"></i>${imgs.length} attachment${imgs.length>1?'s':''} found</span>`;
+              mount.appendChild(info);
+              
+              const section = document.createElement('div');
+              section.className = 'mb-6';
+              const h = document.createElement('h4');
+              h.className = 'font-semibold text-gray-800 mb-2';
+              h.textContent = 'Final Defense Payment';
+              section.appendChild(h);
+              
+              const grid = document.createElement('div');
+              grid.className = 'grid grid-cols-2 md:grid-cols-3 gap-3';
+              const rv = paymentImageReview[requiredType] || {};
+              
+              imgs.forEach((p, idx)=>{
+                  const card = document.createElement('div');
+                  card.className = 'border rounded-lg p-2';
+                  const webP = (p||'').replace('../assets/', '/CRAD-system/assets/');
+                  card.innerHTML = `
+                    <div class="relative overflow-hidden rounded">
+                      <img src="${webP}" class="w-full h-28 object-cover" />
+                      <div class="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded">${idx+1}</div>
+                      <button class="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded" onclick="event.stopPropagation(); window.open('${webP}','_blank')"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <div class="mt-2 flex items-center gap-2">
+                      <button class="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onclick="finalReviewImage('${requiredType}', ${proposal.id}, ${idx}, 'approved')"><i class="fas fa-check mr-1"></i>Approve</button>
+                      <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="finalShowReject('${requiredType}', ${proposal.id}, ${idx})"><i class="fas fa-times mr-1"></i>Reject</button>
+                      <span class="text-xs ml-auto" id="final-img-status-${requiredType}-${idx}"></span>
+                    </div>
+                    <div id="final-reject-${requiredType}-${idx}" class="mt-2 hidden">
+                      <div class="flex items-center gap-2">
+                        <input type="text" id="final-reason-${requiredType}-${idx}" class="flex-1 px-2 py-1 border rounded text-xs" placeholder="Reason" />
+                        <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="finalSubmitReject('${requiredType}', ${proposal.id}, ${idx})">Confirm</button>
+                        <button class="px-2 py-1 text-xs rounded bg-gray-300 text-gray-800 hover:bg-gray-400" onclick="finalCancelReject('${requiredType}', ${idx})">Cancel</button>
+                      </div>
+                    </div>
+                  `;
+                  const st = rv[idx];
+                  if(st){
+                    const sEl = card.querySelector(`#final-img-status-${requiredType}-${idx}`);
+                    if(sEl){ sEl.innerHTML = (st.status==='approved' ? '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded">Approved</span>' : '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded">Rejected</span>') + (st.feedback?`<span class="text-gray-600 ml-2">${st.feedback}</span>`:''); }
+                  }
+                  grid.appendChild(card);
+                });
+              section.appendChild(grid);
+              mount.appendChild(section);
+            }
 
             async function failedReviewImage(paymentType, proposalId, imageIndex, decision, feedback=''){
               try{
@@ -2351,11 +2699,29 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                       if (btn) {
                         btn.disabled = false;
                         btn.classList.remove('bg-gray-300','text-gray-600','cursor-not-allowed');
-                        btn.classList.add('bg-gradient-to-r','from-green-400','to-green-600','hover:from-green-500','hover:to-green-700','text-white');
+                        btn.classList.add('bg-gradient-to-r','from-green-400','to-green-600','hover:from-green-500','hover:to-green-700','text-white','transition-all','duration-300','hover:shadow-lg','transform','hover:scale-105');
                         btn.title = 'Schedule Redefense';
+                        // Add onclick functionality if it doesn't exist
+                        const proposalTitle = (window._failedProposalCtx && window._failedProposalCtx.title) || '';
+                        btn.onclick = function() {
+                          scheduleRedefense(ctx.groupId, ctx.failedId, ctx.groupName||'', proposalTitle, ctx.defenseType);
+                        };
+                        // Update button text to remove lock icon
+                        btn.innerHTML = '<i class="fas fa-redo mr-1"></i>Schedule Redefense';
+                        
+                        // Also update any status indicators
+                        const statusIndicators = document.querySelectorAll(`[data-group="${ctx.groupId}"][data-defense="${ctx.failedId}"] .status-indicator`);
+                        statusIndicators.forEach(indicator => {
+                          if (indicator.textContent.includes('Receipt Pending')) {
+                            indicator.className = 'ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center';
+                            indicator.innerHTML = '<i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense';
+                          }
+                        });
                       }
                       // Flag to open schedule modal after the admin closes this modal
-                      window._openScheduleAfterClose = { groupId: ctx.groupId, failedId: ctx.failedId, groupName: ctx.groupName||'', baseType: ctx.defenseType };
+                      const proposalCtx = window._failedProposalCtx || {};
+                      const proposalTitle = proposalCtx.title || '';
+                      window._openScheduleAfterClose = { groupId: ctx.groupId, failedId: ctx.failedId, groupName: ctx.groupName||'', proposalTitle: proposalTitle, baseType: ctx.defenseType };
                     }
                   }
                 } catch(e){}
@@ -4590,7 +4956,7 @@ function openInlineConfirm(message, onConfirm){
     if (!modal) {
         modal = document.createElement('div');
         modal.id = id;
-        modal.className = 'fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4';
+        modal.className = 'fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4';
         modal.innerHTML = `
           <div class="bg-white rounded-2xl shadow-xl w-full max-w-md">
             <div class="p-4 border-b flex items-center justify-between">
@@ -4598,19 +4964,25 @@ function openInlineConfirm(message, onConfirm){
                 <div class="bg-blue-500 p-2 rounded-lg mr-3"><i class="fas fa-question text-white"></i></div>
                 <h3 class="text-lg font-semibold text-gray-800">Please Confirm</h3>
               </div>
-              <button class="text-gray-600 hover:text-gray-800" onclick="document.getElementById('${id}').classList.add('hidden')"><i class="fas fa-times"></i></button>
+              <button class="text-gray-600 hover:text-gray-800" onclick="document.getElementById('${id}').classList.add('hidden'); document.getElementById('${id}').classList.remove('flex');"><i class="fas fa-times"></i></button>
             </div>
             <div class="p-4 text-gray-700">${message}</div>
             <div class="p-4 border-t flex justify-end gap-2">
-              <button class="px-4 py-2 bg-gray-200 rounded-lg" onclick="document.getElementById('${id}').classList.add('hidden')">Cancel</button>
+              <button class="px-4 py-2 bg-gray-200 rounded-lg" onclick="document.getElementById('${id}').classList.add('hidden'); document.getElementById('${id}').classList.remove('flex');">Cancel</button>
               <button id="${id}-ok" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Confirm</button>
             </div>
           </div>`;
         document.body.appendChild(modal);
     }
     const ok = document.getElementById(id+'-ok');
-    ok.onclick = function(){ document.getElementById(id).classList.add('hidden'); if (typeof onConfirm==='function') onConfirm(); };
+    ok.onclick = function(){ 
+        const modal = document.getElementById(id);
+        modal.classList.add('hidden'); 
+        modal.classList.remove('flex');
+        if (typeof onConfirm==='function') onConfirm(); 
+    };
     modal.classList.remove('hidden');
+    modal.classList.add('flex');
 }
 
 function markDefensePassed(defenseId) {
@@ -4621,6 +4993,56 @@ function markDefensePassed(defenseId) {
         document.body.appendChild(form);
         form.submit();
     });
+}
+
+function markDefensePassedWithTransform(defenseId, canScheduleFinal, groupName, proposalTitle, groupId) {
+    openInlineConfirm('Mark this defense as passed?', ()=>{
+        // Transform the buttons immediately (don't submit form yet)
+        transformButtonsAfterPass(defenseId, canScheduleFinal, groupName, proposalTitle, groupId);
+    });
+}
+
+function transformButtonsAfterPass(defenseId, canScheduleFinal, groupName, proposalTitle, groupId) {
+    const buttonContainer = document.getElementById(`defense-buttons-${defenseId}`);
+    if (!buttonContainer) return;
+    
+    // Clear current buttons
+    buttonContainer.innerHTML = '';
+    
+    // Add "Passed" indicator
+    const passedDiv = document.createElement('div');
+    passedDiv.className = 'flex-1 bg-green-100 text-green-800 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center';
+    passedDiv.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Passed';
+    buttonContainer.appendChild(passedDiv);
+    
+    // Add "Schedule Final Defense" button if applicable
+    if (canScheduleFinal === 'true' || canScheduleFinal === true) {
+        const scheduleBtn = document.createElement('button');
+        scheduleBtn.className = 'flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105';
+        scheduleBtn.title = 'Schedule Final Defense';
+        scheduleBtn.innerHTML = '<i class="fas fa-arrow-right mr-1"></i>Schedule Final Defense';
+        scheduleBtn.onclick = function() {
+            // Schedule final defense and mark this defense as completed
+            scheduleFinalDefenseAndComplete(groupId, defenseId, groupName, proposalTitle);
+        };
+        buttonContainer.appendChild(scheduleBtn);
+    } else {
+        // For final defenses, just add a "Mark as Completed" button
+        const completeBtn = document.createElement('button');
+        completeBtn.className = 'flex-1 bg-gradient-to-r from-purple-400 to-purple-600 hover:from-purple-500 hover:to-purple-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105';
+        completeBtn.title = 'Mark as Completed';
+        completeBtn.innerHTML = '<i class="fas fa-check-double mr-1"></i>Mark Completed';
+        completeBtn.onclick = function() {
+            markDefenseCompleted(defenseId);
+        };
+        buttonContainer.appendChild(completeBtn);
+    }
+}
+
+function scheduleFinalDefenseAndComplete(groupId, parentDefenseId, groupName, proposalTitle) {
+    // Just open the final defense scheduling modal
+    // Don't mark as completed or move to completed section yet
+    scheduleFinalDefense(groupId, parentDefenseId, groupName, proposalTitle);
 }
 
 function markDefenseCompleted(defenseId) {
@@ -4876,6 +5298,10 @@ function toggleUpcomingCluster(programAdviserClusterKey) {
 
 // Make functions globally accessible
 window.markDefensePassed = markDefensePassed;
+window.markDefensePassedWithTransform = markDefensePassedWithTransform;
+window.transformButtonsAfterPass = transformButtonsAfterPass;
+window.scheduleFinalDefenseAndComplete = scheduleFinalDefenseAndComplete;
+window.markDefenseCompleted = markDefenseCompleted;
 window.markDefenseFailed = markDefenseFailed;
 window.confirmDefense = confirmDefense;
 window.toggleConfirmedProgram = toggleConfirmedProgram;

@@ -145,12 +145,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         } else {
             // Insert new defense schedule
+            $parent_defense_id_value = !empty($_POST['parent_defense_id']) ? "'" . mysqli_real_escape_string($conn, $_POST['parent_defense_id']) . "'" : 'NULL';
             $schedule_query = "INSERT INTO defense_schedules 
                               (group_id, defense_date, start_time, end_time, room_id, status, defense_type, parent_defense_id, redefense_reason, is_redefense) 
-                              VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status', '$defense_type', NULL, NULL, 0)";
+                              VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status', '$defense_type', $parent_defense_id_value, NULL, 0)";
             
             if (mysqli_query($conn, $schedule_query)) {
                 $defense_id = mysqli_insert_id($conn);
+                
+                // If this is a final defense being scheduled, mark the pre-oral as completed
+                if ($defense_type === 'final' && !empty($_POST['parent_defense_id'])) {
+                    $parent_preoral_id = mysqli_real_escape_string($conn, $_POST['parent_defense_id']);
+                    mysqli_query($conn, "UPDATE defense_schedules SET status = 'completed' WHERE id = '$parent_preoral_id'");
+                }
             } else {
                 $_SESSION['error_message'] = "Failed to create defense schedule: " . mysqli_error($conn);
                 header("Location: admin-defense.php");
@@ -222,8 +229,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if (isset($_POST['mark_passed'])) {
         $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
-        // Mark completed
-        $update_query = "UPDATE defense_schedules SET status = 'completed', updated_at = NOW() WHERE id = '$defense_id'";
+        // Mark as passed (not completed yet)
+        $update_query = "UPDATE defense_schedules SET status = 'passed', updated_at = NOW() WHERE id = '$defense_id'";
         if (mysqli_query($conn, $update_query)) {
             // If this was a pre-oral, create a pending final defense shell to enable quick scheduling
             $q = mysqli_query($conn, "SELECT group_id, defense_type FROM defense_schedules WHERE id = '$defense_id' LIMIT 1");
@@ -237,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
             }
-            $_SESSION['success_message'] = "Defense marked as passed and completed.";
+            $_SESSION['success_message'] = "Defense marked as passed. You can now schedule the final defense if needed.";
         } else {
             $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
         }
@@ -1979,8 +1986,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
                                 <div class="flex gap-2" id="defense-buttons-<?php echo $confirmed['id']; ?>">
                                     <?php 
-                                    // Check if this defense is already passed (completed status)
-                                    $is_passed = ($confirmed['status'] == 'completed');
+                                    // Check if this defense is already passed
+                                    $is_passed = ($confirmed['status'] == 'passed');
                                     $can_schedule_final = ($confirmed['defense_type'] == 'pre_oral' || $confirmed['defense_type'] == 'pre_oral_redefense');
                                     ?>
                                     

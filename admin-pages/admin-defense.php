@@ -226,27 +226,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if (isset($_POST['mark_passed'])) {
         $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
-        // Mark as completed (admin has evaluated and passed it)
-        $update_query = "UPDATE defense_schedules SET status = 'completed', updated_at = NOW() WHERE id = '$defense_id'";
-        if (mysqli_query($conn, $update_query)) {
-            // Get defense info to check what type it is
-            $q = mysqli_query($conn, "SELECT group_id, defense_type, parent_defense_id FROM defense_schedules WHERE id = '$defense_id' LIMIT 1");
-            if ($q && mysqli_num_rows($q)>0) {
-                $row = mysqli_fetch_assoc($q);
+        
+        // Get defense info to determine the right status
+        $q = mysqli_query($conn, "SELECT group_id, defense_type, parent_defense_id FROM defense_schedules WHERE id = '$defense_id' LIMIT 1");
+        if ($q && mysqli_num_rows($q)>0) {
+            $row = mysqli_fetch_assoc($q);
+            
+            if ($row['defense_type'] === 'pre_oral' || $row['defense_type'] === 'pre_oral_redefense') {
+                // For pre-oral defenses, mark as 'pre_completed' (passed but stay in evaluation section)
+                $update_query = "UPDATE defense_schedules SET status = 'pre_completed', updated_at = NOW() WHERE id = '$defense_id'";
+                $success_message = "Pre-oral defense marked as passed. You can now schedule the final defense.";
                 
-                if ($row['defense_type'] === 'pre_oral' || $row['defense_type'] === 'pre_oral_redefense') {
-                    // For pre-oral defenses, create a pending final record only if none exists
-                    $exists = mysqli_query($conn, "SELECT 1 FROM defense_schedules WHERE group_id = '".$row['group_id']."' AND defense_type = 'final' AND status IN ('pending','scheduled','passed','completed') LIMIT 1");
-                    if ($exists && mysqli_num_rows($exists)==0) {
-                        mysqli_query($conn, "INSERT INTO defense_schedules (group_id, defense_type, status, created_at) VALUES ('".$row['group_id']."','final','pending', NOW())");
-                    }
-                // Note: For final defenses, the parent pre-oral should already be completed
-                // when the final defense was scheduled
+                // Create a pending final record only if none exists
+                $exists = mysqli_query($conn, "SELECT 1 FROM defense_schedules WHERE group_id = '".$row['group_id']."' AND defense_type = 'final' AND status IN ('pending','scheduled','passed','completed') LIMIT 1");
+                if ($exists && mysqli_num_rows($exists)==0) {
+                    mysqli_query($conn, "INSERT INTO defense_schedules (group_id, defense_type, status, created_at) VALUES ('".$row['group_id']."','final','pending', NOW())");
+                }
+            } else {
+                // For final defenses, mark as completed and also complete the parent pre-oral
+                $update_query = "UPDATE defense_schedules SET status = 'completed', updated_at = NOW() WHERE id = '$defense_id'";
+                $success_message = "Final defense marked as passed and completed.";
+                
+                // Also mark the parent pre-oral as completed (move to completed section)
+                if (!empty($row['parent_defense_id'])) {
+                    $parent_id = mysqli_real_escape_string($conn, $row['parent_defense_id']);
+                    mysqli_query($conn, "UPDATE defense_schedules SET status = 'completed' WHERE id = '$parent_id'");
+                }
             }
-            $_SESSION['success_message'] = "Defense marked as passed and completed.";
+            
+            if (mysqli_query($conn, $update_query)) {
+                $_SESSION['success_message'] = $success_message;
+            } else {
+                $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
+            }
         } else {
-            $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
+            $_SESSION['error_message'] = "Defense not found.";
         }
+        
         header("Location: admin-defense.php");
         exit();
     }
@@ -956,7 +972,7 @@ $confirmed_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, p.t
                 LEFT JOIN rooms r ON ds.room_id = r.id 
                 LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
                 LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
-                WHERE ds.status = 'passed'
+                WHERE ds.status IN ('passed', 'pre_completed')
                 GROUP BY ds.id
                 ORDER BY g.program, f.fullname, ds.defense_date DESC";
 $confirmed_result = mysqli_query($conn, $confirmed_query);
@@ -1986,15 +2002,28 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <div class="flex gap-2" id="defense-buttons-<?php echo $confirmed['id']; ?>">
                                     <?php 
                                     $can_schedule_final = ($confirmed['defense_type'] == 'pre_oral' || $confirmed['defense_type'] == 'pre_oral_redefense');
+                                    $is_pre_completed = ($confirmed['status'] == 'pre_completed');
                                     ?>
                                     
-                                    <!-- Initial state: Always show Pass and Fail buttons for evaluation -->
+                                    <?php if ($is_pre_completed): ?>
+                                    <!-- Pre-oral is passed, show Schedule Final Defense option -->
+                                    <div class="flex-1 bg-green-100 text-green-800 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
+                                        <i class="fas fa-check-circle mr-1"></i>Passed
+                                    </div>
+                                    <?php if ($can_schedule_final): ?>
+                                    <button onclick="scheduleFinalDefenseAndComplete(<?php echo $confirmed['group_id']; ?>, <?php echo $confirmed['id']; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>')" class="flex-1 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Schedule Final Defense">
+                                        <i class="fas fa-arrow-right mr-1"></i>Schedule Final Defense
+                                    </button>
+                                    <?php endif; ?>
+                                    <?php else: ?>
+                                    <!-- Initial state: Show Pass and Fail buttons for evaluation -->
                                     <button id="pass-btn-<?php echo $confirmed['id']; ?>" onclick="markDefensePassedWithTransform(<?php echo $confirmed['id']; ?>, <?php echo $can_schedule_final ? 'true' : 'false'; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>', <?php echo $confirmed['group_id']; ?>)" class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Passed">
                                         <i class="fas fa-check mr-1"></i>Pass
                                     </button>
                                     <button onclick="markDefenseFailed(<?php echo $confirmed['id']; ?>)" class="flex-1 bg-gradient-to-r from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" title="Mark as Failed">
                                         <i class="fas fa-times mr-1"></i>Fail
                                     </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -2338,15 +2367,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
               // Also check periodically in case of timing issues
               setTimeout(checkAndUpdateRedefenseButtonStates, 2000);
               
-              // Check if we need to open final defense scheduling modal
-              const finalDefenseSchedule = sessionStorage.getItem('openFinalDefenseSchedule');
-              if (finalDefenseSchedule) {
-                sessionStorage.removeItem('openFinalDefenseSchedule');
-                const data = JSON.parse(finalDefenseSchedule);
-                setTimeout(() => {
-                  scheduleFinalDefense(data.groupId, data.parentDefenseId, data.groupName, data.proposalTitle);
-                }, 1000);
-              }
             });
             
             // Also add a manual refresh function that can be called
@@ -4837,23 +4857,9 @@ function transformButtonsAfterPass(defenseId, canScheduleFinal, groupName, propo
 }
 
 function scheduleFinalDefenseAndComplete(groupId, parentDefenseId, groupName, proposalTitle) {
-    // Mark the pre-oral defense as completed
-    const completeForm = document.createElement('form');
-    completeForm.method = 'POST';
-    completeForm.innerHTML = `<input type="hidden" name="defense_id" value="${parentDefenseId}"><input type="hidden" name="mark_passed" value="1">`;
-    completeForm.style.display = 'none';
-    document.body.appendChild(completeForm);
-    
-    // Store the final defense scheduling data to open modal after page reload
-    sessionStorage.setItem('openFinalDefenseSchedule', JSON.stringify({
-        groupId: groupId,
-        parentDefenseId: parentDefenseId,
-        groupName: groupName,
-        proposalTitle: proposalTitle
-    }));
-    
-    // Submit the completion form (this will refresh the page)
-    completeForm.submit();
+    // Just open the final defense scheduling modal
+    // Don't mark as completed or move to completed section yet
+    scheduleFinalDefense(groupId, parentDefenseId, groupName, proposalTitle);
 }
 
 function markDefenseCompleted(defenseId) {

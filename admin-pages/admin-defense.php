@@ -665,6 +665,60 @@ if (isset($_POST['ajax_update_image_review'])) {
     exit();
 }
 
+// AJAX: Check if redefense payment is approved
+if (isset($_POST['check_redefense_payment'])) {
+    header('Content-Type: application/json');
+    $group_id = (int)($_POST['group_id'] ?? 0);
+    $defense_id = (int)($_POST['defense_id'] ?? 0);
+    
+    if (!$group_id || !$defense_id) {
+        echo json_encode(['ready_redefense' => false, 'error' => 'Invalid parameters']);
+        exit();
+    }
+    
+    // Get defense info
+    $defense_q = "SELECT defense_type, defense_date, updated_at FROM defense_schedules WHERE id = '$defense_id' AND group_id = '$group_id' LIMIT 1";
+    $defense_r = mysqli_query($conn, $defense_q);
+    
+    if (!$defense_r || mysqli_num_rows($defense_r) == 0) {
+        echo json_encode(['ready_redefense' => false, 'error' => 'Defense not found']);
+        exit();
+    }
+    
+    $defense = mysqli_fetch_assoc($defense_r);
+    $fail_ts = !empty($defense['updated_at']) ? strtotime($defense['updated_at']) : strtotime($defense['defense_date']);
+    $ptype = ($defense['defense_type'] === 'final') ? 'final_redefense' : 'pre_oral_redefense';
+    
+    // Check if there's an approved redefense payment after the failure
+    $check_payment_q = "SELECT p.payment_date, p.status FROM payments p 
+                        JOIN group_members gm ON p.student_id = gm.student_id 
+                        WHERE gm.group_id = '$group_id' AND p.payment_type = '$ptype' 
+                        ORDER BY p.payment_date DESC LIMIT 1";
+    $check_payment_r = mysqli_query($conn, $check_payment_q);
+    
+    $ready_redefense = false;
+    if ($check_payment_r && mysqli_num_rows($check_payment_r) > 0) {
+        $payment = mysqli_fetch_assoc($check_payment_r);
+        $payment_ts = strtotime($payment['payment_date']);
+        if ($payment_ts > $fail_ts && $payment['status'] === 'approved') {
+            $ready_redefense = true;
+        }
+    }
+    
+    // Get additional info
+    $group_info_q = "SELECT g.group_name, p.title as proposal_title FROM research_groups g LEFT JOIN proposals p ON g.id = p.group_id WHERE g.id = '$group_id' LIMIT 1";
+    $group_info_r = mysqli_query($conn, $group_info_q);
+    $group_info = mysqli_fetch_assoc($group_info_r);
+    
+    echo json_encode([
+        'ready_redefense' => $ready_redefense,
+        'groupName' => $group_info['group_name'] ?? '',
+        'proposalTitle' => $group_info['proposal_title'] ?? '',
+        'defenseType' => $defense['defense_type']
+    ]);
+    exit();
+}
+
 // Get all defense schedules organized by program, adviser, and cluster
 $defense_query = "SELECT ds.*, 
                  pds.defense_type AS parent_defense_type,
@@ -2091,11 +2145,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                         <i class="fas fa-times mr-1 text-xs"></i>Failed
                                     </span>
                                     <?php if (!empty($ready_redefense)): ?>
-                                    <span class="ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center">
+                                    <span class="ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center status-indicator" data-group="<?php echo $failed['group_id']; ?>" data-defense="<?php echo $failed['id']; ?>">
                                         <i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense
                                     </span>
                                     <?php elseif (!empty($has_new_upload)): ?>
-                                    <span class="ml-2 bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center">
+                                    <span class="ml-2 bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center status-indicator" data-group="<?php echo $failed['group_id']; ?>" data-defense="<?php echo $failed['id']; ?>">
                                         <i class="fas fa-hourglass-half mr-1 text-xs"></i>Receipt Pending Approval
                                     </span>
                                     <?php endif; ?>
@@ -2213,6 +2267,59 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             </div>
 
             <script>
+            
+            // Function to check and update redefense button states
+            async function checkAndUpdateRedefenseButtonStates() {
+              const buttons = document.querySelectorAll('[id^="schedule-btn-"][disabled]');
+              for (const btn of buttons) {
+                const btnId = btn.id;
+                const matches = btnId.match(/schedule-btn-(\d+)-(\d+)/);
+                if (matches) {
+                  const groupId = matches[1];
+                  const defenseId = matches[2];
+                  
+                  // Check if payment is approved for this group
+                  try {
+                    const formData = new FormData();
+                    formData.append('check_redefense_payment', '1');
+                    formData.append('group_id', groupId);
+                    formData.append('defense_id', defenseId);
+                    
+                    const response = await fetch(window.location.href, { method: 'POST', body: formData });
+                    const data = await response.json();
+                    
+                    if (data.ready_redefense) {
+                      // Enable the button
+                      btn.disabled = false;
+                      btn.classList.remove('bg-gray-300','text-gray-600','cursor-not-allowed');
+                      btn.classList.add('bg-gradient-to-r','from-green-400','to-green-600','hover:from-green-500','hover:to-green-700','text-white','transition-all','duration-300','hover:shadow-lg','transform','hover:scale-105');
+                      btn.title = 'Schedule Redefense';
+                      btn.innerHTML = '<i class="fas fa-redo mr-1"></i>Schedule Redefense';
+                      
+                      // Add onclick functionality
+                      btn.onclick = function() {
+                        scheduleRedefense(groupId, defenseId, data.groupName||'', data.proposalTitle||'', data.defenseType||'');
+                      };
+                      
+                      // Update status indicator
+                      const statusIndicator = document.querySelector(`[data-group="${groupId}"][data-defense="${defenseId}"].status-indicator`);
+                      if (statusIndicator && statusIndicator.textContent.includes('Receipt Pending')) {
+                        statusIndicator.className = 'ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center status-indicator';
+                        statusIndicator.innerHTML = '<i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense';
+                      }
+                    }
+                  } catch (e) {
+                    console.log('Error checking redefense payment status:', e);
+                  }
+                }
+              }
+            }
+            
+            // Check button states when page loads
+            document.addEventListener('DOMContentLoaded', function() {
+              setTimeout(checkAndUpdateRedefenseButtonStates, 500);
+            });
+            
             async function openFailedPaymentViewer(groupId, defenseType, groupName, failedId){
               try{
                 const form = new FormData();
@@ -2357,8 +2464,24 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                       if (btn) {
                         btn.disabled = false;
                         btn.classList.remove('bg-gray-300','text-gray-600','cursor-not-allowed');
-                        btn.classList.add('bg-gradient-to-r','from-green-400','to-green-600','hover:from-green-500','hover:to-green-700','text-white');
+                        btn.classList.add('bg-gradient-to-r','from-green-400','to-green-600','hover:from-green-500','hover:to-green-700','text-white','transition-all','duration-300','hover:shadow-lg','transform','hover:scale-105');
                         btn.title = 'Schedule Redefense';
+                        // Add onclick functionality if it doesn't exist
+                        const proposalTitle = (window._failedProposalCtx && window._failedProposalCtx.title) || '';
+                        btn.onclick = function() {
+                          scheduleRedefense(ctx.groupId, ctx.failedId, ctx.groupName||'', proposalTitle, ctx.defenseType);
+                        };
+                        // Update button text to remove lock icon
+                        btn.innerHTML = '<i class="fas fa-redo mr-1"></i>Schedule Redefense';
+                        
+                        // Also update any status indicators
+                        const statusIndicators = document.querySelectorAll(`[data-group="${ctx.groupId}"][data-defense="${ctx.failedId}"] .status-indicator`);
+                        statusIndicators.forEach(indicator => {
+                          if (indicator.textContent.includes('Receipt Pending')) {
+                            indicator.className = 'ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center';
+                            indicator.innerHTML = '<i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense';
+                          }
+                        });
                       }
                       // Flag to open schedule modal after the admin closes this modal
                       const proposalCtx = window._failedProposalCtx || {};

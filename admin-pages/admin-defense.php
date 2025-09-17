@@ -4838,22 +4838,23 @@ function transformButtonsAfterPass(defenseId, canScheduleFinal, groupName, propo
 }
 
 function scheduleFinalDefenseAndComplete(groupId, parentDefenseId, groupName, proposalTitle) {
-    openInlineConfirm('Schedule final defense for this group? This will also mark the pre-oral defense as completed.', ()=>{
-        // First mark the pre-oral defense as completed
-        const completeForm = document.createElement('form');
-        completeForm.method = 'POST';
-        completeForm.innerHTML = `<input type="hidden" name="defense_id" value="${parentDefenseId}"><input type="hidden" name="mark_passed" value="1">`;
-        document.body.appendChild(completeForm);
-        completeForm.submit();
-        
-        // Then open the scheduling modal (this will happen after page reload)
-        sessionStorage.setItem('openFinalDefenseSchedule', JSON.stringify({
-            groupId: groupId,
-            parentDefenseId: parentDefenseId,
-            groupName: groupName,
-            proposalTitle: proposalTitle
-        }));
-    });
+    // First mark the pre-oral defense as completed silently
+    const completeForm = document.createElement('form');
+    completeForm.method = 'POST';
+    completeForm.innerHTML = `<input type="hidden" name="defense_id" value="${parentDefenseId}"><input type="hidden" name="mark_passed" value="1">`;
+    completeForm.style.display = 'none';
+    document.body.appendChild(completeForm);
+    
+    // Store the final defense scheduling data
+    sessionStorage.setItem('openFinalDefenseSchedule', JSON.stringify({
+        groupId: groupId,
+        parentDefenseId: parentDefenseId,
+        groupName: groupName,
+        proposalTitle: proposalTitle
+    }));
+    
+    // Submit the completion form
+    completeForm.submit();
 }
 
 function markDefenseCompleted(defenseId) {

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3308
--- Generation Time: Sep 16, 2025 at 04:47 PM
+-- Generation Time: Sep 23, 2025 at 07:31 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -87,9 +87,18 @@ INSERT INTO `defense_panel` (`id`, `defense_id`, `faculty_id`, `role`, `created_
 (255, 47, 12, 'chair', '2025-09-16 14:21:11'),
 (256, 47, 11, 'member', '2025-09-16 14:21:11'),
 (257, 47, 10, 'member', '2025-09-16 14:21:11'),
-(258, 48, 12, 'chair', '2025-09-16 14:46:10'),
-(259, 48, 11, 'member', '2025-09-16 14:46:10'),
-(260, 48, 10, 'member', '2025-09-16 14:46:10');
+(261, 48, 12, 'chair', '2025-09-16 14:57:05'),
+(262, 48, 11, 'member', '2025-09-16 14:57:05'),
+(263, 48, 10, 'member', '2025-09-16 14:57:05'),
+(264, 49, 12, 'chair', '2025-09-16 15:16:21'),
+(265, 49, 11, 'member', '2025-09-16 15:16:21'),
+(266, 49, 10, 'member', '2025-09-16 15:16:21'),
+(267, 50, 12, 'chair', '2025-09-16 15:18:33'),
+(268, 50, 11, 'member', '2025-09-16 15:18:33'),
+(269, 50, 10, 'member', '2025-09-16 15:18:33'),
+(302, 68, 12, 'chair', '2025-09-23 05:22:12'),
+(303, 68, 11, 'member', '2025-09-23 05:22:12'),
+(304, 68, 10, 'member', '2025-09-23 05:22:12');
 
 -- --------------------------------------------------------
 
@@ -104,7 +113,7 @@ CREATE TABLE `defense_schedules` (
   `start_time` time DEFAULT NULL,
   `end_time` time DEFAULT NULL,
   `room_id` int(11) DEFAULT NULL,
-  `status` enum('scheduled','completed','cancelled','failed','passed') DEFAULT 'scheduled',
+  `status` enum('scheduled','completed','cancelled','failed','passed','pre_completed') DEFAULT 'scheduled',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `defense_type` enum('pre_oral','final','pre_oral_redefense','final_redefense') DEFAULT NULL,
   `defense_result` enum('pending','passed','failed','redefense') DEFAULT 'pending',
@@ -120,8 +129,7 @@ CREATE TABLE `defense_schedules` (
 --
 
 INSERT INTO `defense_schedules` (`id`, `group_id`, `defense_date`, `start_time`, `end_time`, `room_id`, `status`, `created_at`, `defense_type`, `defense_result`, `parent_defense_id`, `redefense_reason`, `is_redefense`, `completed_at`, `updated_at`) VALUES
-(47, 16, '2025-09-16', '09:00:00', '10:00:00', 1, 'failed', '2025-09-16 14:21:11', 'pre_oral', 'pending', NULL, NULL, 0, NULL, '2025-09-16 14:21:25'),
-(48, 16, '2025-09-17', '09:00:00', '10:00:00', 1, 'scheduled', '2025-09-16 14:46:10', 'pre_oral_redefense', 'pending', 47, NULL, 1, NULL, '2025-09-16 14:46:10');
+(68, 16, '2025-09-23', '09:00:00', '10:00:00', 1, 'scheduled', '2025-09-23 05:22:12', 'pre_oral', 'pending', NULL, NULL, 0, NULL, '2025-09-23 05:22:12');
 
 -- --------------------------------------------------------
 
@@ -702,7 +710,344 @@ INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_re
 (1315, 11, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-16 14:46:10', '2025-09-16 14:46:10'),
 (1316, 12, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-16 14:46:10', '2025-09-16 14:46:10'),
 (1317, 13, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-16 14:46:10', '2025-09-16 14:46:10'),
-(1318, 14, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-16 14:46:10', '2025-09-16 14:46:10');
+(1318, 14, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-16 14:46:10', '2025-09-16 14:46:10'),
+(1319, 1, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1320, 2, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1321, 5, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1322, 6, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1323, 7, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1324, 8, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1325, 9, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1326, 10, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1327, 11, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1328, 12, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1329, 13, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1330, 14, 'Defense Schedule Updated', 'Defense schedule has been updated for group: GRP 1 on 2025-09-16 at 09:40', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1331, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1332, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1333, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1334, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1335, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1336, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1337, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1338, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1339, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1340, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1341, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1342, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 14:57:05', '2025-09-16 14:57:05'),
+(1343, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1344, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1345, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1346, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1347, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1348, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1349, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1350, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1351, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1352, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1353, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1354, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1355, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1356, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:21', '2025-09-16 15:16:21'),
+(1357, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:22', '2025-09-16 15:16:22'),
+(1358, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:22', '2025-09-16 15:16:22'),
+(1359, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:22', '2025-09-16 15:16:22'),
+(1360, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:22', '2025-09-16 15:16:22'),
+(1361, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:22', '2025-09-16 15:16:22'),
+(1362, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:22', '2025-09-16 15:16:22'),
+(1363, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:22', '2025-09-16 15:16:22'),
+(1364, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:22', '2025-09-16 15:16:22'),
+(1365, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:22', '2025-09-16 15:16:22'),
+(1366, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:16:22', '2025-09-16 15:16:22'),
+(1367, 1, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1368, 2, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1369, 5, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1370, 6, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1371, 7, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1372, 8, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1373, 9, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1374, 10, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1375, 11, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1376, 12, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1377, 13, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1378, 14, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1379, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1380, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1381, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1382, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1383, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1384, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1385, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1386, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1387, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1388, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1389, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1390, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:18:33', '2025-09-16 15:18:33'),
+(1391, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1392, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1393, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1394, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1395, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1396, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1397, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1398, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1399, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1400, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1401, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1402, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1403, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1404, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1405, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1406, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1407, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1408, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1409, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1410, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1411, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1412, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1413, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1414, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:24:52', '2025-09-16 15:24:52'),
+(1415, 1, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1416, 2, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1417, 5, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1418, 6, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1419, 7, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1420, 8, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1421, 9, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1422, 10, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1423, 11, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1424, 12, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1425, 13, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1426, 14, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-16 at 09:00', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1427, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1428, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1429, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1430, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1431, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1432, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1433, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1434, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14');
+INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_read`, `created_at`, `updated_at`) VALUES
+(1435, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1436, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1437, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1438, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-16 15:49:14', '2025-09-16 15:49:14'),
+(1439, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1440, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1441, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1442, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1443, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1444, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1445, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1446, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1447, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1448, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1449, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1450, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1451, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1452, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1453, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1454, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1455, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1456, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1457, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1458, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1459, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1460, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1461, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1462, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:07:25', '2025-09-17 11:07:25'),
+(1463, 1, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1464, 2, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1465, 5, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1466, 6, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1467, 7, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1468, 8, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1469, 9, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1470, 10, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1471, 11, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1472, 12, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1473, 13, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1474, 14, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1475, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1476, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1477, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1478, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1479, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1480, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1481, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1482, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1483, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1484, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1485, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1486, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:09:04', '2025-09-17 11:09:04'),
+(1487, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1488, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1489, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1490, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1491, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1492, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1493, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1494, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1495, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1496, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1497, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1498, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1499, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1500, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1501, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1502, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1503, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1504, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1505, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1506, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1507, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1508, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1509, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1510, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:10:20', '2025-09-17 11:10:20'),
+(1511, 1, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1512, 2, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1513, 5, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1514, 6, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1515, 7, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1516, 8, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1517, 9, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1518, 10, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1519, 11, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1520, 12, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1521, 13, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1522, 14, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1523, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1524, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1525, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1526, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1527, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1528, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1529, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1530, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1531, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1532, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1533, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1534, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:30:00', '2025-09-17 11:30:00'),
+(1535, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1536, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1537, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1538, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1539, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1540, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1541, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1542, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1543, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1544, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1545, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1546, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1547, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1548, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1549, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1550, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1551, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1552, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1553, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1554, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1555, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1556, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1557, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1558, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:31:09', '2025-09-17 11:31:09'),
+(1559, 1, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1560, 2, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1561, 5, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1562, 6, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1563, 7, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1564, 8, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1565, 9, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1566, 10, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1567, 11, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1568, 12, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1569, 13, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1570, 14, 'Redefense Scheduled', 'A redefense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1571, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1572, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1573, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1574, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1575, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1576, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1577, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1578, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1579, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1580, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1581, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1582, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:36:26', '2025-09-17 11:36:26'),
+(1583, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1584, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1585, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1586, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1587, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1588, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1589, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1590, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1591, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1592, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1593, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1594, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1595, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1596, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1597, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1598, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1599, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1600, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1601, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1602, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1603, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1604, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1605, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1606, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 11:43:06', '2025-09-17 11:43:06'),
+(1607, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1608, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1609, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1610, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1611, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1612, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1613, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1614, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1615, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1616, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1617, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1618, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-17 at 09:00', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1619, 1, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1620, 2, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1621, 5, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1622, 6, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1623, 7, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1624, 8, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1625, 9, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1626, 10, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1627, 11, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1628, 12, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1629, 13, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1630, 14, 'Defense Ready for Evaluation', 'The defense for group GRP 1 has concluded and is ready for evaluation.', 'info', 0, '2025-09-17 12:02:17', '2025-09-17 12:02:17'),
+(1631, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1632, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1633, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1634, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1635, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1636, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1637, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1638, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1639, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1640, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1641, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1642, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 04:50:25', '2025-09-23 04:50:25'),
+(1643, 1, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12'),
+(1644, 2, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12'),
+(1645, 5, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12'),
+(1646, 6, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12'),
+(1647, 7, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12'),
+(1648, 8, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12'),
+(1649, 9, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12'),
+(1650, 10, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12'),
+(1651, 11, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12'),
+(1652, 12, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12'),
+(1653, 13, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12'),
+(1654, 14, 'Defense Scheduled', 'A defense has been scheduled for group: GRP 1 on 2025-09-23 at 09:00', 'info', 0, '2025-09-23 05:22:12', '2025-09-23 05:22:12');
 
 -- --------------------------------------------------------
 
@@ -784,9 +1129,9 @@ CREATE TABLE `payments` (
 --
 
 INSERT INTO `payments` (`id`, `student_id`, `payment_type`, `amount`, `pdf_receipt`, `status`, `admin_approved`, `review_feedback`, `payment_date`, `image_receipts`, `image_review`) VALUES
-(34, 7, 'research_forum', 0.00, NULL, 'approved', 1, NULL, '2025-09-16 14:20:25', '[\"../assets/uploads/receipts/1758032425_0_betw.png\"]', '[{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-16T22:20:42+08:00\"}]'),
-(35, 7, 'pre_oral_defense', 0.00, NULL, 'approved', 1, NULL, '2025-09-16 14:20:33', '[\"../assets/uploads/receipts/1758032433_0_5c7031fefd3701bfffff7a335de4a7da.jpg\"]', '[{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-16T22:20:43+08:00\"}]'),
-(38, 7, 'pre_oral_redefense', 0.00, NULL, 'approved', 1, NULL, '2025-09-16 14:42:58', '[\"../assets/uploads/receipts/1758033778_0_workflow diagram.jpg\"]', '{\"redefense\":true,\"0\":{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-16T16:45:46+02:00\"}}');
+(40, 7, 'research_forum', 0.00, NULL, 'approved', 1, NULL, '2025-09-16 15:24:03', '[\"../assets/uploads/receipts/1758036243_0_Untitled.png\"]', '[{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-16T23:24:26+08:00\"}]'),
+(41, 7, 'pre_oral_defense', 0.00, NULL, 'approved', 1, NULL, '2025-09-16 15:24:10', '[\"../assets/uploads/receipts/1758036250_0_betw.png\"]', '[{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-16T23:24:27+08:00\"}]'),
+(42, 7, 'pre_oral_redefense', 0.00, NULL, 'approved', 1, NULL, '2025-09-16 15:25:26', '[\"../assets/uploads/receipts/1758036326_0_alerting and monitoring.jpg\"]', '{\"redefense\":true,\"0\":{\"status\":\"approved\",\"feedback\":\"\",\"updated_at\":\"2025-09-17T13:34:53+02:00\"}}');
 
 -- --------------------------------------------------------
 
@@ -811,7 +1156,7 @@ CREATE TABLE `proposals` (
 --
 
 INSERT INTO `proposals` (`id`, `group_id`, `title`, `description`, `file_path`, `submitted_at`, `status`, `reviewed_at`, `final_defense_open`) VALUES
-(18, 16, 'Smart Campus Navigator: An Indoor Positioning System Using QR Codes and Cloud Integration', 'This study aims to design and develop a campus navigation system that uses QR codes placed at key locations inside school buildings. The system will be integrated with a cloud database to provide real-time directions and facility information accessible through a mobile application. The project addresses the challenges of new students and visitors in locating rooms, offices, and facilities within the campus, thereby improving efficiency and user experience.', '../assets/uploads/proposals/Cap101-reviewer-Prelim.pdf', '2025-09-01 15:21:40', 'Completed', '2025-09-16 14:20:49', 0),
+(18, 16, 'Smart Campus Navigator: An Indoor Positioning System Using QR Codes and Cloud Integration', 'This study aims to design and develop a campus navigation system that uses QR codes placed at key locations inside school buildings. The system will be integrated with a cloud database to provide real-time directions and facility information accessible through a mobile application. The project addresses the challenges of new students and visitors in locating rooms, offices, and facilities within the campus, thereby improving efficiency and user experience.', '../assets/uploads/proposals/Cap101-reviewer-Prelim.pdf', '2025-09-01 15:21:40', 'Completed', '2025-09-23 05:21:47', 0),
 (19, 15, 'The Impact of Social Media on Adolescent Mental Health: A Case Study Approach', 'This thesis investigates the relationship between social media usage and mental health outcomes in adolescents. Through qualitative interviews and quantitative surveys, it aims to identify patterns of social media behavior that correlate with anxiety, depression, and self-esteem levels. The study offers recommendations for healthier online habits and policy suggestions for social media platforms.', '../assets/uploads/proposals/Sample-Interview-Questions (1).pdf', '2025-09-01 15:49:14', 'Pending', NULL, 0);
 
 -- --------------------------------------------------------
@@ -1138,38 +1483,38 @@ ALTER TABLE `clusters`
 -- AUTO_INCREMENT for table `defense_panel`
 --
 ALTER TABLE `defense_panel`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=261;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=305;
 
 --
 -- AUTO_INCREMENT for table `defense_schedules`
 --
 ALTER TABLE `defense_schedules`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1319;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1655;
 
 --
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 DELIMITER $$
 --
 -- Events
 --
 CREATE DEFINER=`root`@`localhost` EVENT `defense_schedules` ON SCHEDULE EVERY 1 MINUTE STARTS '2025-08-23 11:13:12' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE defense_schedules
-  SET status = 'completed'
+  SET status = 'passed'
   WHERE end_time < CURTIME() 
     AND defense_date <= CURDATE()
     AND status = 'scheduled'$$
 
 CREATE DEFINER=`root`@`localhost` EVENT `update_defense_status` ON SCHEDULE EVERY 1 MINUTE STARTS '2025-08-24 03:57:24' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE defense_schedules
-  SET status = 'completed'
+  SET status = 'passed'
   WHERE status = 'scheduled'
     AND TIMESTAMP(defense_date, end_time) < NOW()$$
 

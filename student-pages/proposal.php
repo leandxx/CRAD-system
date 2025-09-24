@@ -1370,7 +1370,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             imageDiv.className = 'relative';
                             imageDiv.innerHTML = `
                                 <img src="${e.target.result}" class="w-full h-20 object-cover rounded-lg border">
-                                <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg truncate">
+                                <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg">
                                     ${file.name}
                                 </div>
                             `;

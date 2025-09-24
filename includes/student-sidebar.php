@@ -176,11 +176,11 @@ $greeting = "Hello, " . match(strtolower($role)) {
 
     <!-- Profile Section -->
     <div class="p-4 flex items-center space-x-3 bg-blue-900">
-        <a href="student_pages/student-profile.php" class="rounded-full h-12 w-12 bg-white/10 flex items-center justify-center text-white font-semibold hover:bg-white/20 transition" title="View Profile">
+        <a href="student-pages/student-profile.php" class="rounded-full h-12 w-12 bg-white/10 flex items-center justify-center text-white font-semibold hover:bg-white/20 transition" title="View Profile">
             <span><?php echo htmlspecialchars($initials); ?></span>
         </a>
         <div>
-            <a href="student_pages/student-profile.php" class="font-medium profile-name hover:underline"><?php echo htmlspecialchars($full_name); ?></a>
+            <a href="student-pages/student-profile.php" class="font-medium profile-name hover:underline"><?php echo htmlspecialchars($full_name); ?></a>
             <p class="text-xs text-blue-200 profile-role"><?php echo htmlspecialchars(ucfirst($role)); ?></p>
         </div>
     </div>
@@ -193,7 +193,7 @@ $greeting = "Hello, " . match(strtolower($role)) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 section-title">Research Process</p>
             <ul class="space-y-1">
                 <li>
-                    <a href="student_pages/student.php" class="nav-item flex items-center space-x-3 px-3 py-2" data-page-title="Dashboard">
+                    <a href="student-pages/student.php" class="nav-item flex items-center space-x-3 px-3 py-2" data-page-title="Dashboard">
                         <i class="fas fa-home nav-icon"></i>
                         <span class="nav-text">Dashboard</span>
                     </a>
@@ -206,13 +206,13 @@ $greeting = "Hello, " . match(strtolower($role)) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 section-title">Research Workflow</p>
             <ul class="space-y-1">
                 <li>
-                    <a href="student_pages/proposal.php" class="nav-item flex items-center space-x-3 px-3 py-2"data-page-title="Proposal Submission">
+                    <a href="student-pages/proposal.php" class="nav-item flex items-center space-x-3 px-3 py-2"data-page-title="Proposal Submission">
                         <i class="fas fa-file-upload nav-icon"></i>
                         <span class="nav-text">Proposal Submission</span>
                     </a>
                 </li>
                 <li>
-                    <a href="student_pages/defense.php" class="nav-item flex items-center space-x-3 px-3 py-2"data-page-title="Defense Scheduling">
+                    <a href="student-pages/defense.php" class="nav-item flex items-center space-x-3 px-3 py-2"data-page-title="Defense Scheduling">
                         <i class="fas fa-calendar-check nav-icon"></i>
                         <span class="nav-text">Defense Scheduling</span>
                     </a>
@@ -226,7 +226,7 @@ $greeting = "Hello, " . match(strtolower($role)) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 section-title">Account</p>
             <ul class="space-y-1">
                 <li>
-                    <a href="student_pages/student-profile.php" class="nav-item flex items-center space-x-3 px-3 py-2">
+                    <a href="student-pages/student-profile.php" class="nav-item flex items-center space-x-3 px-3 py-2">
                         <i class="fas fa-user nav-icon"></i>
                         <span class="nav-text">Profile Settings</span>
                     </a>
@@ -280,7 +280,7 @@ $greeting = "Hello, " . match(strtolower($role)) {
                             <i class="fas fa-chevron-down text-xs opacity-70 group-hover:opacity-100 transition"></i>
                         </button>
                         <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">
-                            <a href="student_pages/student-profile.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"data-page-title="Student Profile"><i class="fas fa-user-circle mr-2"></i>Profile</a>
+                            <a href="student-pages/student-profile.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"data-page-title="Student Profile"><i class="fas fa-user-circle mr-2"></i>Profile</a>
                             <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i>Settings</a>
                             <a href="auth/student-logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><i class="fas fa-sign-out-alt mr-2"></i>Logout</a>
                         </div>

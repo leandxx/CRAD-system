@@ -152,7 +152,7 @@ if ($has_group) {
         $update_code_query = "UPDATE groups SET join_code = '$new_join_code' WHERE id = '$group_id'";
         if (mysqli_query($conn, $update_code_query)) {
             $_SESSION['success_message'] = "Join code updated successfully!";
-            header("Location: ../student_pages/proposal.php");
+            header("Location: ../student-pages/proposal.php");
             exit();
         } else {
             $error_message = "Error updating join code: " . mysqli_error($conn);
@@ -173,7 +173,7 @@ if ($has_group) {
             $update_name_query = "UPDATE groups SET name = '$new_group_name' WHERE id = '$group_id'";
             if (mysqli_query($conn, $update_name_query)) {
                 $_SESSION['success_message'] = "Group name updated successfully!";
-                header("Location: ../student_pages/proposal.php");
+                header("Location: ../student-pages/proposal.php");
                 exit();
             } else {
                 $error_message = "Error updating group name: " . mysqli_error($conn);
@@ -280,7 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                     $success_message = "Proposal submitted successfully!";
                     $has_proposal = true;
-                    header("Location: ../student_pages/proposal.php");
+                    header("Location: ../student-pages/proposal.php");
                     exit();
                 } else {
                     $error_message = "Error submitting proposal: " . mysqli_error($conn);
@@ -324,7 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         if (isset($update_query) && mysqli_query($conn, $update_query)) {
             $success_message = "Proposal updated successfully!";
-            header("Location: ../student_pages/proposal.php");
+            header("Location: ../student-pages/proposal.php");
             exit();
         } elseif (!isset($error_message)) {
             $error_message = "Error updating proposal: " . mysqli_error($conn);
@@ -347,7 +347,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $add_member_query = "INSERT INTO group_members (group_id, student_id) VALUES ('$new_group_id', '$user_id')";
             if (mysqli_query($conn, $add_member_query)) {
                 $success_message = "Program group created successfully!";
-                header("Location: ../student_pages/proposal.php");
+                header("Location: ../student-pages/proposal.php");
                 exit();
             } else {
                 $error_message = "Error adding you to the group: " . mysqli_error($conn);
@@ -409,7 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                         
                         $success_message = "Joined program group successfully!";
-                        header("Location: ../student_pages/proposal.php");
+                        header("Location: ../student-pages/proposal.php");
                         exit();
                     } else {
                         $error_message = "Error joining group: " . mysqli_error($conn);
@@ -520,7 +520,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $success_message = "Group payment receipt images uploaded successfully!";
                 }
                 
-                header("Location: ../student_pages/proposal.php");
+                header("Location: ../student-pages/proposal.php");
                 exit();
             }
             }
@@ -538,7 +538,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             mysqli_query($conn, $reset_cluster_query);
 
             $success_message = "Member removed successfully!";
-            header("Location: ../student_pages/proposal.php");
+            header("Location: ../student-pages/proposal.php");
             exit();
         } else {
             $error_message = "Error removing member: " . mysqli_error($conn);
@@ -566,7 +566,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
             
             $success_message = "Left group successfully!";
-            header("Location: ../student_pages/proposal.php");
+            header("Location: ../student-pages/proposal.php");
             exit();
         } else {
             $error_message = "Error leaving group: " . mysqli_error($conn);
@@ -590,6 +590,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Program Group Proposal Submission | CRAD System</title>
     <link rel="icon" href="assets/img/sms-logo.png" type="image/png">
+    <link rel="stylesheet" href="../assets/css/style-proposal.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -722,136 +723,6 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
             }
         }
     </script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: #ffffff;
-        }
-        
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            animation: slideInUp 0.6s ease-out;
-        }
-        
-        .glass-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
-        }
-        
-        .stats-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .stats-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .stats-card:hover::before {
-            left: 100%;
-        }
-        
-        .stats-card:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        }
-        
-        .card-hover {
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-        
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-        }
-        
-        .enhanced-modal {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-        
-        .enhanced-button {
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .enhanced-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .enhanced-button:hover::before {
-            left: 100%;
-        }
-        
-        .enhanced-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-        }
-        
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-        
-        .animate-delay-1 { animation-delay: 0.1s; }
-        .animate-delay-2 { animation-delay: 0.2s; }
-        .animate-delay-3 { animation-delay: 0.3s; }
-        
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        
-        .animate-pulse-slow {
-            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-    </style>
 </head>
 <body class="font-sans bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 text-gray-800 min-h-screen">
     <div class="flex min-h-screen">
@@ -1265,7 +1136,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             </div>
                         <?php endif; ?>
                         
-                        <form action="/CRAD-system/student_pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo !$can_submit_proposal ? 'onsubmit="return false;"' : ''; ?>>
+                        <form action="/CRAD-system/student-pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo !$can_submit_proposal ? 'onsubmit="return false;"' : ''; ?>>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Proposal Title</label>
                                 <input type="text" name="title" required 

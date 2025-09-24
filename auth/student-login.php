@@ -39,7 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             // Redirect based on role
            if ($user['role'] === 'Student') {
-                header("Location: ../student_pages/student.php");
+                header("Location: ../student-pages/student.php");
             } else {
                 echo "<script>alert('Unknown user role'); window.history.back();</script>";
             }

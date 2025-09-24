@@ -43,5 +43,5 @@ if (isset($_GET['token']) && isset($_GET['status'])) {
     $_SESSION['confirmation_message'] = "Invalid confirmation request.";
 }
 
-header("Location: ../admin-pages/confirmation-result.php");
+header("Location: ../api/confirmation-result.php");
 exit();

@@ -222,7 +222,7 @@ $greeting = "Hello, " . match($role) {
             <p class="text-xs uppercase text-blue-300 font-semibold mb-2 nav-text">System Settings</p>
             <ul>
                 <li>
-                    <a href="admin_pages/system-settings.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
+                    <a href="admin-pages/system-settings.php" class="flex items-center space-x-3 px-3 py-2 rounded hover:bg-blue-700">
                         <i class="fas fa-cog nav-icon"></i>
                         <span class="nav-text">Settings</span>
                     </a>

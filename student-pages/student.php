@@ -55,6 +55,7 @@ $stmt->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRAD student-portal</title>
     <link rel="icon" href="assets/img/sms-logo.png" type="image/png">
+    <link rel="stylesheet" href="../assets/css/style-student.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
@@ -72,279 +73,6 @@ $stmt->close();
             }
         }
     </script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: #ffffff;
-        }
-        
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.12);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            animation: slideInUp 0.8s ease-out;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .glass-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.6s;
-        }
-        
-        .glass-card:hover::before {
-            left: 100%;
-        }
-        
-        .glass-card:hover {
-            transform: translateY(-8px) scale(1.01);
-            box-shadow: 0 35px 70px rgba(0, 0, 0, 0.18);
-        }
-        
-        .countdown-banner {
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.95) 0%, rgba(124, 58, 237, 0.95) 50%, rgba(79, 70, 229, 0.95) 100%);
-            backdrop-filter: blur(25px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
-            animation: slideInDown 1s ease-out;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .countdown-banner::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            animation: shimmer 3s infinite;
-        }
-        
-        @keyframes shimmer {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
-        
-        .progress-bar {
-            width: 100%;
-            height: 16px;
-            background: rgba(229, 231, 235, 0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #2563eb 60%, #7c3aed 100%);
-            width: 0;
-            border-radius: 8px;
-            transition: width 1.5s cubic-bezier(0.4,0,0.2,1);
-            box-shadow: 0 2px 8px 0 #2563eb22;
-        }
-        
-        .research-phase {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .research-phase::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .research-phase:hover::before {
-            left: 100%;
-        }
-        
-        .research-phase.active {
-            background: linear-gradient(135deg, rgba(219, 234, 254, 0.9) 0%, rgba(237, 233, 254, 0.9) 100%);
-            backdrop-filter: blur(15px);
-            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.15);
-            border: 2px solid rgba(37, 99, 235, 0.3);
-        }
-        
-        .research-phase:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-        }
-        
-        .phase-tooltip {
-            opacity: 0;
-            pointer-events: none;
-            position: absolute;
-            left: 50%;
-            top: -2.5rem;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            color: #2563eb;
-            padding: 0.25rem 0.75rem;
-            border-radius: 0.5rem;
-            font-size: 0.85rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            transition: opacity 0.3s;
-            z-index: 10;
-        }
-        
-        .research-phase:hover .phase-tooltip {
-            opacity: 1;
-        }
-        
-        .quick-access-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(25px);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-        }
-        
-        .quick-access-card::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            transition: left 0.6s;
-        }
-        
-        .quick-access-card:hover::after {
-            left: 100%;
-        }
-        
-        .quick-access-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
-        }
-        
-        .crad-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            border-radius: 1rem;
-            padding: 1.5rem;
-        }
-        
-        .crad-heading-2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 1rem;
-        }
-        
-        .crad-hover-lift {
-            transition: all 0.3s ease;
-        }
-        
-        .crad-hover-lift:hover {
-            transform: translateY(-5px);
-        }
-        
-        .crad-slide-up {
-            animation: slideInUp 0.6s ease-out;
-        }
-        
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(40px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes slideInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-40px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .animate-fade-in {
-            animation: fadeIn 1s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .animate-delay-1 { animation-delay: 0.2s; }
-        .animate-delay-2 { animation-delay: 0.4s; }
-        .animate-delay-3 { animation-delay: 0.6s; }
-        
-        /* Enhanced gradient effects */
-        .gradient-blue {
-            background: linear-gradient(135deg, #3b82f6, #1e40af, #1d4ed8);
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-        }
-        .gradient-green {
-            background: linear-gradient(135deg, #10b981, #047857, #059669);
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-        }
-        .gradient-purple {
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed, #6d28d9);
-            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-        }
-        .gradient-yellow {
-            background: linear-gradient(135deg, #f59e0b, #d97706, #b45309);
-            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-        }
-        
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-    </style>
 </head>
 <body class="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 text-gray-800 font-sans">
     <div class="min-h-screen flex">
@@ -533,7 +261,7 @@ $stmt->close();
                         </div>
                     </div>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <a href="student_pages/proposal.php" class="quick-access-card crad-hover-lift transition-all duration-300 group rounded-2xl p-8 relative overflow-hidden">
+                        <a href="student-pages/proposal.php" class="quick-access-card crad-hover-lift transition-all duration-300 group rounded-2xl p-8 relative overflow-hidden">
                             <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full -mr-10 -mt-10"></div>
                             <div class="flex items-start space-x-6">
                                 <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-2xl text-white group-hover:scale-110 transition-transform shadow-lg">
@@ -552,7 +280,7 @@ $stmt->close();
                             </div>
                         </a>
                         
-                        <a href="student_pages/defense.php" class="quick-access-card crad-hover-lift transition-all duration-300 group rounded-2xl p-8 relative overflow-hidden">
+                        <a href="student-pages/defense.php" class="quick-access-card crad-hover-lift transition-all duration-300 group rounded-2xl p-8 relative overflow-hidden">
                             <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-500/10 to-transparent rounded-full -mr-10 -mt-10"></div>
                             <div class="flex items-start space-x-6">
                                 <div class="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-2xl text-white group-hover:scale-110 transition-transform shadow-lg">
@@ -571,7 +299,7 @@ $stmt->close();
                             </div>
                         </a>
                         
-                        <a href="student_pages/student-profile.php" class="quick-access-card crad-hover-lift transition-all duration-300 group rounded-2xl p-8 relative overflow-hidden">
+                        <a href="student-pages/student-profile.php" class="quick-access-card crad-hover-lift transition-all duration-300 group rounded-2xl p-8 relative overflow-hidden">
                             <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full -mr-10 -mt-10"></div>
                             <div class="flex items-start space-x-6">
                                 <div class="bg-gradient-to-r from-purple-500 to-purple-600 p-4 rounded-2xl text-white group-hover:scale-110 transition-transform shadow-lg">

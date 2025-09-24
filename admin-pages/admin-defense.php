@@ -37,11 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             exit();
         } elseif ($defense_type == 'final') {
             // Validate that group has completed pre-oral defense
+            // Require pre-oral to be passed (evaluation done) before final can be scheduled
             $pre_oral_check = "SELECT COUNT(*) as pre_oral_completed 
                               FROM defense_schedules 
                               WHERE group_id = '$group_id' 
                               AND defense_type = 'pre_oral' 
-                              AND status IN ('completed','passed')";
+                              AND status IN ('passed')";
             $pre_oral_result = mysqli_query($conn, $pre_oral_check);
             $pre_oral_data = mysqli_fetch_assoc($pre_oral_result);
             
@@ -56,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                            FROM defense_schedules 
                            WHERE group_id = '$group_id' 
                            AND defense_type = 'final' 
-                           AND status IN ('scheduled', 'passed', 'completed')";
+                           AND status IN ('scheduled', 'passed')";
             $final_result = mysqli_query($conn, $final_check);
             $final_data = mysqli_fetch_assoc($final_result);
             
@@ -100,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                   FROM defense_schedules 
                                   WHERE room_id = '$room_id' 
                                   AND defense_date = '$defense_date' 
-                                  AND status IN ('scheduled', 'passed')
+                                  AND status IN ('scheduled')
                                   $exclude_defense
                                   AND (
                                       (start_time <= '$start_time' AND end_time > '$start_time') OR
@@ -116,8 +117,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     exit();
                 } else {
 
-        // Default status = scheduled
-        $status = 'scheduled';
+        // Default status depends on end time vs now: if past, mark as passed (evaluation)
+        // Use DB server time to determine initial status
+        $status = (mysqli_fetch_row(mysqli_query($conn, "SELECT IF(CONCAT('$defense_date',' ','$end_time') <= NOW(), 1, 0)"))[0] == 1) ? 'passed' : 'scheduled';
 
         // Check if this is a redefense (presence of parent_defense_id)
         if (!empty($_POST['parent_defense_id']) && $_POST['parent_defense_id'] != 'NULL') {
@@ -135,7 +137,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Insert a NEW redefense row linked to parent
             $schedule_query = "INSERT INTO defense_schedules 
                               (group_id, defense_date, start_time, end_time, room_id, status, defense_type, parent_defense_id, redefense_reason, is_redefense, created_at, updated_at) 
-                              VALUES ('".$parent['group_id']."', '$defense_date', '$start_time', '$end_time', '$room_id', '$status', '$specific_redef_type', '$parent_id', ".($redefense_reason==='NULL'?'NULL':"'$redefense_reason'").", 1, NOW(), NOW())";
+                              VALUES ('".$parent['group_id']."', '$defense_date', '$start_time', '$end_time', '$room_id', 
+                                IF(CONCAT('$defense_date',' ','$end_time') <= NOW(), 'passed', 'scheduled'), 
+                                '$specific_redef_type', '$parent_id', ".($redefense_reason==='NULL'?'NULL':"'$redefense_reason'").", 1, NOW(), NOW())";
             if (mysqli_query($conn, $schedule_query)) {
                 $defense_id = mysqli_insert_id($conn);
             } else {
@@ -148,7 +152,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $parent_defense_id_value = !empty($_POST['parent_defense_id']) ? "'" . mysqli_real_escape_string($conn, $_POST['parent_defense_id']) . "'" : 'NULL';
             $schedule_query = "INSERT INTO defense_schedules 
                               (group_id, defense_date, start_time, end_time, room_id, status, defense_type, parent_defense_id, redefense_reason, is_redefense) 
-                              VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', '$status', '$defense_type', $parent_defense_id_value, NULL, 0)";
+                              VALUES ('$group_id', '$defense_date', '$start_time', '$end_time', '$room_id', 
+                                IF(CONCAT('$defense_date',' ','$end_time') <= NOW(), 'passed', 'scheduled'), 
+                                '$defense_type', $parent_defense_id_value, NULL, 0)";
             
             if (mysqli_query($conn, $schedule_query)) {
                 $defense_id = mysqli_insert_id($conn);
@@ -233,15 +239,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $row = mysqli_fetch_assoc($q);
             
             if ($row['defense_type'] === 'pre_oral' || $row['defense_type'] === 'pre_oral_redefense') {
-                // For pre-oral defenses, mark as 'pre_completed' (passed but stay in evaluation section)
-                $update_query = "UPDATE defense_schedules SET status = 'pre_completed', updated_at = NOW() WHERE id = '$defense_id'";
+                // For pre-oral defenses, mark as 'passed' (stay in evaluation section)
+                $update_query = "UPDATE defense_schedules SET status = 'passed', updated_at = NOW() WHERE id = '$defense_id'";
                 $success_message = "Pre-oral defense marked as passed. You can now schedule the final defense.";
-                
-                // Create a pending final record only if none exists
-                $exists = mysqli_query($conn, "SELECT 1 FROM defense_schedules WHERE group_id = '".$row['group_id']."' AND defense_type = 'final' AND status IN ('pending','scheduled','passed','completed') LIMIT 1");
-                if ($exists && mysqli_num_rows($exists)==0) {
-                    mysqli_query($conn, "INSERT INTO defense_schedules (group_id, defense_type, status, created_at) VALUES ('".$row['group_id']."','final','pending', NOW())");
-                }
+                // Open final defense attachments for this group
+                mysqli_query($conn, "UPDATE proposals SET final_defense_open = 1 WHERE group_id = '".mysqli_real_escape_string($conn, $row['group_id'])."'");
             } else {
                 // For final defenses, mark as completed and also complete the parent pre-oral
                 $update_query = "UPDATE defense_schedules SET status = 'completed', updated_at = NOW() WHERE id = '$defense_id'";
@@ -267,18 +269,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit();
     }
 
-    if (isset($_POST['confirm_defense'])) {
-        $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
-        $update_query = "UPDATE defense_schedules SET status = 'passed' WHERE id = '$defense_id'";
-        if (mysqli_query($conn, $update_query)) {
-            $_SESSION['success_message'] = "Defense confirmed and ready for evaluation.";
-        } else {
-            $_SESSION['error_message'] = "Error confirming defense: " . mysqli_error($conn);
-        }
-        header("Location: admin-defense.php");
-        exit();
-    }
-
+	if (isset($_POST['confirm_defense'])) {
+		$defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
+		// Determine defense type to decide final status
+		$type_q = mysqli_query($conn, "SELECT defense_type, group_id FROM defense_schedules WHERE id = '$defense_id' LIMIT 1");
+		if ($type_q && mysqli_num_rows($type_q) > 0) {
+			$type_row = mysqli_fetch_assoc($type_q);
+			$defense_type = $type_row['defense_type'];
+			$group_id_for_open = $type_row['group_id'];
+			// For final or final_redefense: mark as completed; otherwise mark as passed (evaluation)
+			if ($defense_type === 'final' || $defense_type === 'final_redefense') {
+				$update_query = "UPDATE defense_schedules SET status = 'completed', updated_at = NOW(), completed_at = NOW() WHERE id = '$defense_id'";
+				$success_msg = "Final defense marked as completed.";
+			} else {
+				$update_query = "UPDATE defense_schedules SET status = 'passed', updated_at = NOW() WHERE id = '$defense_id'";
+				$success_msg = "Defense confirmed and ready for evaluation.";
+				// If pre-oral (including redefense) has passed, open final defense attachments for the group
+				if ($defense_type === 'pre_oral' || $defense_type === 'pre_oral_redefense') {
+					mysqli_query($conn, "UPDATE proposals SET final_defense_open = 1 WHERE group_id = '" . mysqli_real_escape_string($conn, $group_id_for_open) . "'");
+				}
+			}
+			if (mysqli_query($conn, $update_query)) {
+				$_SESSION['success_message'] = $success_msg;
+			} else {
+				$_SESSION['error_message'] = "Error confirming defense: " . mysqli_error($conn);
+			}
+		} else {
+			$_SESSION['error_message'] = "Defense not found.";
+		}
+		header("Location: admin-defense.php");
+		exit();
+	}
     if (isset($_POST['mark_completed'])) {
         $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
         $update_query = "UPDATE defense_schedules SET status = 'completed' WHERE id = '$defense_id'";
@@ -291,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit();
     }
 
-    // Manual trigger to update all overdue defenses
+    // Manual trigger to update all overdue defenses (move to evaluation)
     if (isset($_POST['update_overdue_defenses'])) {
         $current_datetime = date('Y-m-d H:i:s');
         $update_query = "UPDATE defense_schedules 
@@ -302,7 +323,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         if (mysqli_query($conn, $update_query)) {
             $affected_rows = mysqli_affected_rows($conn);
-            $_SESSION['success_message'] = "Updated $affected_rows overdue defense(s) to evaluation status.";
+            $_SESSION['success_message'] = "Moved $affected_rows overdue defense(s) to evaluation.";
         } else {
             $_SESSION['error_message'] = "Error updating overdue defenses: " . mysqli_error($conn);
         }
@@ -352,7 +373,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                   FROM defense_schedules 
                                   WHERE room_id = '$room_id' 
                                   AND defense_date = '$defense_date' 
-                                  AND status IN ('scheduled', 'passed')
+                                  AND status IN ('scheduled')
                                   AND id != '$defense_id'
                                   AND (
                                       (start_time <= '$start_time' AND end_time > '$start_time') OR
@@ -367,12 +388,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 header("Location: admin-defense.php");
                 exit();
             } else {
+        // Decide status based on end time: if past → passed; else scheduled
+        // Use DB server time to determine status on edit
+        $new_status = (mysqli_fetch_row(mysqli_query($conn, "SELECT IF(CONCAT('$defense_date',' ','$end_time') <= NOW(), 1, 0)"))[0] == 1) ? 'passed' : 'scheduled';
 
         // Update defense schedule (don't update group_id as it shouldn't change)
         $update_query = "UPDATE defense_schedules 
                          SET defense_date = '$defense_date', 
                              start_time = '$start_time', end_time = '$end_time', 
-                             room_id = '$room_id'
+                             room_id = '$room_id',
+                             status = '$new_status',
+                             updated_at = NOW()
                          WHERE id = '$defense_id'";
 
         if (mysqli_query($conn, $update_query)) {
@@ -787,7 +813,7 @@ while ($schedule = mysqli_fetch_assoc($defense_result)) {
     $defense_by_program[$program]['advisers'][$adviser_id]['clusters'][$cluster]['defenses'][] = $schedule;
 }
 
-// Handle automatic status updates for overdue defenses
+// Handle automatic status updates for overdue defenses (move to evaluation)
 $current_datetime = date('Y-m-d H:i:s');
 $overdue_query = "SELECT ds.id, ds.group_id, g.name as group_name, ds.defense_date, ds.end_time
                   FROM defense_schedules ds 
@@ -797,13 +823,13 @@ $overdue_query = "SELECT ds.id, ds.group_id, g.name as group_name, ds.defense_da
 $overdue_result = mysqli_query($conn, $overdue_query);
 
 while ($overdue_defense = mysqli_fetch_assoc($overdue_result)) {
-    // Update status to passed (ready for evaluation)
+    // Update status to passed (evaluation) when the defense time has ended
     $update_query = "UPDATE defense_schedules 
                     SET status = 'passed', 
                         updated_at = NOW() 
                     WHERE id = '{$overdue_defense['id']}'";
     if (mysqli_query($conn, $update_query)) {
-        // Send notification
+		// Send notification
         $notification_title = "Defense Ready for Evaluation";
         $notification_message = "The defense for group {$overdue_defense['group_name']} has concluded and is ready for evaluation.";
         notifyAllUsers($conn, $notification_title, $notification_message, 'info');
@@ -841,11 +867,11 @@ $final_defense_eligible_query = "SELECT g.*, p.title as proposal_title,
                                 JOIN defense_schedules ds ON g.id = ds.group_id
                                 WHERE p.status IN ('Completed', 'Approved')
                                 AND ds.defense_type = 'pre_oral' 
-                                AND ds.status = 'completed'
+                                AND ds.status = 'passed'
                                 AND g.id NOT IN (
                                     SELECT group_id FROM defense_schedules 
                                     WHERE defense_type = 'final' 
-                                    AND status IN ('scheduled', 'passed', 'completed')
+                                    AND status IN ('scheduled', 'passed')
                                 )
                                 ORDER BY g.name";
 $final_defense_eligible_result = mysqli_query($conn, $final_defense_eligible_query);
@@ -972,7 +998,7 @@ $confirmed_query = "SELECT ds.*, g.name as group_name, g.program, c.cluster, p.t
                 LEFT JOIN rooms r ON ds.room_id = r.id 
                 LEFT JOIN defense_panel dp ON ds.id = dp.defense_id
                 LEFT JOIN panel_members pm ON dp.faculty_id = pm.id
-                WHERE ds.status IN ('passed', 'pre_completed')
+                WHERE ds.status IN ('passed')
                 GROUP BY ds.id
                 ORDER BY g.program, f.fullname, ds.defense_date DESC";
 $confirmed_result = mysqli_query($conn, $confirmed_query);
@@ -1059,7 +1085,6 @@ $confirmed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 $pending_defenses = $total_proposals - $scheduled_defenses;
 $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status IN ('completed', 'passed')"));
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1067,228 +1092,9 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMS | Defense Scheduling</title>
     <link rel="icon" href="assets/img/sms-logo.png" type="image/png">
+    <link rel="stylesheet" href="../assets/css/style-admin-defense.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        @keyframes slideInUp {
-            from { transform: translateY(30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-            from { transform: scale(0.95); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .animate-slide-up { animation: slideInUp 0.6s ease-out; }
-        .animate-fade-in { animation: fadeIn 0.8s ease-out; }
-        .animate-scale-in { animation: scaleIn 0.5s ease-out; }
-        
-        .scroll-container {
-            max-height: calc(100vh - 80px);
-            overflow-y: auto;
-        }
-        .main-content {
-            max-height: 100vh;
-            overflow-y: auto;
-        }
-        .notification-dot.pulse {
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        .schedule-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-        .schedule-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-        .schedule-card:hover::before {
-            left: 100%;
-        }
-        .schedule-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.15);
-        }
-        .modal-overlay {
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4));
-            backdrop-filter: blur(4px);
-            transition: all 300ms ease-in-out;
-        }
-        .modal-content {
-            transform: translateY(-30px) scale(0.95);
-            transition: all 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        }
-        .modal-active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .modal-content-active {
-            transform: translateY(0) scale(1);
-        }
-        .custom-scrollbar-blue::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar-blue::-webkit-scrollbar-track {
-            background: rgba(59, 130, 246, 0.1);
-            border-radius: 10px;
-        }
-        .custom-scrollbar-blue::-webkit-scrollbar-thumb {
-            background: rgba(59, 130, 246, 0.4);
-            border-radius: 10px;
-        }
-        .custom-scrollbar-blue::-webkit-scrollbar-thumb:hover {
-            background: rgba(59, 130, 246, 0.6);
-        }
-        .custom-scrollbar-indigo::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar-indigo::-webkit-scrollbar-track {
-            background: rgba(99, 102, 241, 0.1);
-            border-radius: 10px;
-        }
-        .custom-scrollbar-indigo::-webkit-scrollbar-thumb {
-            background: rgba(99, 102, 241, 0.4);
-            border-radius: 10px;
-        }
-        .custom-scrollbar-indigo::-webkit-scrollbar-thumb:hover {
-            background: rgba(99, 102, 241, 0.6);
-        }
-        .custom-scrollbar-green::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar-green::-webkit-scrollbar-track {
-            background: rgba(34, 197, 94, 0.1);
-            border-radius: 10px;
-        }
-        .custom-scrollbar-green::-webkit-scrollbar-thumb {
-            background: rgba(34, 197, 94, 0.4);
-            border-radius: 10px;
-        }
-        .custom-scrollbar-green::-webkit-scrollbar-thumb:hover {
-            background: rgba(34, 197, 94, 0.6);
-        }
-        .custom-scrollbar-red::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar-red::-webkit-scrollbar-track {
-            background: rgba(239, 68, 68, 0.1);
-            border-radius: 10px;
-        }
-        .custom-scrollbar-red::-webkit-scrollbar-thumb {
-            background: rgba(239, 68, 68, 0.4);
-            border-radius: 10px;
-        }
-        .custom-scrollbar-red::-webkit-scrollbar-thumb:hover {
-            background: rgba(239, 68, 68, 0.6);
-        }
-        .stats-card {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 16px;
-            transition: all 0.3s ease;
-        }
-        .stats-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 15px 35px -8px rgba(0, 0, 0, 0.1);
-        }
-        .gradient-blue {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        }
-        .gradient-green {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-        .gradient-yellow {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-        .gradient-purple {
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-        }
-        .gradient-red {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-        }
-        .defense-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-        .defense-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-        .defense-card:hover::before {
-            left: 100%;
-        }
-        .defense-card:hover {
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 15px 30px -8px rgba(0, 0, 0, 0.15);
-        }
-        .details-grid {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 0.75rem 1rem;
-            align-items: start;
-        }
-        .detail-icon {
-            margin-top: 0.25rem;
-            color: #6b7280;
-        }
-        .panel-tabs {
-            display: flex;
-            border-bottom: 1px solid #e5e7eb;
-            margin-bottom: 1rem;
-        }
-        .panel-tab {
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-        }
-        .panel-tab.active {
-            border-bottom-color: #3b82f6;
-            color: #3b82f6;
-            font-weight: 500;
-        }
-        .panel-content {
-            display: none;
-        }
-        .panel-content.active {
-            display: block;
-        }
-        .main-tab {
-            transition: all 0.3s ease;
-        }
-        .main-tab:hover {
-            color: #3b82f6;
-        }
-        .main-tab-content {
-            transition: all 0.3s ease;
-        }
-    </style>
 </head>
 <body class="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 text-gray-800 font-sans">
 
@@ -1462,7 +1268,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                 </div>
             </div>
-
             <!-- Defense Schedule Cards -->
             <div id="scheduleCards" class="stats-card rounded-2xl p-8 animate-scale-in">
                 <div class="flex items-center mb-8">
@@ -2002,7 +1807,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <div class="flex gap-2" id="defense-buttons-<?php echo $confirmed['id']; ?>">
                                     <?php 
                                     $can_schedule_final = ($confirmed['defense_type'] == 'pre_oral' || $confirmed['defense_type'] == 'pre_oral_redefense');
-                                    $is_pre_completed = ($confirmed['status'] == 'pre_completed');
+                                    $is_pre_completed = ($confirmed['status'] == 'passed');
                                     ?>
                                     
                                     <?php if ($is_pre_completed): ?>
@@ -2363,7 +2168,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                 </div>
             </div>
-
             <!-- Final Defense Payment Receipts Modal -->
             <div id="finalPaymentViewer" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
                 <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-height-[90vh] max-h-[90vh] overflow-y-auto">
@@ -2742,7 +2546,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
               failedCancelReject(paymentType, imageIndex);
             }
             </script>
-
             <!-- Completed Defenses Cards -->
             <div id="completedCards" class="stats-card rounded-2xl p-8 animate-scale-in hidden">
                 <div class="flex items-center mb-8">
@@ -3225,7 +3028,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             </div>
         </div>
     </div>
-
     <!-- Edit Defense Modal -->
     <div id="editDefenseModal" class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
         <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
@@ -3724,7 +3526,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         function confirmDelete(defenseId, groupName) {
             showDeleteModal(defenseId, groupName);
         }
-        
         // Function to mark defense as failed
         function markFailed(defenseId) {
             if (confirm('Mark this defense as failed? This will allow scheduling a redefense.')) {
@@ -3967,7 +3768,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             
             timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
             
-            fetch('admin-pages/get_room_availability.php', {
+            fetch('api/get_room_availability.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
@@ -4073,7 +3874,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             
             timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
             
-            fetch('admin-pages/get_room_availability.php', {
+            fetch('api/get_room_availability.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}&exclude_defense_id=${encodeURIComponent(currentDefenseId)}`
@@ -4158,7 +3959,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 '<div class="col-span-3 text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i><p class="text-gray-500">Loading room availability...</p></div>';
             
             // Fetch room availability via AJAX
-            fetch('admin-pages/get_room_availability.php', {
+            fetch('api/get_room_availability.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -4183,7 +3984,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     '<div class="col-span-3 text-center py-8"><p class="text-red-500">Error: ' + error.message + '</p></div>';
             });
         }
-        
         // Function to display room availability
         function displayRoomAvailability(rooms) {
             const grid = document.getElementById('roomAvailabilityGrid');
@@ -4681,8 +4481,6 @@ function toggleCluster(programAdviserClusterKey) {
         icon.style.transform = 'rotate(0deg)';
     }
 }
-
-
 function toggleUpcomingProgram(program) {
     const content = document.getElementById('upcoming-content-' + program);
     const icon = document.getElementById('upcoming-icon-' + program);
@@ -5178,7 +4976,6 @@ function toggleFailedClusterDefenses(programAdviserClusterKey) {
         icon.style.transform = 'rotate(0deg)';
     }
 }
-
 function togglePendingAdviserDefenses(programAdviserKey) {
     const content = document.getElementById('pending-adviser-content-' + programAdviserKey);
     const icon = document.getElementById('pending-adviser-icon-' + programAdviserKey);

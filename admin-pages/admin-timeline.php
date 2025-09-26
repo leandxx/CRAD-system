@@ -538,6 +538,9 @@ function checkGroupPaymentStatus($conn, $group_id) {
             if ($f['defense_type'] === 'final' && $failed_final_ts === 0) { $failed_final_ts = $ts; }
         }
         $stmt->close();
+        // Failure flags for UI
+        $payment_status['needs_pre_oral_redefense'] = ($failed_pre_ts > 0);
+        $payment_status['needs_final_redefense'] = ($failed_final_ts > 0);
 
         // Check for pre-oral defense payment (approved by any member)
         $pre_oral_query = "SELECT p.* FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = 'pre_oral_defense' AND p.status = 'approved'";
@@ -1923,6 +1926,9 @@ $isoDeadline = $current_milestone
       const summaryDiv = document.getElementById('paymentStatusSummary');
       summaryDiv.innerHTML = '';
       
+      // Build list showing redefense rows only when a failure exists
+      const needsPre = !!(proposal.payment_status?.needs_pre_oral_redefense);
+      const needsFinal = !!(proposal.payment_status?.needs_final_redefense);
       const paymentTypes = [
         { 
           key: 'has_research_forum_payment', 
@@ -1940,6 +1946,14 @@ $isoDeadline = $current_milestone
           imageKey: 'pre_oral_defense',
           color: 'purple'
         },
+        needsPre ? {
+          key: 'has_pre_oral_redefense',
+          label: 'Pre-Oral Redefense',
+          description: 'Receipt for pre-oral redefense',
+          required: false,
+          imageKey: 'pre_oral_redefense',
+          color: 'pink'
+        } : null,
         { 
           key: 'has_final_defense_payment', 
           label: 'Final Defense', 
@@ -1947,33 +1961,28 @@ $isoDeadline = $current_milestone
           required: false, 
           imageKey: 'final_defense',
           color: 'green'
-        }
-      ];
-
-      // Conditionally append redefense statuses if present in payload
-      if (proposal.payment_status?.has_pre_oral_redefense) {
-        paymentTypes.splice(2, 0, {
-          key: 'has_pre_oral_redefense',
-          label: 'Pre-Oral Redefense',
-          description: 'Receipt for pre-oral redefense',
-          required: false,
-          imageKey: 'pre_oral_redefense',
-          color: 'pink'
-        });
-      }
-      if (proposal.payment_status?.has_final_redefense) {
-        paymentTypes.push({
+        },
+        needsFinal ? {
           key: 'has_final_redefense',
           label: 'Final Defense Redefense',
           description: 'Receipt for final defense redefense',
           required: false,
           imageKey: 'final_redefense',
           color: 'rose'
-        });
-      }
+        } : null
+      ];
+      // Remove nulls if no failure
+      const filteredPaymentTypes = paymentTypes.filter(Boolean);
       
-      paymentTypes.forEach(payment => {
-        const isPaid = proposal.payment_status?.[payment.key] || false;
+      filteredPaymentTypes.forEach(payment => {
+        let isPaid = false;
+        if (payment.key === 'has_pre_oral_redefense') {
+          isPaid = (proposal.payment_status?.pre_oral_redefense_status === 'approved');
+        } else if (payment.key === 'has_final_redefense') {
+          isPaid = (proposal.payment_status?.final_redefense_status === 'approved');
+        } else {
+          isPaid = !!(proposal.payment_status?.[payment.key]);
+        }
         const paymentEl = document.createElement('div');
         
         const bgColor = isPaid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
@@ -2053,6 +2062,20 @@ $isoDeadline = $current_milestone
           
           const headerDiv = document.createElement('div');
           headerDiv.className = 'flex items-center justify-between mb-3';
+          // Determine approval status for this payment type
+          let sectionApproved = false;
+          if (paymentType === 'pre_oral_redefense') {
+            sectionApproved = (proposal.payment_status?.pre_oral_redefense_status === 'approved');
+          } else if (paymentType === 'final_redefense') {
+            sectionApproved = (proposal.payment_status?.final_redefense_status === 'approved');
+          } else if (paymentType === 'research_forum') {
+            sectionApproved = !!(proposal.payment_status?.has_research_forum_payment);
+          } else if (paymentType === 'pre_oral_defense') {
+            sectionApproved = !!(proposal.payment_status?.has_pre_oral_payment);
+          } else if (paymentType === 'final_defense') {
+            sectionApproved = !!(proposal.payment_status?.has_final_defense_payment);
+          }
+
           headerDiv.innerHTML = `
             <div class="flex items-center">
               <i class="fas fa-receipt text-lg mr-3"></i>
@@ -2065,9 +2088,9 @@ $isoDeadline = $current_milestone
               <span class="bg-white bg-opacity-50 text-xs font-bold px-3 py-1 rounded-full">
                 ${images.length} image${images.length > 1 ? 's' : ''}
               </span>
-              <span class="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                <i class="fas fa-check mr-1"></i>PAID
-              </span>
+              ${sectionApproved
+                ? '<span class="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full"><i class="fas fa-check mr-1"></i>APPROVED</span>'
+                : '<span class="bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full"><i class="fas fa-hourglass-half mr-1"></i>PENDING</span>'}
             </div>
           `;
           
@@ -2157,6 +2180,8 @@ $isoDeadline = $current_milestone
               if (paymentType === 'research_forum') ps.has_research_forum_payment = (data.status === 'approved');
               if (paymentType === 'pre_oral_defense') ps.has_pre_oral_payment = (data.status === 'approved');
               if (paymentType === 'final_defense') ps.has_final_defense_payment = (data.status === 'approved');
+              if (paymentType === 'pre_oral_redefense') ps.pre_oral_redefense_status = data.status;
+              if (paymentType === 'final_redefense') ps.final_redefense_status = data.status;
             }
             updatePaymentStatusSummary(window.currentProposal);
             updateApprovalButton(window.currentProposal);

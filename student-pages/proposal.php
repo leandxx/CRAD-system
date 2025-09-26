@@ -425,9 +425,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $payment_type = mysqli_real_escape_string($conn, $_POST['payment_type']);
         // Distinguish redefense as its own type
         $is_redefense_upload = ($payment_type === 'pre_oral_redefense' || $payment_type === 'final_redefense') ? 1 : 0;
+        // Ensure payment amount is defined to avoid undefined variable
+        $payment_amount = 0;
+        // Optional: map defaults per type (customize if your system uses amounts)
+        // $amount_map = [
+        //     'research_forum' => 0,
+        //     'pre_oral_defense' => 0,
+        //     'final_defense' => 0,
+        //     'pre_oral_redefense' => 0,
+        //     'final_redefense' => 0,
+        // ];
+        // $payment_amount = $amount_map[$payment_type] ?? 0;
 
-        // Prevent Final Defense uploads unless admin has opened it
-        if (($payment_type === 'final_defense' || $payment_type === 'final_redefense') && !$final_defense_open) {
+        // Prevent base Final Defense uploads unless admin has opened it (allow redefense uploads regardless)
+        if (($payment_type === 'final_defense') && !$final_defense_open) {
             $error_message = "Final Defense payment uploads are currently closed.";
         } else {
 
@@ -882,8 +893,8 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                                 Redefense required: Upload a new Pre-Oral receipt.
                                             </div>
                                         <?php endif; ?>
-                                        <?php if ($preoral_redefense_status === 'rejected' && !empty($pre_row['review_feedback'])): ?>
-                                            <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($pre_row['review_feedback']); ?></div>
+                                        <?php if ($preoral_redefense_status === 'rejected' && !empty($pre_redef_row['review_feedback'])): ?>
+                                            <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($pre_redef_row['review_feedback']); ?></div>
                                         <?php endif; ?>
                                     <?php endif; ?>
                                     <?php if ($pre_status === 'rejected' && !empty($pre_row['review_feedback'])): ?>
@@ -904,8 +915,8 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                                     Redefense required: Upload a new Final Defense receipt.
                                                 </div>
                                             <?php endif; ?>
-                                            <?php if ($final_redefense_status === 'rejected' && !empty($final_row['review_feedback'])): ?>
-                                                <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($final_row['review_feedback']); ?></div>
+                                            <?php if ($final_redefense_status === 'rejected' && !empty($final_redef_row['review_feedback'])): ?>
+                                                <div class="text-xs text-red-600 mt-1">Feedback: <?php echo htmlspecialchars($final_redef_row['review_feedback']); ?></div>
                                             <?php endif; ?>
                                         <?php endif; ?>
                                         <?php if ($final_status === 'rejected' && !empty($final_row['review_feedback'])): ?>

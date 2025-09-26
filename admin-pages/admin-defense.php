@@ -2095,7 +2095,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     }
                                     $redef_attach_count = 0;
                                     if (!empty($failed['group_id'])) {
-                                        if ($stmt = $conn->prepare("SELECT image_receipts FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = ? ORDER BY p.payment_date DESC LIMIT 1")) {
+                                        // Prefer: count images from the latest redefense payment row
+                                        if ($stmt = $conn->prepare("SELECT p.image_receipts FROM payments p JOIN group_members gm ON p.student_id = gm.student_id WHERE gm.group_id = ? AND p.payment_type = ? ORDER BY p.payment_date DESC LIMIT 1")) {
                                             $stmt->bind_param("is", $failed['group_id'], $required_redef_type);
                                             $stmt->execute();
                                             $res = $stmt->get_result();
@@ -2104,6 +2105,10 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                 if (is_array($imgs)) { $redef_attach_count = count($imgs); }
                                             }
                                             $stmt->close();
+                                        }
+                                        // Fallback: if there is any pending upload flagged, treat as having attachment to avoid false "No Attachment"
+                                        if ($redef_attach_count === 0 && !empty($has_new_upload)) {
+                                            $redef_attach_count = 1; // virtual count to flip UI state to Pending
                                         }
                                     }
                                     ?>
@@ -2125,8 +2130,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                         <i class="fas fa-file-image mr-1"></i>View Receipts
                                     </button>
                                     <?php else: ?>
-                                    <span class="inline-flex items-center px-2 py-1 text-[11px] font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200" title="No redefense attachment yet">
-                                        <i class="fas fa-exclamation-circle mr-1"></i>No redefense attachment yet
+                                    <span class="inline-flex items-center px-2 py-1 text-[11px] font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200" title="Receipt pending approval or not uploaded">
+                                        <i class="fas fa-hourglass-half mr-1"></i><?php echo !empty($has_new_upload) ? 'Receipt pending approval' : 'No redefense attachment yet'; ?>
                                     </span>
                                     <?php endif; ?>
                                 </div>

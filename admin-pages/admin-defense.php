@@ -1,5 +1,6 @@
 <?php
 session_start();
+
 include('../includes/connection.php');
 include('../includes/notification-helper.php');
 
@@ -234,23 +235,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 if (isset($_POST['mark_passed'])) {
     $defense_id = mysqli_real_escape_string($conn, $_POST['defense_id']);
     
-    // Get defense info to determine the right status
-    $q = mysqli_query($conn, "SELECT group_id, defense_type, parent_defense_id FROM defense_schedules WHERE id = '$defense_id' LIMIT 1");
-    if ($q && mysqli_num_rows($q)>0) {
-        $row = mysqli_fetch_assoc($q);
+    // First, get defense information to determine the type
+    $defense_info_query = "SELECT defense_type, group_id FROM defense_schedules WHERE id = '$defense_id'";
+    $defense_info_result = mysqli_query($conn, $defense_info_query);
+    
+    if ($defense_info_result && mysqli_num_rows($defense_info_result) > 0) {
+        $defense_data = mysqli_fetch_assoc($defense_info_result);
+        $defense_type = $defense_data['defense_type'];
+        $group_id = $defense_data['group_id'];
         
-        if ($row['defense_type'] === 'pre_oral' || $row['defense_type'] === 'pre_oral_redefense') {
-            // For pre-oral defenses, mark as 'passed' 
-            $update_query = "UPDATE defense_schedules SET status = 'passed', updated_at = NOW() WHERE id = '$defense_id'";
-            $success_message = "Pre-oral defense marked as passed. The group can now proceed to final defense.";
+        // For pre-oral defenses, mark as 'completed' to move them out of evaluation
+        // For final defenses, mark as 'completed' to indicate final completion
+        if ($defense_type === 'pre_oral' || $defense_type === 'pre_oral_redefense') {
+            $new_status = 'completed';
+            $success_message = "Pre-oral defense passed! Final defense is now available for this group.";
             
-            // Open final defense attachments for this group
-            mysqli_query($conn, "UPDATE proposals SET final_defense_open = 1 WHERE group_id = '".mysqli_real_escape_string($conn, $row['group_id'])."'");
+            // Enable final defense for this group
+            mysqli_query($conn, "UPDATE proposals SET final_defense_open = 1 WHERE group_id = '".mysqli_real_escape_string($conn, $group_id)."'");
         } else {
-            // For final defenses, mark as completed
-            $update_query = "UPDATE defense_schedules SET status = 'completed', updated_at = NOW() WHERE id = '$defense_id'";
-            $success_message = "Final defense marked as completed.";
+            $new_status = 'completed';
+            $success_message = "Final defense passed! The group has completed their defense process.";
         }
+        
+        // Update defense status
+        $update_query = "UPDATE defense_schedules 
+                        SET status = '$new_status', 
+                            defense_result = 'passed', 
+                            updated_at = NOW() 
+                        WHERE id = '$defense_id'";
         
         if (mysqli_query($conn, $update_query)) {
             $_SESSION['success_message'] = $success_message;
@@ -258,7 +270,7 @@ if (isset($_POST['mark_passed'])) {
             $_SESSION['error_message'] = "Error updating defense status: " . mysqli_error($conn);
         }
     } else {
-        $_SESSION['error_message'] = "Defense not found.";
+        $_SESSION['error_message'] = "Defense record not found.";
     }
     
     header("Location: admin-defense.php");
@@ -1836,8 +1848,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                             <div class="flex gap-2" id="defense-buttons-<?php echo $confirmed['id']; ?>">
                                                 <?php if ($confirmed['defense_type'] === 'pre_oral' || $confirmed['defense_type'] === 'pre_oral_redefense'): ?>
                                                     <!-- Pre-oral defense - show Pass/Fail buttons -->
-                                                    <button id="pass-btn-<?php echo $confirmed['id']; ?>" 
-                                                            onclick="markDefensePassedWithTransform(<?php echo $confirmed['id']; ?>, true, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>', <?php echo $confirmed['group_id']; ?>)" 
+                                                    <button onclick="markDefensePassed(<?php echo $confirmed['id']; ?>, '<?php echo addslashes($confirmed['group_name']); ?>', '<?php echo addslashes($confirmed['proposal_title']); ?>')" 
                                                             class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" 
                                                             title="Mark as Passed">
                                                         <i class="fas fa-check mr-1"></i>Pass
@@ -4769,14 +4780,28 @@ function openInlineConfirm(message, onConfirm){
     modal.classList.add('flex');
 }
 
-function markDefensePassed(defenseId) {
-    openInlineConfirm('Mark this defense as passed? This will move it to completed defenses.', ()=>{
+function markDefensePassed(defenseId, groupName, proposalTitle) {
+    if (confirm(`Mark defense for "${groupName}" as PASSED? This will complete the evaluation process.`)) {
+        // Create a form and submit it
         const form = document.createElement('form');
         form.method = 'POST';
-        form.innerHTML = `<input type="hidden" name="defense_id" value="${defenseId}"><input type="hidden" name="mark_passed" value="1">`;
+        form.action = '';
+        
+        const defenseIdInput = document.createElement('input');
+        defenseIdInput.type = 'hidden';
+        defenseIdInput.name = 'defense_id';
+        defenseIdInput.value = defenseId;
+        
+        const markPassedInput = document.createElement('input');
+        markPassedInput.type = 'hidden';
+        markPassedInput.name = 'mark_passed';
+        markPassedInput.value = '1';
+        
+        form.appendChild(defenseIdInput);
+        form.appendChild(markPassedInput);
         document.body.appendChild(form);
         form.submit();
-    });
+    }
 }
 
 function markDefensePassedWithTransform(defenseId, canScheduleFinal, groupName, proposalTitle, groupId) {

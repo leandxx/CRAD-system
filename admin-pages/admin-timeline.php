@@ -882,100 +882,127 @@ $isoDeadline = $current_milestone
         </div>
       </div>
 
-      <!-- Timeline Management -->
-      <div class="bg-gradient-to-br from-white via-blue-50 to-indigo-100 border border-blue-200 rounded-2xl p-6 mb-8 shadow-lg">
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-xl mb-6">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="bg-white/20 p-2 rounded-lg mr-3">
-                <i class="fas fa-calendar-alt text-white text-lg"></i>
-              </div>
-              <div>
-                <h2 class="text-xl font-bold">Timeline Management</h2>
-                <p class="text-blue-100 text-sm mt-1">Manage submission phases and milestones</p>
-              </div>
-            </div>
-            <button type="button"
-              onclick="toggleModal('createTimelineModal')"
-              class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300">
-              <i class="fas fa-plus mr-2"></i>Create Timeline
+<!-- Timeline Management -->
+<div class="bg-gradient-to-br from-white via-blue-50 to-indigo-100 border border-blue-200 rounded-3xl p-8 mb-8 shadow-2xl">
+
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-2xl mb-8 shadow-lg">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center">
+        <div class="bg-white/20 p-3 rounded-xl mr-4 shadow-inner animate-pulse">
+          <i class="fas fa-calendar-alt text-white text-lg"></i>
+        </div>
+        <div>
+          <h2 class="text-2xl font-extrabold tracking-tight">Timeline Management</h2>
+          <p class="text-blue-100 text-sm mt-1">Manage submission phases and milestones effectively</p>
+        </div>
+      </div>
+      <button type="button"
+        onclick="toggleModal('createTimelineModal')"
+        class="bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition transform hover:scale-105 duration-300 shadow-md">
+        <i class="fas fa-plus"></i> Create Timeline
+      </button>
+    </div>
+  </div>
+
+  <?php if ($active_timeline): ?>
+    <!-- Active Timeline -->
+    <div class="mb-6">
+      <div class="flex justify-between items-start mb-5">
+        <div>
+          <h3 class="text-xl font-bold text-gray-900"><?= htmlspecialchars($active_timeline['title']) ?></h3>
+          <p class="text-gray-600 text-sm mt-1"><?= htmlspecialchars($active_timeline['description']) ?></p>
+        </div>
+        <div class="flex gap-2">
+          <button type="button"
+            onclick='openEditModal(<?= htmlspecialchars(json_encode($active_timeline), ENT_QUOTES, "UTF-8") ?>, <?= htmlspecialchars(json_encode($milestones), ENT_QUOTES, "UTF-8") ?>)'
+            class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-xl text-xs font-medium transition transform hover:scale-105 duration-200 flex items-center gap-1 shadow">
+            <i class="fas fa-edit"></i> Edit
+          </button>
+          <form method="POST" class="inline">
+            <input type="hidden" name="timeline_id" value="<?= (int)$active_timeline['id'] ?>">
+            <button type="submit" name="toggle_timeline" 
+              class="bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-xl text-xs font-medium transition transform hover:scale-105 duration-200 flex items-center gap-1 shadow">
+              <i class="fas fa-toggle-off"></i> Disable
             </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Progress Timeline -->
+      <div class="bg-white/90 backdrop-blur-lg rounded-2xl p-6 border border-white/60 shadow-xl">
+        <?php
+          $total_milestones = count($milestones);
+          $completed_milestones = 0;
+          $now = new DateTime();
+          foreach ($milestones as $milestone) {
+              $deadline = new DateTime($milestone['deadline']);
+              if ($deadline < $now) $completed_milestones++;
+          }
+          $progress = $total_milestones > 0 ? ($completed_milestones / $total_milestones) * 100 : 0;
+        ?>
+
+        <!-- Progress Bar -->
+        <div class="mb-6">
+          <div class="h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+            <div class="h-full bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-600 rounded-full transition-all duration-700 ease-out" 
+                 style="width: <?= $progress ?>%"></div>
           </div>
+          <p class="text-xs text-gray-500 mt-2 italic"><?= round($progress) ?>% completed</p>
         </div>
 
-        <?php if ($active_timeline): ?>
-          <div class="mb-6">
-            <div class="flex justify-between items-center mb-3">
-              <h3 class="text-lg font-semibold text-gray-800"><?= htmlspecialchars($active_timeline['title']) ?></h3>
-              <div class="flex gap-2">
-                <button type="button"
-                  onclick='openEditModal(<?= htmlspecialchars(json_encode($active_timeline), ENT_QUOTES, "UTF-8") ?>, <?= htmlspecialchars(json_encode($milestones), ENT_QUOTES, "UTF-8") ?>)'
-                  class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-all">
-                  <i class="fas fa-edit mr-1"></i>Edit
-                </button>
-                <form method="POST" class="inline">
-                  <input type="hidden" name="timeline_id" value="<?= (int)$active_timeline['id'] ?>">
-                  <button type="submit" name="toggle_timeline" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-all">
-                    <i class="fas fa-toggle-off mr-1"></i>Disable
-                  </button>
-                </form>
-              </div>
-            </div>
-            <p class="text-gray-600 mb-4 text-sm"><?= htmlspecialchars($active_timeline['description']) ?></p>
+        <!-- Milestones Vertical Timeline -->
+<div class="relative border-l-4 border-gradient-to-b from-blue-500 to-indigo-600 ml-6 space-y-8">
+  <?php foreach ($milestones as $index => $milestone):
+      $deadline = new DateTime($milestone['deadline']);
+      $is_past = $deadline < $now;
+      $prevDeadline = $index > 0 ? new DateTime($milestones[$index-1]['deadline']) : null;
+      $is_current = !$is_past && (!$prevDeadline || $prevDeadline < $now);
+  ?>
+    <div class="relative pl-10">
+      <!-- Marker -->
+      <span class="absolute -left-[22px] top-1 w-10 h-10 flex items-center justify-center rounded-full shadow-lg
+        <?= $is_past ? 'bg-green-500 text-white' : ($is_current ? 'bg-yellow-500 text-white animate-pulse' : 'bg-gray-300 text-gray-600') ?>">
+        <i class="fas <?= $is_past ? 'fa-check' : ($is_current ? 'fa-exclamation' : 'fa-flag') ?> text-sm"></i>
+      </span>
 
-            <!-- Progress Timeline -->
-            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-white/40">
-              <?php
-                $total_milestones = count($milestones);
-                $completed_milestones = 0;
-                $now = new DateTime();
-                foreach ($milestones as $milestone) {
-                    $deadline = new DateTime($milestone['deadline']);
-                    if ($deadline < $now) $completed_milestones++;
-                }
-                $progress = $total_milestones > 0 ? ($completed_milestones / $total_milestones) * 100 : 0;
-              ?>
-              <div class="h-1.5 bg-gray-200 rounded-full mb-4">
-                <div class="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full" style="width: <?= $progress ?>%"></div>
-              </div>
+      <!-- Card -->
+      <div class="bg-white rounded-xl shadow-md p-4 border hover:shadow-lg transition">
+        <div class="flex justify-between items-center mb-2">
+          <h4 class="text-sm font-bold text-gray-800"><?= htmlspecialchars($milestone['title']) ?></h4>
+          <span class="text-xs text-gray-500"><?= date('M j', strtotime($milestone['deadline'])) ?></span>
+        </div>
+        <p class="text-xs text-gray-600"><?= htmlspecialchars($milestone['description']) ?></p>
 
-              <div class="grid grid-cols-<?= count($milestones) ?> gap-2">
-                <?php foreach ($milestones as $index => $milestone):
-                    $deadline = new DateTime($milestone['deadline']);
-                    $is_past = $deadline < $now;
-                    $prevDeadline = $index > 0 ? new DateTime($milestones[$index-1]['deadline']) : null;
-                    $is_current = !$is_past && (!$prevDeadline || $prevDeadline < $now);
-                ?>
-                  <div class="text-center">
-                    <div class="w-8 h-8 <?= $is_past ? 'bg-green-500' : ($is_current ? 'bg-yellow-500' : 'bg-gray-300') ?> text-white mx-auto mb-2 rounded-full flex items-center justify-center">
-                      <i class="fas <?= $is_past ? 'fa-check' : ($is_current ? 'fa-exclamation' : 'fa-flag') ?> text-xs"></i>
-                    </div>
-                    <div class="text-xs font-medium text-gray-800"><?= htmlspecialchars($milestone['title']) ?></div>
-                    <div class="text-xs text-gray-500"><?= date('M j', strtotime($milestone['deadline'])) ?></div>
-                    <?php if ($is_current):
-                        $diff = $now->diff($deadline);
-                        $days_left = $diff->days;
-                    ?>
-                      <div class="text-xs mt-1 font-medium text-yellow-600"><?= (int)$days_left ?>d left</div>
-                    <?php endif; ?>
-                  </div>
-                <?php endforeach; ?>
-              </div>
-            </div>
-          </div>
-        <?php else: ?>
-          <div class="text-center py-8">
-            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-white/40">
-              <i class="fas fa-calendar-times text-3xl text-blue-400 mb-3"></i>
-              <h3 class="text-base font-semibold text-gray-700 mb-2">No Active Timeline</h3>
-              <p class="text-gray-500 text-sm mb-4">Create a new timeline to get started with milestone management.</p>
-              <button onclick="toggleModal('createTimelineModal')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all">
-                <i class="fas fa-plus mr-2"></i>Create Timeline
-              </button>
-            </div>
+        <?php if ($is_current):
+            $diff = $now->diff($deadline);
+            $days_left = $diff->days;
+        ?>
+          <div class="mt-2 text-xs font-medium text-yellow-600">
+            ⏳ <?= (int)$days_left ?> days left
           </div>
         <?php endif; ?>
       </div>
+    </div>
+  <?php endforeach; ?>
+</div>
+      </div>
+    </div>
+  <?php else: ?>
+    <!-- Empty State -->
+    <div class="text-center py-12">
+      <div class="bg-white/90 backdrop-blur-md rounded-2xl p-10 border border-white/60 shadow-xl">
+        <i class="fas fa-calendar-times text-5xl text-blue-400 mb-4"></i>
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">No Active Timeline</h3>
+        <p class="text-gray-500 text-sm mb-6">Create a new timeline to start tracking your milestones.</p>
+        <button onclick="toggleModal('createTimelineModal')" 
+          class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition transform hover:scale-105 duration-300 shadow-lg flex items-center gap-2 mx-auto">
+          <i class="fas fa-plus"></i> Create Timeline
+        </button>
+      </div>
+    </div>
+  <?php endif; ?>
+</div>
 
     <!-- Proposal Review Section -->
 <div class="stats-card rounded-2xl p-8 mb-8 animate-scale-in">

@@ -140,108 +140,124 @@ $stmt->close();
                     </div>
                 </div>
 
-                <!-- Research Submission Overview -->
-                <section class="mb-10 crad-slide-up">
-                    <div class="flex items-center justify-between mb-8">
-                        <div class="flex items-center">
-                            <div class="bg-gradient-to-r from-blue-500 to-purple-600 p-3 rounded-xl mr-4 shadow-lg">
-                                <i class="fas fa-chart-line text-white text-xl"></i>
-                            </div>
-                            <div>
-                                <h2 class="text-2xl font-bold text-gray-800">Research Timeline</h2>
-                                <p class="text-gray-600 text-sm">Track your submission progress and milestones</p>
-                            </div>
-                        </div>
-                        <div class="hidden lg:flex items-center space-x-2">
-                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span class="text-sm text-gray-600">Active Timeline</span>
-                        </div>
-                    </div>
-                    <div class="glass-card rounded-2xl p-8">
-                        <?php if ($active_timeline): ?>
-                            <div class="mb-8">
-                                <h3 class="text-2xl font-bold text-gray-800 mb-3"><?= htmlspecialchars($active_timeline['title']) ?></h3>
-                                <p class="text-gray-600 text-lg leading-relaxed"><?= htmlspecialchars($active_timeline['description']) ?></p>
-                            </div>
-                            
-                            <div class="mb-8">
-                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm text-gray-600 mb-4">
-                                    <div class="flex items-center mb-2 sm:mb-0">
-                                        <i class="fas fa-play-circle mr-2 text-green-500"></i>
-                                        <span class="font-medium">
-                                            <?php if (!empty($milestones)): ?>
-                                                Started: <?= date('M Y', strtotime($milestones[0]['deadline'])) ?>
-                                            <?php endif; ?>
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center mb-2 sm:mb-0">
-                                        <i class="fas fa-chart-pie mr-2 text-blue-500"></i>
-                                        <span class="font-bold text-lg text-blue-600"><?= round($progress) ?>% Complete</span>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <i class="fas fa-flag-checkered mr-2 text-purple-500"></i>
-                                        <span class="font-medium">
-                                            <?php if (!empty($milestones)): ?>
-                                                Target: <?= date('M Y', strtotime(end($milestones)['deadline'])) ?>
-                                            <?php endif; ?>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: <?= $progress ?>%"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-<?= min(5, count($milestones)) ?> gap-6">
-                                <?php foreach ($milestones as $index => $milestone): ?>
-                                    <?php
-                                    $deadline = new DateTime($milestone['deadline']);
-                                    $is_past = $deadline < $now;
-                                    $is_current = !$is_past && ($index === 0 || new DateTime($milestones[$index-1]['deadline']) < $now);
-                                    ?>
-                                    <div class="research-phase <?= $is_past || $is_current ? 'active' : '' ?> p-6 rounded-xl text-center transition-all hover:shadow-lg relative group">
-                                        <div class="phase-tooltip"><?= htmlspecialchars($milestone['description']) ?></div>
-                                        <div class="mb-4">
-                                            <i class="fas 
-                                                <?= $is_past ? 'fa-check-circle text-green-500' : ($is_current ? 'fa-clock text-yellow-500' : 'fa-flag text-gray-400') ?> 
-                                                text-4xl group-hover:scale-110 transition-transform"
-                                            ></i>
-                                        </div>
-                                        <h4 class="text-sm font-bold text-gray-800 mb-2"><?= htmlspecialchars($milestone['title']) ?></h4>
-                                        <div class="text-xs">
-                                            <?php if ($is_past): ?>
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800">
-                                                    <i class="fas fa-check mr-1"></i>Completed
-                                                </span>
-                                            <?php elseif ($is_current): ?>
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
-                                                    <i class="fas fa-clock mr-1"></i>
-                                                    <?php
-                                                    $diff = $now->diff($deadline);
-                                                    echo $diff->days . ' days left';
-                                                    ?>
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-600">
-                                                    <i class="fas fa-calendar mr-1"></i>
-                                                    <?= date('M j', strtotime($milestone['deadline'])) ?>
-                                                </span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php else: ?>
-                            <div class="text-center py-12">
-                                <div class="bg-gray-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
-                                    <i class="fas fa-calendar-times text-4xl text-gray-400"></i>
-                                </div>
-                                <h3 class="text-xl font-bold text-gray-500 mb-2">No Active Timeline</h3>
-                                <p class="text-gray-400 text-lg">Check back later for submission deadlines and milestones</p>
-                            </div>
+            <!-- Research Submission Overview -->
+            <section class="mb-12 crad-slide-up">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center">
+                <div class="bg-gradient-to-r from-blue-500 to-purple-600 p-3 rounded-xl mr-4 shadow-lg">
+                    <i class="fas fa-chart-line text-white text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800 tracking-tight">Research Timeline</h2>
+                    <p class="text-gray-600 text-sm">Track your submission progress and milestones</p>
+                </div>
+                </div>
+                <?php if ($active_timeline): ?>
+                <div class="hidden lg:flex items-center space-x-2">
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span class="text-sm text-gray-600">Active Timeline</span>
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Content -->
+            <div class="glass-card rounded-2xl p-8 shadow-xl border border-gray-100">
+                <?php if ($active_timeline): ?>
+                <!-- Title & Description -->
+                <div class="mb-8">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2"><?= htmlspecialchars($active_timeline['title']) ?></h3>
+                    <p class="text-gray-600 text-base leading-relaxed"><?= htmlspecialchars($active_timeline['description']) ?></p>
+                </div>
+
+                <!-- Progress Overview -->
+                <div class="mb-8">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm text-gray-600 mb-4">
+                    <div class="flex items-center mb-2 sm:mb-0">
+                        <i class="fas fa-play-circle mr-2 text-green-500"></i>
+                        <span class="font-medium">
+                        <?php if (!empty($milestones)): ?>
+                            Started: <?= date('M Y', strtotime($milestones[0]['deadline'])) ?>
                         <?php endif; ?>
+                        </span>
                     </div>
-                </section>
+                    <div class="flex items-center mb-2 sm:mb-0">
+                        <i class="fas fa-chart-pie mr-2 text-blue-500"></i>
+                        <span class="font-bold text-lg text-blue-600"><?= round($progress) ?>% Complete</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-flag-checkered mr-2 text-purple-500"></i>
+                        <span class="font-medium">
+                        <?php if (!empty($milestones)): ?>
+                            Target: <?= date('M Y', strtotime(end($milestones)['deadline'])) ?>
+                        <?php endif; ?>
+                        </span>
+                    </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 rounded-full transition-all duration-700 ease-out" 
+                        style="width: <?= $progress ?>%"></div>
+                    </div>
+                </div>
+
+                <!-- Milestones Stepper -->
+                <div class="relative">
+                    <div class="absolute left-4 top-0 h-full w-1 bg-gradient-to-b from-blue-400 to-purple-400 rounded-full"></div>
+                    <div class="space-y-8 pl-12">
+                    <?php foreach ($milestones as $index => $milestone): ?>
+                        <?php
+                        $deadline = new DateTime($milestone['deadline']);
+                        $is_past = $deadline < $now;
+                        $is_current = !$is_past && ($index === 0 || new DateTime($milestones[$index-1]['deadline']) < $now);
+                        ?>
+                        <div class="relative group">
+                        <!-- Icon -->
+                        <div class="absolute -left-12 top-0 w-8 h-8 flex items-center justify-center rounded-full shadow-lg 
+                                    <?= $is_past ? 'bg-green-500 text-white' : ($is_current ? 'bg-yellow-500 text-white animate-pulse' : 'bg-gray-300 text-gray-600') ?>">
+                            <i class="fas <?= $is_past ? 'fa-check' : ($is_current ? 'fa-clock' : 'fa-flag') ?> text-sm"></i>
+                        </div>
+
+                        <!-- Milestone Card -->
+                        <div class="bg-white p-5 rounded-xl shadow hover:shadow-lg transition border border-gray-100">
+                            <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-bold text-gray-800"><?= htmlspecialchars($milestone['title']) ?></h4>
+                            <span class="text-xs text-gray-500"><?= date('M j, Y', strtotime($milestone['deadline'])) ?></span>
+                            </div>
+                            <p class="text-xs text-gray-600"><?= htmlspecialchars($milestone['description']) ?></p>
+
+                            <?php if ($is_past): ?>
+                            <div class="mt-2 text-xs font-medium text-green-600">
+                                ✅ Completed
+                            </div>
+                            <?php elseif ($is_current): ?>
+                            <?php $diff = $now->diff($deadline); ?>
+                            <div class="mt-2 text-xs font-medium text-yellow-600">
+                                ⏳ <?= $diff->days ?> days left
+                            </div>
+                            <?php else: ?>
+                            <div class="mt-2 text-xs text-gray-500">
+                                📅 Upcoming
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        </div>
+                    <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php else: ?>
+                <!-- Empty State -->
+                <div class="text-center py-12">
+                    <div class="bg-gray-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <i class="fas fa-calendar-times text-4xl text-gray-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-500 mb-2">No Active Timeline</h3>
+                    <p class="text-gray-400 text-lg">Check back later for submission deadlines and milestones</p>
+                </div>
+                <?php endif; ?>
+            </div>
+            </section>
 
                 <!-- Quick Access Cards -->
                 <section class="mb-10 crad-slide-up">

@@ -113,7 +113,7 @@ CREATE TABLE `defense_schedules` (
   `start_time` time DEFAULT NULL,
   `end_time` time DEFAULT NULL,
   `room_id` int(11) DEFAULT NULL,
-  `status` enum('scheduled','completed','cancelled','failed','passed','pre_completed') DEFAULT 'scheduled',
+  `status` enum('pending','scheduled','completed','cancelled','failed','passed','pre_completed') DEFAULT 'scheduled',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `defense_type` enum('pre_oral','final','pre_oral_redefense','final_redefense') DEFAULT NULL,
   `defense_result` enum('pending','passed','failed','redefense') DEFAULT 'pending',

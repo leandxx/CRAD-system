@@ -1248,9 +1248,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             <?php if (isset($_SESSION['success_message'])): ?>
                 <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"
                     role="alert">
-                    <span
-                        class="block sm:inline"><?php echo $_SESSION['success_message'];
-                        unset($_SESSION['success_message']); ?></span>
+                    <span class="block sm:inline"><?php echo $_SESSION['success_message'];
+                    unset($_SESSION['success_message']); ?></span>
                 </div>
             <?php endif; ?>
 
@@ -1554,7 +1553,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                                                 <div>
                                                                                     <h3
                                                                                         class="text-lg font-bold text-gray-900 leading-tight">
-                                                                                        <?php echo $schedule['group_name']; ?></h3>
+                                                                                        <?php echo $schedule['group_name']; ?>
+                                                                                    </h3>
                                                                                     <p class="text-xs text-blue-600 font-medium">
                                                                                         <?php echo $schedule['proposal_title'] ?? 'No Title'; ?>
                                                                                     </p>
@@ -1806,9 +1806,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                                                 <div>
                                                                                     <h3
                                                                                         class="text-lg font-bold text-gray-900 leading-tight">
-                                                                                        <?php echo $group['name']; ?></h3>
+                                                                                        <?php echo $group['name']; ?>
+                                                                                    </h3>
                                                                                     <p class="text-xs text-orange-600 font-medium">
-                                                                                        <?php echo $group['proposal_title']; ?></p>
+                                                                                        <?php echo $group['proposal_title']; ?>
+                                                                                    </p>
                                                                                     <?php if (($group['defense_type'] ?? 'pre_oral') === 'final'): ?>
                                                                                         <p class="text-xs text-purple-600 font-medium">
                                                                                             <i class="fas fa-check-circle mr-1"></i>Pre-oral
@@ -1899,7 +1901,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                                         $button_color = ($defense_type === 'final') ? 'from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700' : 'from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700';
                                                                         ?>
                                                                         <button
-                                                                            onclick="<?php echo $has_unpaid_fees ? 'showPaymentRequiredAlert()' : 'scheduleUnifiedDefense(' . $group['id'] . ', \'' . addslashes($group['name']) . '\', \'' . addslashes($group['proposal_title']) . '\', \'' . $defense_type . '\')'; ?>"
+                                                                            onclick="<?php echo $has_unpaid_fees ? 'showPaymentRequiredAlert()' : 'openProposalModal(' . $group['id'] . ', \'' . addslashes($group['name']) . '\', \'' . addslashes($group['proposal_title']) . '\', \'' . $defense_type . '\')'; ?>"
                                                                             class="w-full <?php echo $has_unpaid_fees ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r ' . $button_color . ' hover:shadow-lg transform hover:scale-105'; ?> text-white py-3 px-4 rounded-xl text-sm font-semibold flex items-center justify-center transition-all duration-300"
                                                                             <?php echo $has_unpaid_fees ? 'disabled' : ''; ?>>
                                                                             <i
@@ -2092,9 +2094,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                                                 <div>
                                                                                     <h3
                                                                                         class="text-lg font-bold text-gray-900 leading-tight">
-                                                                                        <?php echo $confirmed['group_name']; ?></h3>
+                                                                                        <?php echo $confirmed['group_name']; ?>
+                                                                                    </h3>
                                                                                     <p class="text-xs text-purple-600 font-medium">
-                                                                                        <?php echo $confirmed['proposal_title']; ?></p>
+                                                                                        <?php echo $confirmed['proposal_title']; ?>
+                                                                                    </p>
                                                                                     <p class="text-xs text-gray-500">
                                                                                         <?php
                                                                                         if ($confirmed['defense_type'] == 'redefense') {
@@ -2354,9 +2358,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                                                 <div>
                                                                                     <h3
                                                                                         class="text-lg font-bold text-gray-900 leading-tight">
-                                                                                        <?php echo $failed['group_name']; ?></h3>
+                                                                                        <?php echo $failed['group_name']; ?>
+                                                                                    </h3>
                                                                                     <p class="text-xs text-red-600 font-medium">
-                                                                                        <?php echo $failed['proposal_title']; ?></p>
+                                                                                        <?php echo $failed['proposal_title']; ?>
+                                                                                    </p>
                                                                                     <p class="text-xs text-gray-500">
                                                                                         <?php
                                                                                         if ($failed['defense_type'] == 'redefense') {
@@ -2637,8 +2643,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 
                 // Final Defense Scheduling Function
                 function scheduleFinalDefense(groupId, groupName, proposalTitle, defenseType, defenseId = null) {
-                    // Open the defense scheduling modal with final defense type
-                    openDefenseModal(groupId, groupName, proposalTitle, defenseType, defenseId);
+                    // Open the proposal modal with final defense type
+                    openProposalModal(groupId, groupName, proposalTitle, defenseType);
+                    if (defenseId) {
+                        document.getElementById('parent_defense_id').value = defenseId;
+                    }
                 }
 
                 // Unified Defense Scheduling Modal
@@ -2677,13 +2686,13 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-gray-700 text-sm font-medium mb-2">Defense Date</label>
-                    <input type="date" name="defense_date" required min="<?php echo date('Y-m-d'); ?>"
+                    <input type="date" name="defense_date" id="defense_date" required min="<?php echo date('Y-m-d'); ?>"
                         class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         onchange="populateTimeSlots()">
                 </div>
                 <div>
                     <label class="block text-gray-700 text-sm font-medium mb-2">Room</label>
-                    <select name="room_id" required
+                    <select name="room_id" id="room_id" required
                         class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         onchange="populateTimeSlots()">
                         <option value="">Select a room</option>
@@ -2782,12 +2791,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     document.body.insertAdjacentHTML('beforeend', modalHtml);
                 }
 
-                function closeDefenseModal() {
-                    const modal = document.getElementById('defenseModal');
-                    if (modal) {
-                        modal.remove();
-                    }
-                }
+
 
 
 
@@ -3124,85 +3128,46 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     modal.classList.remove('opacity-100');
                 }
 
-                // Unified defense scheduling function with defense type filtering
-                function scheduleUnifiedDefense(groupId, groupName, proposalTitle, defenseType = 'pre_oral') {
-                    // Filter based on defense type - only allow pre-oral or final
+                // Open proposal modal for defense scheduling
+                function openProposalModal(groupId, groupName, proposalTitle, defenseType = 'pre_oral') {
+                    // Set group information in the modal
+                    document.getElementById('group_id').value = groupId;
+                    document.getElementById('defense_type').value = defenseType;
+                    document.getElementById('selected_group_display').textContent = groupName + ' - ' + proposalTitle;
+
+                    // Update modal title based on defense type
+                    const modalTitle = document.querySelector('#proposalModal #modal-title');
+                    const modalDescription = document.querySelector('#proposalModal #modal-description');
+
                     if (defenseType === 'final') {
-                        openDefenseModal(groupId, groupName, proposalTitle, 'final');
+                        modalTitle.innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Schedule Final Defense';
+                        modalDescription.textContent = 'Schedule a final defense session for groups who have completed pre-oral defense.';
                     } else {
-                        openDefenseModal(groupId, groupName, proposalTitle, 'pre_oral');
+                        modalTitle.innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-calendar-plus text-white text-sm"></i></div>Schedule Pre-Oral Defense';
+                        modalDescription.textContent = 'Schedule a new defense session for the selected group.';
                     }
+
+                    // Open the modal
+                    openModal('proposalModal');
                 }
 
                 // Make function globally accessible
-                window.scheduleUnifiedDefense = scheduleUnifiedDefense;
+                window.openProposalModal = openProposalModal;
 
                 // Separate functions for pre-oral and final defense
                 function schedulePreOralDefense(groupId, groupName, proposalTitle) {
-                    openDefenseModal(groupId, groupName, proposalTitle, 'pre_oral');
+                    openProposalModal(groupId, groupName, proposalTitle, 'pre_oral');
                 }
 
                 function scheduleFinalDefense(groupId, groupName, proposalTitle) {
-                    openDefenseModal(groupId, groupName, proposalTitle, 'final');
+                    openProposalModal(groupId, groupName, proposalTitle, 'final');
                 }
 
                 // Make functions globally accessible
                 window.schedulePreOralDefense = schedulePreOralDefense;
                 window.scheduleFinalDefense = scheduleFinalDefense;
 
-                // Time slot functions for the modal
-                function populateTimeSlots() {
-                    const dateInput = document.querySelector('input[name="defense_date"]');
-                    const roomSelect = document.querySelector('select[name="room_id"]');
-                    const timeSlotSelect = document.getElementById('time_slot');
 
-                    if (!dateInput.value || !roomSelect.value) {
-                        timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
-                        return;
-                    }
-
-                    // Generate time slots from 8:00 AM to 6:00 PM in 2-hour intervals
-                    const timeSlots = [
-                        { start: '08:00', end: '10:00', label: '8:00 AM - 10:00 AM' },
-                        { start: '10:00', end: '12:00', label: '10:00 AM - 12:00 PM' },
-                        { start: '13:00', end: '15:00', label: '1:00 PM - 3:00 PM' },
-                        { start: '15:00', end: '17:00', label: '3:00 PM - 5:00 PM' },
-                        { start: '17:00', end: '18:00', label: '5:00 PM - 6:00 PM' }
-                    ];
-
-                    timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
-
-                    timeSlots.forEach(slot => {
-                        const option = document.createElement('option');
-                        option.value = `${slot.start}|${slot.end}`;
-                        option.textContent = slot.label;
-                        timeSlotSelect.appendChild(option);
-                    });
-                }
-
-                function updateTimeInputs() {
-                    const timeSlotSelect = document.getElementById('time_slot');
-                    const startTimeInput = document.getElementById('start_time');
-                    const endTimeInput = document.getElementById('end_time');
-                    const durationDisplay = document.getElementById('duration_display');
-
-                    if (timeSlotSelect.value) {
-                        const [startTime, endTime] = timeSlotSelect.value.split('|');
-                        startTimeInput.value = startTime;
-                        endTimeInput.value = endTime;
-
-                        // Calculate duration
-                        const start = new Date(`1970-01-01T${startTime}:00`);
-                        const end = new Date(`1970-01-01T${endTime}:00`);
-                        const duration = (end - start) / (1000 * 60 * 60); // hours
-
-                        durationDisplay.textContent = `${duration} hour${duration !== 1 ? 's' : ''} (${timeSlotSelect.options[timeSlotSelect.selectedIndex].text})`;
-                    } else {
-                        startTimeInput.value = '';
-                        endTimeInput.value = '';
-                        durationDisplay.textContent = 'No slot selected';
-                    }
-                }
 
                 function validateDefenseDuration() {
                     const startTime = document.getElementById('start_time').value;
@@ -3346,12 +3311,15 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                                                 <div>
                                                                                     <h3
                                                                                         class="text-lg font-bold text-gray-900 leading-tight">
-                                                                                        <?php echo $completed['group_name']; ?></h3>
+                                                                                        <?php echo $completed['group_name']; ?>
+                                                                                    </h3>
                                                                                     <p class="text-xs text-green-600 font-medium">
-                                                                                        <?php echo $completed['proposal_title']; ?></p>
+                                                                                        <?php echo $completed['proposal_title']; ?>
+                                                                                    </p>
                                                                                     <p class="text-xs text-gray-500">
                                                                                         <?php echo ucfirst($completed['defense_type']); ?>
-                                                                                        Defense</p>
+                                                                                        Defense
+                                                                                    </p>
                                                                                 </div>
                                                                             </div>
                                                                             <span
@@ -3521,9 +3489,11 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                                                 <div>
                                                                                     <h3
                                                                                         class="text-lg font-bold text-gray-900 leading-tight">
-                                                                                        <?php echo $upcoming['group_name']; ?></h3>
+                                                                                        <?php echo $upcoming['group_name']; ?>
+                                                                                    </h3>
                                                                                     <p class="text-xs text-green-600 font-medium">
-                                                                                        <?php echo $upcoming['proposal_title']; ?></p>
+                                                                                        <?php echo $upcoming['proposal_title']; ?>
+                                                                                    </p>
                                                                                     <p class="text-xs text-gray-500 font-medium">
                                                                                         <?php
                                                                                         if ($upcoming['defense_type'] == 'redefense') {
@@ -3707,7 +3677,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                 <option value="">Select a room</option>
                                 <?php foreach ($rooms as $room): ?>
                                     <option value="<?php echo $room['id']; ?>">
-                                        <?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
+                                        <?php echo $room['building'] . ' - ' . $room['room_name']; ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -3763,7 +3734,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                             </div>
                                             <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
                                             <div class="text-xs text-purple-600 mt-1">
-                                                <?php echo ucfirst($panel_member['program']); ?> Program</div>
+                                                <?php echo ucfirst($panel_member['program']); ?> Program
+                                            </div>
                                         </div>
                                     </label>
                                 <?php endforeach; ?>
@@ -3797,7 +3769,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                             </div>
                                             <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
                                             <div class="text-xs text-blue-600 mt-1">
-                                                <?php echo $panel_member['specialization']; ?></div>
+                                                <?php echo $panel_member['specialization']; ?>
+                                            </div>
                                         </div>
                                     </label>
                                 <?php endforeach; ?>
@@ -3869,7 +3842,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                     <option value="">Select a room</option>
                                     <?php foreach ($rooms as $room): ?>
                                         <option value="<?php echo $room['id']; ?>">
-                                            <?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
+                                            <?php echo $room['building'] . ' - ' . $room['room_name']; ?>
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -3928,7 +3902,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                 <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?>
                                                 </div>
                                                 <div class="text-xs text-purple-600 mt-1">
-                                                    <?php echo ucfirst($panel_member['program']); ?> Program</div>
+                                                    <?php echo ucfirst($panel_member['program']); ?> Program
+                                                </div>
                                             </div>
                                         </label>
                                     <?php endforeach; ?>
@@ -3964,7 +3939,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                 <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?>
                                                 </div>
                                                 <div class="text-xs text-blue-600 mt-1">
-                                                    <?php echo $panel_member['specialization']; ?></div>
+                                                    <?php echo $panel_member['specialization']; ?>
+                                                </div>
                                             </div>
                                         </label>
                                     <?php endforeach; ?>
@@ -4599,6 +4575,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     }
                     return true;
                 }
+
 
                 // Function to populate available time slots
                 function populateTimeSlots() {

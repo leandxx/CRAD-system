@@ -3019,11 +3019,12 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         <!-- Form -->
         <form method="POST" class="p-6" onsubmit="return validateRedefenseDuration()">
             <input type="hidden" name="schedule_redefense" value="1">
-            <input type="hidden" name="defense_type" value="${defenseType}">
-            <input type="hidden" name="group_id" value="${groupId}">
-            <input type="hidden" name="parent_defense_id" value="${defenseId}">
-            <input type="hidden" id="redefense_start_time" name="start_time">
-            <input type="hidden" id="redefense_end_time" name="end_time">
+            <input type="hidden" name="schedule_defense" value="1">
+             <input type="hidden" name="defense_type" value="${defenseType}">
+             <input type="hidden" name="group_id" value="${groupId}">
+             <input type="hidden" name="parent_defense_id" value="${defenseId}">
+             <input type="hidden" id="redefense_start_time" name="start_time">
+             <input type="hidden" id="redefense_end_time" name="end_time">
 
             <!-- Selected Group -->
             <div class="mb-4">

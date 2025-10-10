@@ -3134,7 +3134,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     </div>
 </div>
 `;
-schedule_redefense
         // Add modal to page
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     }

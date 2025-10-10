@@ -109,15 +109,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             header("Location: admin-defense.php");
             exit();
         } elseif ($defense_type == 'final') {
-            // Check if group already has final defense (converted from passed pre-oral) or still has passed pre-oral
+            // Check if group is eligible for final defense (has completed pre-oral OR already has final defense record)
             $defense_check = "SELECT COUNT(*) as eligible 
                              FROM defense_schedules 
                              WHERE group_id = '$group_id' 
-                             AND ((defense_type IN ('pre_oral', 'pre_oral_redefense') AND status = 'completed' AND defense_result = 'passed') 
-                                  OR (defense_type = 'final'))";
+                             AND ((defense_type IN ('pre_oral', 'pre_oral_redefense') AND status = 'completed') 
+                                  OR (defense_type IN ('final', 'final_redefense')))";
             $defense_result = mysqli_query($conn, $defense_check);
             $defense_data = mysqli_fetch_assoc($defense_result);
-
+            
             if ($defense_data['eligible'] == 0) {
                 $_SESSION['error_message'] = "Group must complete and pass pre-oral defense before scheduling final defense.";
                 header("Location: admin-defense.php");
@@ -3134,7 +3134,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     </div>
 </div>
 `;
-
+schedule_redefense
         // Add modal to page
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     }

@@ -26,6 +26,86 @@ $pending_progress = $total_proposals > 0 ? round(($pending_proposals / $total_pr
 $active_groups = $total_groups; // All groups are considered active
 $group_progress = $total_groups > 0 ? round(($active_groups / max($total_groups, 1)) * 100) : 0;
 
+// Date-based Defense Status Reports
+$current_month = date('Y-m');
+$current_year = date('Y');
+
+$defense_by_course = mysqli_query($conn, "
+    SELECT 
+        g.program,
+        COUNT(CASE WHEN ds.defense_result = 'redefense' THEN 1 END) as redefense_month,
+        COUNT(CASE WHEN ds.defense_result = 'passed' OR ds.status = 'passed' THEN 1 END) as completed_month,
+        COUNT(CASE WHEN ds.defense_type = 'pre_oral' AND ds.status = 'scheduled' THEN 1 END) as pre_oral_month,
+        COUNT(CASE WHEN ds.defense_type = 'final' AND ds.status = 'scheduled' THEN 1 END) as final_month,
+        COUNT(CASE WHEN ds.defense_result = 'passed' OR ds.status = 'passed' THEN 1 END) as completed_year
+    FROM groups g
+    LEFT JOIN defense_schedules ds ON g.id = ds.group_id
+    WHERE g.program IS NOT NULL
+    GROUP BY g.program
+");
+
+$in_redefense = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM defense_schedules WHERE defense_result = 'redefense'"))[0];
+$completed_defense = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM defense_schedules WHERE defense_result = 'passed' OR status = 'passed'"))[0];
+$in_pre_oral = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM defense_schedules WHERE defense_type = 'pre_oral' AND status = 'scheduled'"))[0];
+$in_final = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM defense_schedules WHERE defense_type = 'final' AND status = 'scheduled'"))[0];
+
+$yearly_completed = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM defense_schedules WHERE (defense_result = 'passed' OR status = 'passed') AND YEAR(defense_date) = '$current_year'"))[0];
+
+// Generate automated report text
+$total_defenses = $in_redefense + $completed_defense + $in_pre_oral + $in_final;
+$completion_rate = $total_defenses > 0 ? round(($completed_defense / $total_defenses) * 100) : 0;
+$month_name = date('F Y');
+$report_text = "Monthly Report for {$month_name}: {$total_defenses} defense activities this month with {$completion_rate}% completion rate. ";
+$report_text .= "Year-to-date: {$yearly_completed} defenses completed in {$current_year}. ";
+if ($in_redefense > 0) {
+    $report_text .= "{$in_redefense} groups require redefense this month.";
+} else {
+    $report_text .= "No redefenses required this month.";
+}
+
+// Chart data queries
+// Pie Chart: Defense stages by groups
+$defense_stages = mysqli_query($conn, "
+    SELECT 
+        CASE 
+            WHEN ds.defense_type IS NULL THEN 'Proposal'
+            WHEN ds.defense_type = 'pre_oral' AND ds.status = 'scheduled' THEN 'Pre-Oral'
+            WHEN ds.defense_result = 'redefense' THEN 'Redefense'
+            WHEN ds.defense_type = 'final' AND ds.status = 'scheduled' THEN 'Final Defense'
+            WHEN ds.defense_result = 'passed' OR ds.status = 'passed' THEN 'Completed'
+            ELSE 'Proposal'
+        END as stage,
+        COUNT(*) as count
+    FROM groups g
+    LEFT JOIN defense_schedules ds ON g.id = ds.group_id
+    GROUP BY stage
+");
+
+// Bar Chart: Research completion by program
+$research_by_program = mysqli_query($conn, "
+    SELECT 
+        g.program,
+        COUNT(CASE WHEN p.status = 'Completed' THEN 1 END) as completed,
+        COUNT(CASE WHEN p.status = 'Pending' THEN 1 END) as ongoing
+    FROM groups g
+    LEFT JOIN proposals p ON g.id = p.group_id
+    WHERE g.program IS NOT NULL
+    GROUP BY g.program
+");
+
+// Progress Tracker: Flow from Proposal to Final Defense by program
+$progress_flow = mysqli_query($conn, "
+    SELECT 
+        g.program,
+        COUNT(DISTINCT g.id) as total_groups,
+        COUNT(DISTINCT CASE WHEN ds.defense_type = 'pre_oral' THEN g.id END) as pre_oral,
+        COUNT(DISTINCT CASE WHEN ds.defense_type = 'final' THEN g.id END) as final_defense
+    FROM groups g
+    LEFT JOIN defense_schedules ds ON g.id = ds.group_id
+    WHERE g.program IS NOT NULL
+    GROUP BY g.program
+");
+
 // Recent activities
 $recent_students = mysqli_query($conn, "SELECT full_name, program, id FROM student_profiles ORDER BY id DESC LIMIT 3");
 $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals ORDER BY id DESC LIMIT 3");
@@ -43,6 +123,7 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -63,6 +144,185 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
             modal.classList.toggle('hidden');
             modal.classList.toggle('flex');
         }
+
+        // Chart initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            // Defense Status Pie Chart
+            const defenseStatusCtx = document.getElementById('defenseStatusChart').getContext('2d');
+            new Chart(defenseStatusCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Redefense', 'Completed', 'Pre-Oral', 'Final Defense'],
+                    datasets: [{
+                        data: [<?= $in_redefense ?>, <?= $completed_defense ?>, <?= $in_pre_oral ?>, <?= $in_final ?>],
+                        backgroundColor: ['#ef4444', '#10b981', '#3b82f6', '#8b5cf6'],
+                        borderWidth: 3,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 1,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // Pie Chart: Defense Stages
+            const defenseCtx = document.getElementById('defenseStagesChart').getContext('2d');
+            new Chart(defenseCtx, {
+                type: 'pie',
+                data: {
+                    labels: [<?php 
+                        $stages = [];
+                        mysqli_data_seek($defense_stages, 0);
+                        while($row = mysqli_fetch_assoc($defense_stages)) {
+                            $stages[] = "'" . $row['stage'] . "'";
+                        }
+                        echo implode(',', $stages);
+                    ?>],
+                    datasets: [{
+                        data: [<?php 
+                            $counts = [];
+                            mysqli_data_seek($defense_stages, 0);
+                            while($row = mysqli_fetch_assoc($defense_stages)) {
+                                $counts[] = $row['count'];
+                            }
+                            echo implode(',', $counts);
+                        ?>],
+                        backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Bar Chart: Research by Program
+            const researchCtx = document.getElementById('researchByProgramChart').getContext('2d');
+            new Chart(researchCtx, {
+                type: 'bar',
+                data: {
+                    labels: [<?php 
+                        $programs = [];
+                        mysqli_data_seek($research_by_program, 0);
+                        while($row = mysqli_fetch_assoc($research_by_program)) {
+                            $programs[] = "'" . $row['program'] . "'";
+                        }
+                        echo implode(',', $programs);
+                    ?>],
+                    datasets: [{
+                        label: 'Completed',
+                        data: [<?php 
+                            $completed = [];
+                            mysqli_data_seek($research_by_program, 0);
+                            while($row = mysqli_fetch_assoc($research_by_program)) {
+                                $completed[] = $row['completed'] ?? 0;
+                            }
+                            echo implode(',', $completed);
+                        ?>],
+                        backgroundColor: '#10b981'
+                    }, {
+                        label: 'Ongoing',
+                        data: [<?php 
+                            $ongoing = [];
+                            mysqli_data_seek($research_by_program, 0);
+                            while($row = mysqli_fetch_assoc($research_by_program)) {
+                                $ongoing[] = $row['ongoing'] ?? 0;
+                            }
+                            echo implode(',', $ongoing);
+                        ?>],
+                        backgroundColor: '#f59e0b'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Progress Flow Chart
+            const progressCtx = document.getElementById('progressFlowChart').getContext('2d');
+            new Chart(progressCtx, {
+                type: 'line',
+                data: {
+                    labels: [<?php 
+                        $flow_programs = [];
+                        mysqli_data_seek($progress_flow, 0);
+                        while($row = mysqli_fetch_assoc($progress_flow)) {
+                            $flow_programs[] = "'" . $row['program'] . "'";
+                        }
+                        echo implode(',', $flow_programs);
+                    ?>],
+                    datasets: [{
+                        label: 'Total Groups',
+                        data: [<?php 
+                            $total = [];
+                            mysqli_data_seek($progress_flow, 0);
+                            while($row = mysqli_fetch_assoc($progress_flow)) {
+                                $total[] = $row['total_groups'] ?? 0;
+                            }
+                            echo implode(',', $total);
+                        ?>],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Pre-Oral',
+                        data: [<?php 
+                            $pre_oral = [];
+                            mysqli_data_seek($progress_flow, 0);
+                            while($row = mysqli_fetch_assoc($progress_flow)) {
+                                $pre_oral[] = $row['pre_oral'] ?? 0;
+                            }
+                            echo implode(',', $pre_oral);
+                        ?>],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Final Defense',
+                        data: [<?php 
+                            $final = [];
+                            mysqli_data_seek($progress_flow, 0);
+                            while($row = mysqli_fetch_assoc($progress_flow)) {
+                                $final[] = $row['final_defense'] ?? 0;
+                            }
+                            echo implode(',', $final);
+                        ?>],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        });
     </script>
 </head>
 <body class="bg-gradient-to-br from-blue-100 via-blue-50 to-blue-200 text-gray-800 font-sans">
@@ -155,8 +415,8 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
                 </div>
             </div>
             <div class="flex items-center justify-between mt-4">
-                <p class="text-red-600 text-sm font-semibold"><i class="fas fa-exclamation-triangle mr-1"></i> <?= $overdue_proposals ?> overdue</p>
-                <span class="text-xs text-gray-500">need attention</span>
+                <p class="<?= $overdue_proposals > 0 ? 'text-red-600' : 'text-green-600' ?> text-sm font-semibold"><i class="fas fa-exclamation-triangle mr-1"></i> <?= $overdue_proposals ?> overdue</p>
+                <span class="text-xs text-gray-500">proposals</span>
             </div>
         </div>
 
@@ -176,8 +436,8 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
                 </div>
             </div>
             <div class="flex items-center justify-between mt-4">
-                <p class="text-blue-600 text-sm font-semibold"><i class="fas fa-layer-group mr-1"></i> <?= $total_clusters ?> clusters</p>
-                <span class="text-xs text-gray-500">active</span>
+                <p class="text-green-600 text-sm font-semibold"><i class="fas fa-check mr-1"></i> <?= $active_groups ?> active</p>
+                <span class="text-xs text-gray-500">groups</span>
             </div>
         </div>
     </div>
@@ -250,6 +510,104 @@ $recent_proposals = mysqli_query($conn, "SELECT title, status, id FROM proposals
             </a>
         </div>
     </div>
+
+    <!-- Defense Status Report -->
+    <div class="mb-10 animate-fade-in">
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center">
+                <div class="gradient-blue p-3 rounded-xl mr-4 shadow-lg">
+                    <i class="fas fa-chart-pie text-white text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-800">Defense Status Report</h3>
+                    <p class="text-gray-600 text-sm">Real-time defense progress overview</p>
+                </div>
+            </div>
+        </div>
+        <div class="glass-card rounded-2xl p-8">
+            <!-- Automated Report Text -->
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 mb-8 border border-blue-200">
+                <div class="flex items-start">
+                    <i class="fas fa-robot text-blue-600 text-xl mr-3 mt-1"></i>
+                    <div>
+                        <h4 class="font-bold text-gray-800 mb-2">Automated Analysis</h4>
+                        <p class="text-gray-700 leading-relaxed"><?= isset($report_text) ? $report_text : 'Report data loading...' ?></p>
+                        <p class="text-xs text-gray-500 mt-2">Generated on <?= date('M d, Y \a\t g:i A') ?></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div>
+                    <h4 class="text-lg font-bold text-gray-800 mb-4">Overall Status</h4>
+                    <div style="height: 300px; width: 300px; margin: 0 auto;">
+                        <canvas id="defenseStatusChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold text-gray-800 mb-4">By Course - <?= date('F Y') ?></h4>
+                    <div class="space-y-4 max-h-96 overflow-y-auto">
+                        <?php while($course = mysqli_fetch_assoc($defense_by_course)): ?>
+                        <div class="bg-gray-50 rounded-xl p-4">
+                            <h5 class="font-semibold text-gray-800 mb-3"><?= $course['program'] ?></h5>
+                            <div class="mb-3">
+                                <p class="text-xs text-gray-600 mb-2">This Month:</p>
+                                <div class="grid grid-cols-2 gap-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-red-600">Redefense:</span>
+                                        <span class="font-bold"><?= $course['redefense_month'] ?></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-green-600">Completed:</span>
+                                        <span class="font-bold"><?= $course['completed_month'] ?></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-blue-600">Pre-Oral:</span>
+                                        <span class="font-bold"><?= $course['pre_oral_month'] ?></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-purple-600">Final:</span>
+                                        <span class="font-bold"><?= $course['final_month'] ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="border-t pt-2">
+                                <p class="text-xs text-gray-600 mb-1">Year <?= $current_year ?>:</p>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-green-600">Total Completed:</span>
+                                    <span class="font-bold"><?= $course['completed_year'] ?></span>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endwhile; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+        <!-- Pie Chart: Defense Stages -->
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Groups by Defense Stage</h3>
+            <canvas id="defenseStagesChart" width="300" height="300"></canvas>
+        </div>
+
+        <!-- Bar Chart: Research by Program -->
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Research Status by Program</h3>
+            <canvas id="researchByProgramChart" width="400" height="300"></canvas>
+        </div>
+
+        <!-- Progress Tracker -->
+        <div class="glass-card rounded-2xl p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Research Progress Flow</h3>
+            <canvas id="progressFlowChart" width="400" height="300"></canvas>
+        </div>
+    </div>
+
+    
 
     <!-- Activity Dashboard -->
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10 animate-fade-in">

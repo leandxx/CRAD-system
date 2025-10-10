@@ -86,6 +86,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cluster_id = (int) $_POST['cluster_id'];
         $faculty_id = (int) $_POST['faculty_id'];
 
+        // Check if faculty already has 3 assignments
+        $assignment_count = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM clusters WHERE faculty_id = $faculty_id"))[0];
+        if ($assignment_count >= 3) {
+            $_SESSION['error'] = "Faculty member cannot be assigned to more than 3 clusters.";
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit();
+        }
+
         // Get cluster name and program
         $cluster_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT cluster, program FROM clusters WHERE id = $cluster_id"));
         $cluster_name = $cluster_info['cluster'] ?? null;
@@ -478,6 +486,9 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                         <option value="BSPsych">BSPysch - Psychology</option>
                                         <option value="BLIS">BLIS - Information Science</option>
                                     </select>
+                                    <a href="admin-pages/generate-cluster-report.php" target="_blank" class="gradient-red text-white font-semibold py-3 px-6 rounded-xl flex items-center transition-all duration-300 hover:shadow-lg hover:scale-105">
+                                        <i class="fas fa-file-pdf mr-2"></i>Generate PDF Report
+                                    </a>
                                     <button class="gradient-green text-white font-semibold py-3 px-6 rounded-xl flex items-center transition-all duration-300 hover:shadow-lg hover:scale-105" data-bs-toggle="modal" data-bs-target="#bulkCreateModal">
                                         <i class="fas fa-magic mr-2"></i>Auto Generate
                                     </button>
@@ -678,10 +689,10 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                 // Reset faculty pointer
                                 mysqli_data_seek($faculty, 0);
                                 while ($fac = mysqli_fetch_assoc($faculty)): 
-                                    // Check if faculty is already assigned to a cluster
+                                    // Check faculty assignment count
                                     $assigned_check = mysqli_query($conn, "SELECT COUNT(*) FROM clusters WHERE faculty_id = " . $fac['id']);
                                     $assigned_count = mysqli_fetch_row($assigned_check)[0];
-                                    $is_assigned = $assigned_count > 0;
+                                    $is_at_max = $assigned_count >= 3;
                                 ?>
                                 <div class="faculty-item bg-gradient-to-br from-white via-purple-50 to-indigo-100 rounded-2xl shadow-lg border border-purple-200 p-6 relative overflow-hidden" data-department="<?= htmlspecialchars($fac['department']) ?>">
                                     <!-- Decorative elements -->
@@ -700,13 +711,17 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                                     <p class="text-purple-600 text-sm font-medium"><?= htmlspecialchars($fac['department']) ?></p>
                                                 </div>
                                             </div>
-                                            <?php if ($is_assigned): ?>
+                                            <?php if ($is_at_max): ?>
+                                            <span class="bg-gradient-to-r from-red-400 to-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                                                <i class="fas fa-times mr-1"></i>Full (<?= $assigned_count ?>/3)
+                                            </span>
+                                            <?php elseif ($assigned_count > 0): ?>
                                             <span class="bg-gradient-to-r from-green-400 to-green-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-                                                <i class="fas fa-check mr-1"></i>Active
+                                                <i class="fas fa-check mr-1"></i>Active (<?= $assigned_count ?>/3)
                                             </span>
                                             <?php else: ?>
                                             <span class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-                                                <i class="fas fa-clock mr-1"></i>Available
+                                                <i class="fas fa-clock mr-1"></i>Available (0/3)
                                             </span>
                                             <?php endif; ?>
                                         </div>
@@ -721,17 +736,17 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                                         
                                         <!-- Actions -->
                                         <div class="flex gap-2">
-                                            <?php if (!$is_assigned): ?>
+                                            <?php if ($is_at_max): ?>
+                                            <div class="flex-1 bg-red-100 text-red-800 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
+                                                <i class="fas fa-times mr-1"></i>Max Reached
+                                            </div>
+                                            <?php elseif ($assigned_count < 3): ?>
                                             <button class="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105" 
                                                     data-bs-toggle="modal" data-bs-target="#assignFacultyToClusterModal"
                                                     data-faculty-id="<?= $fac['id'] ?>" 
                                                     data-faculty-name="<?= htmlspecialchars($fac['fullname']) ?>">
-                                                <i class="fas fa-plus mr-1"></i>Assign
+                                                <i class="fas fa-plus mr-1"></i>Assign (<?= $assigned_count ?>/3)
                                             </button>
-                                            <?php else: ?>
-                                            <div class="flex-1 bg-green-100 text-green-800 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center">
-                                                <i class="fas fa-check mr-1"></i>Assigned
-                                            </div>
                                             <?php endif; ?>
                                             <button class="bg-white/80 hover:bg-white border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-800 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-md backdrop-blur-sm" 
                                                     data-bs-toggle="modal" data-bs-target="#editFacultyModal"
@@ -1059,15 +1074,14 @@ $assigned_groups    = mysqli_fetch_row(mysqli_query($conn, "SELECT COUNT(*) FROM
                             // Reset faculty pointer
                             mysqli_data_seek($faculty, 0);
                             while ($fac = mysqli_fetch_assoc($faculty)):
-                                // Check if faculty is already assigned to a cluster
+                                // Check if faculty has less than 3 assignments
                                 $assigned_check = mysqli_query($conn, "SELECT COUNT(*) FROM clusters WHERE faculty_id = " . $fac['id']);
                                 $assigned_count = mysqli_fetch_row($assigned_check)[0];
-                                $is_assigned = $assigned_count > 0;
                                 
-                                if (!$is_assigned):
+                                if ($assigned_count < 3):
                             ?>
                             <option value="<?= $fac['id'] ?>" data-program="<?= htmlspecialchars($fac['department']) ?>">
-                                <?= htmlspecialchars($fac['fullname']) ?> - <?= htmlspecialchars($fac['department']) ?>
+                                <?= htmlspecialchars($fac['fullname']) ?> - <?= htmlspecialchars($fac['department']) ?> (<?= $assigned_count ?>/3)
                             </option>
                             <?php endif; endwhile; ?>
                         </select>

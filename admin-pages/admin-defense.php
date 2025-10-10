@@ -11,12 +11,11 @@ if (isset($_POST['action']) && $_POST['action'] == 'open_final_defense') {
     // Check if admin is logged in
     if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'Admin') {
         echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
+        exit(); // ✅ Stop script immediately
     }
 
     try {
         // Update completed pre-oral defenses to final defense with pending status
-        // This transforms existing pre-oral records to final defense records (no new inserts)
-        // Add check to prevent duplicates
         $update_query = "UPDATE defense_schedules 
                         SET defense_type = 'final', status = 'pending', defense_result = 'pending', 
                             defense_date = NULL, start_time = NULL, end_time = NULL, room_id = NULL, updated_at = NOW() 
@@ -31,16 +30,30 @@ if (isset($_POST['action']) && $_POST['action'] == 'open_final_defense') {
         if (mysqli_query($conn, $update_query)) {
             $count = mysqli_affected_rows($conn);
             if ($count > 0) {
-                echo json_encode(['success' => true, 'count' => $count, 'message' => 'Successfully updated ' . $count . ' pre-oral defense(s) to final defense type']);
+                echo json_encode([
+                    'success' => true,
+                    'count' => $count,
+                    'message' => 'Successfully updated ' . $count . ' pre-oral defense(s) to final defense type.'
+                ]);
             } else {
-                echo json_encode(['success' => false, 'message' => 'No completed and passed pre-oral defense records found, or final defenses already exist for eligible groups.']);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'No completed and passed pre-oral defense records found, or final defenses already exist for eligible groups.'
+                ]);
             }
         } else {
-            echo json_encode(['success' => false, 'message' => 'Database error: ' . mysqli_error($conn)]);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Database error: ' . mysqli_error($conn)
+            ]);
         }
     } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => 'System error: ' . $e->getMessage()]);
+        echo json_encode([
+            'success' => false,
+            'message' => 'System error: ' . $e->getMessage()
+        ]);
     }
+    exit(); // ✅ Important: stop further output
 }
 
 // Handle Close Final Defense AJAX request
@@ -50,11 +63,11 @@ if (isset($_POST['action']) && $_POST['action'] == 'close_final_defense') {
     // Check if admin is logged in
     if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'Admin') {
         echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
+        exit(); // ✅ Stop script immediately
     }
 
     try {
         // Revert final defenses back to pre-oral completed status
-        // This allows groups to access pre-oral again
         $update_query = "UPDATE defense_schedules 
                         SET defense_type = 'pre_oral', status = 'completed', defense_result = 'passed', 
                             updated_at = NOW() 
@@ -64,19 +77,33 @@ if (isset($_POST['action']) && $_POST['action'] == 'close_final_defense') {
         if (mysqli_query($conn, $update_query)) {
             $count = mysqli_affected_rows($conn);
             if ($count > 0) {
-                echo json_encode(['success' => true, 'count' => $count, 'message' => 'Successfully closed final defense for ' . $count . ' group(s). Groups can now access pre-oral defense again.']);
+                echo json_encode([
+                    'success' => true,
+                    'count' => $count,
+                    'message' => 'Successfully closed final defense for ' . $count . ' group(s). Groups can now access pre-oral defense again.'
+                ]);
             } else {
-                echo json_encode(['success' => false, 'message' => 'No pending final defense records found to close.']);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'No pending final defense records found to close.'
+                ]);
             }
         } else {
-            echo json_encode(['success' => false, 'message' => 'Database error: ' . mysqli_error($conn)]);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Database error: ' . mysqli_error($conn)
+            ]);
         }
     } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => 'System error: ' . $e->getMessage()]);
+        echo json_encode([
+            'success' => false,
+            'message' => 'System error: ' . $e->getMessage()
+        ]);
     }
+    exit(); // ✅ Stop here too
 }
 
-// Check if admin is logged in
+// Regular page access (non-AJAX)
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'Admin') {
     header("Location: ../admin_pages/admin.php");
     exit();
@@ -127,10 +154,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // For new final defense records, check if one already exists
             if (empty($_POST['parent_defense_id']) || $_POST['parent_defense_id'] == 'NULL') {
                 $final_check = "SELECT COUNT(*) as final_exists 
-                               FROM defense_schedules 
-                               WHERE group_id = '$group_id' 
-                               AND defense_type = 'final' 
-                               AND status NOT IN ('cancelled', 'failed')";
+               FROM defense_schedules 
+               WHERE group_id = '$group_id' 
+               AND defense_type = 'final' 
+               AND status NOT IN ('cancelled', 'failed')
+               AND defense_date IS NOT NULL";
                 $final_result = mysqli_query($conn, $final_check);
                 $final_data = mysqli_fetch_assoc($final_result);
 
@@ -2796,213 +2824,261 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
         }
     }
 
-    // Function to populate available time slots
-    function populateTimeSlots() {
-        const roomId = document.getElementById('room_id').value;
-        const date = document.getElementById('defense_date').value;
-        const timeSlotSelect = document.getElementById('time_slot');
+   // Function to populate available time slots
+function populateTimeSlots() {
+    const roomId = document.getElementById('room_id').value;
+    const date = document.getElementById('defense_date').value;
+    const timeSlotSelect = document.getElementById('time_slot');
 
-        if (!roomId || !date) {
-            timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
-            document.getElementById('duration_display').textContent = 'No slot selected';
-            return;
-        }
-
-        timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
-        document.getElementById('duration_display').textContent = 'Loading...';
-
-        fetch('api/get_room_availability.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                const room = data.find(r => r.id == roomId);
-                const slots = generateTimeSlots(room ? room.schedules : []);
-
-                timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
-                slots.forEach(slot => {
-                    const option = document.createElement('option');
-                    option.value = `${slot.start}|${slot.end}`;
-                    option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
-                    timeSlotSelect.appendChild(option);
-                });
-
-                if (slots.length === 0) {
-                    timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
-                    document.getElementById('duration_display').textContent = 'No slots available';
-                } else {
-                    document.getElementById('duration_display').textContent = 'Select a time slot';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
-                document.getElementById('duration_display').textContent = 'Error loading slots';
-            });
+    if (!roomId || !date) {
+        timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+        document.getElementById('duration_display').textContent = 'No slot selected';
+        return;
     }
 
-    // Function to generate available time slots
-    function generateTimeSlots(schedules) {
-        const slots = [];
-        const workStart = 9 * 60; // 9:00 AM
-        const workEnd = 17 * 60;  // 5:00 PM
+    timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+    document.getElementById('duration_display').textContent = 'Loading...';
 
-        // Get selected group's program
-        const groupId = document.getElementById('modal_group_id') ? document.getElementById('modal_group_id').value : 
-                       document.getElementById('group_id') ? document.getElementById('group_id').value : '';
-        
-        // Default to BSIT if no group ID found
-        const program = groupId && window.groupsPrograms ? window.groupsPrograms[groupId] : 'BSIT';
-        const slotDuration = program && program.toLowerCase() === 'bsit' ? 60 : 40;
+    fetch('api/get_room_availability.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
+    })
+        .then(response => response.json())
+        .then(data => {
+            const room = data.find(r => r.id == roomId);
+            const slots = generateTimeSlots(room ? room.schedules : []);
 
-        // Sort schedules by start time
-        schedules.sort((a, b) => {
-            const timeA = timeToMinutes(a.start_time);
-            const timeB = timeToMinutes(b.start_time);
-            return timeA - timeB;
-        });
-
-        let currentTime = workStart;
-
-        schedules.forEach(schedule => {
-            const startMinutes = timeToMinutes(schedule.start_time);
-            const endMinutes = timeToMinutes(schedule.end_time);
-
-            // Add slots before this schedule
-            while (currentTime + slotDuration <= startMinutes) {
-                const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
-                if (slotEnd - currentTime >= slotDuration) {
-                    slots.push({
-                        start: minutesToTime(currentTime),
-                        end: minutesToTime(slotEnd),
-                        duration: slotEnd - currentTime
-                    });
-                }
-                currentTime += slotDuration;
-            }
-            currentTime = Math.max(currentTime, endMinutes);
-        });
-
-        // Add remaining slots after last schedule
-        while (currentTime + slotDuration <= workEnd) {
-            slots.push({
-                start: minutesToTime(currentTime),
-                end: minutesToTime(currentTime + slotDuration),
-                duration: slotDuration
+            timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+            slots.forEach(slot => {
+                const option = document.createElement('option');
+                option.value = `${slot.start}|${slot.end}`;
+                option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                timeSlotSelect.appendChild(option);
             });
+
+            if (slots.length === 0) {
+                timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                document.getElementById('duration_display').textContent = 'No slots available';
+            } else {
+                document.getElementById('duration_display').textContent = 'Select a time slot';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+            document.getElementById('duration_display').textContent = 'Error loading slots';
+        });
+}
+
+// Function to generate available time slots
+function generateTimeSlots(schedules) {
+    const slots = [];
+    const workStart = 9 * 60; // 9:00 AM
+    const workEnd = 17 * 60;  // 5:00 PM
+
+    // Get selected group's program
+    const groupId = document.getElementById('modal_group_id') ? document.getElementById('modal_group_id').value : 
+                   document.getElementById('group_id') ? document.getElementById('group_id').value : '';
+    
+    // Determine slot duration based on program - BSIT gets 60 mins, others get 40 mins
+    const program = groupId && window.groupsPrograms ? window.groupsPrograms[groupId] : 'BSIT';
+    const slotDuration = program && program.toUpperCase() === 'BSIT' ? 60 : 40;
+
+    // Sort schedules by start time
+    schedules.sort((a, b) => {
+        const timeA = timeToMinutes(a.start_time);
+        const timeB = timeToMinutes(b.start_time);
+        return timeA - timeB;
+    });
+
+    let currentTime = workStart;
+
+    schedules.forEach(schedule => {
+        const startMinutes = timeToMinutes(schedule.start_time);
+        const endMinutes = timeToMinutes(schedule.end_time);
+
+        // Add slots before this schedule
+        while (currentTime + slotDuration <= startMinutes) {
+            const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
+            if (slotEnd - currentTime >= slotDuration) {
+                slots.push({
+                    start: minutesToTime(currentTime),
+                    end: minutesToTime(slotEnd),
+                    duration: slotEnd - currentTime
+                });
+            }
             currentTime += slotDuration;
         }
+        currentTime = Math.max(currentTime, endMinutes);
+    });
 
-        return slots;
+    // Add remaining slots after last schedule
+    while (currentTime + slotDuration <= workEnd) {
+        slots.push({
+            start: minutesToTime(currentTime),
+            end: minutesToTime(currentTime + slotDuration),
+            duration: slotDuration
+        });
+        currentTime += slotDuration;
     }
 
-    // Helper functions
-    function timeToMinutes(timeStr) {
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        return hours * 60 + minutes;
+    return slots;
+}
+
+// Helper functions
+function timeToMinutes(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+function minutesToTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
+
+// Function to update hidden time inputs when slot is selected
+function updateTimeInputs() {
+    const timeSlot = document.getElementById('time_slot').value;
+    const durationDisplay = document.getElementById('duration_display');
+
+    if (timeSlot) {
+        const [startTime, endTime] = timeSlot.split('|');
+        document.getElementById('start_time').value = startTime;
+        document.getElementById('end_time').value = endTime;
+
+        const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+        durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+    } else {
+        document.getElementById('start_time').value = '';
+        document.getElementById('end_time').value = '';
+        durationDisplay.textContent = 'No slot selected';
+    }
+}
+
+// Redefense time slot functions
+function populateRedefenseTimeSlots() {
+    const roomId = document.getElementById('redefense_room_id').value;
+    const date = document.getElementById('redefense_date').value;
+    const timeSlotSelect = document.getElementById('redefense_time_slot');
+
+    if (!roomId || !date) {
+        timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+        document.getElementById('redefense_duration_display').textContent = 'No slot selected';
+        return;
     }
 
-    function minutesToTime(minutes) {
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-    }
+    timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+    document.getElementById('redefense_duration_display').textContent = 'Loading...';
 
-    // Function to update hidden time inputs when slot is selected
-    function updateTimeInputs() {
-        const timeSlot = document.getElementById('time_slot').value;
-        const durationDisplay = document.getElementById('duration_display');
+    fetch('api/get_room_availability.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
+    })
+        .then(response => response.json())
+        .then(data => {
+            const room = data.find(r => r.id == roomId);
+            const slots = generateRedefenseTimeSlots(room ? room.schedules : []);
 
-        if (timeSlot) {
-            const [startTime, endTime] = timeSlot.split('|');
-            document.getElementById('start_time').value = startTime;
-            document.getElementById('end_time').value = endTime;
-
-            const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
-            durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
-        } else {
-            document.getElementById('start_time').value = '';
-            document.getElementById('end_time').value = '';
-            durationDisplay.textContent = 'No slot selected';
-        }
-    }
-
-    // Redefense time slot functions
-    function populateRedefenseTimeSlots() {
-        const roomId = document.getElementById('redefense_room_id').value;
-        const date = document.getElementById('redefense_date').value;
-        const timeSlotSelect = document.getElementById('redefense_time_slot');
-
-        if (!roomId || !date) {
-            timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
-            document.getElementById('redefense_duration_display').textContent = 'No slot selected';
-            return;
-        }
-
-        timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
-        document.getElementById('redefense_duration_display').textContent = 'Loading...';
-
-        fetch('api/get_room_availability.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                const room = data.find(r => r.id == roomId);
-                const slots = generateRedefenseTimeSlots(room ? room.schedules : []);
-
-                timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
-                slots.forEach(slot => {
-                    const option = document.createElement('option');
-                    option.value = `${slot.start}|${slot.end}`;
-                    option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
-                    timeSlotSelect.appendChild(option);
-                });
-
-                if (slots.length === 0) {
-                    timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
-                    document.getElementById('redefense_duration_display').textContent = 'No slots available';
-                } else {
-                    document.getElementById('redefense_duration_display').textContent = 'Select a time slot';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
-                document.getElementById('redefense_duration_display').textContent = 'Error loading slots';
+            timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+            slots.forEach(slot => {
+                const option = document.createElement('option');
+                option.value = `${slot.start}|${slot.end}`;
+                option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                timeSlotSelect.appendChild(option);
             });
-    }
 
-    function generateRedefenseTimeSlots(schedules) {
-        // Use the same logic as generateTimeSlots
-        return generateTimeSlots(schedules);
-    }
+            if (slots.length === 0) {
+                timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                document.getElementById('redefense_duration_display').textContent = 'No slots available';
+            } else {
+                document.getElementById('redefense_duration_display').textContent = 'Select a time slot';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+            document.getElementById('redefense_duration_display').textContent = 'Error loading slots';
+        });
+}
 
-    function updateRedefenseTimeInputs() {
-        const timeSlot = document.getElementById('redefense_time_slot').value;
-        const durationDisplay = document.getElementById('redefense_duration_display');
+function generateRedefenseTimeSlots(schedules) {
+    const slots = [];
+    const workStart = 9 * 60; // 9:00 AM
+    const workEnd = 17 * 60;  // 5:00 PM
 
-        if (timeSlot) {
-            const [startTime, endTime] = timeSlot.split('|');
-            document.getElementById('redefense_start_time').value = startTime;
-            document.getElementById('redefense_end_time').value = endTime;
+    // Get the group ID from the redefense modal
+    const groupId = document.querySelector('input[name="group_id"]') ? document.querySelector('input[name="group_id"]').value : '';
+    
+    // Determine slot duration based on program - BSIT gets 60 mins, others get 40 mins
+    const program = groupId && window.groupsPrograms ? window.groupsPrograms[groupId] : 'BSIT';
+    const slotDuration = program && program.toUpperCase() === 'BSIT' ? 60 : 40;
 
-            const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
-            durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
-        } else {
-            document.getElementById('redefense_start_time').value = '';
-            document.getElementById('redefense_end_time').value = '';
-            durationDisplay.textContent = 'No slot selected';
+    // Sort schedules by start time
+    schedules.sort((a, b) => {
+        const timeA = timeToMinutes(a.start_time);
+        const timeB = timeToMinutes(b.start_time);
+        return timeA - timeB;
+    });
+
+    let currentTime = workStart;
+
+    schedules.forEach(schedule => {
+        const startMinutes = timeToMinutes(schedule.start_time);
+        const endMinutes = timeToMinutes(schedule.end_time);
+
+        // Add slots before this schedule
+        while (currentTime + slotDuration <= startMinutes) {
+            const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
+            if (slotEnd - currentTime >= slotDuration) {
+                slots.push({
+                    start: minutesToTime(currentTime),
+                    end: minutesToTime(slotEnd),
+                    duration: slotEnd - currentTime
+                });
+            }
+            currentTime += slotDuration;
         }
+        currentTime = Math.max(currentTime, endMinutes);
+    });
+
+    // Add remaining slots after last schedule
+    while (currentTime + slotDuration <= workEnd) {
+        slots.push({
+            start: minutesToTime(currentTime),
+            end: minutesToTime(currentTime + slotDuration),
+            duration: slotDuration
+        });
+        currentTime += slotDuration;
     }
 
-    // Update the redefense modal to include time inputs and proper event handlers
-    function openRedefenseModal(groupId, defenseId, groupName, proposalTitle, defenseType = 'pre_oral') {
-        // Create modal HTML for redefense
-        const modalHtml = `
+    return slots;
+}
+
+function updateRedefenseTimeInputs() {
+    const timeSlot = document.getElementById('redefense_time_slot').value;
+    const durationDisplay = document.getElementById('redefense_duration_display');
+
+    if (timeSlot) {
+        const [startTime, endTime] = timeSlot.split('|');
+        document.getElementById('redefense_start_time').value = startTime;
+        document.getElementById('redefense_end_time').value = endTime;
+
+        const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+        durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+    } else {
+        document.getElementById('redefense_start_time').value = '';
+        document.getElementById('redefense_end_time').value = '';
+        durationDisplay.textContent = 'No slot selected';
+    }
+}
+
+// Update the redefense modal to include time inputs and proper event handlers
+function openRedefenseModal(groupId, defenseId, groupName, proposalTitle, defenseType = 'pre_oral') {
+    // Create modal HTML for redefense
+    const modalHtml = `
 <div id="redefenseModal" class="fixed inset-0 z-50 modal-overlay bg-black/50 flex items-center justify-center p-4">
     <div class="bg-gradient-to-br from-white via-green-50 to-emerald-100 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar-green transform transition-all">
         <!-- Header -->
@@ -3135,30 +3211,30 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
     </div>
 </div>
 `;
-        // Add modal to page
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// Function to close redefense modal
+function closeRedefenseModal() {
+    const modal = document.getElementById('redefenseModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Function to validate redefense duration
+function validateRedefenseDuration() {
+    const startTime = document.getElementById('redefense_start_time').value;
+    const endTime = document.getElementById('redefense_end_time').value;
+
+    if (!startTime || !endTime) {
+        alert('Please select a time slot.');
+        return false;
     }
 
-    // Function to close redefense modal
-    function closeRedefenseModal() {
-        const modal = document.getElementById('redefenseModal');
-        if (modal) {
-            modal.remove();
-        }
-    }
-
-    // Function to validate redefense duration
-    function validateRedefenseDuration() {
-        const startTime = document.getElementById('redefense_start_time').value;
-        const endTime = document.getElementById('redefense_end_time').value;
-
-        if (!startTime || !endTime) {
-            alert('Please select a time slot.');
-            return false;
-        }
-
-        return true;
-    }
+    return true;
+}
 
     // Function to switch redefense panel tabs
     function switchRedefensePanelTab(tabName) {
@@ -5014,378 +5090,495 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 }
 
                 // Function to validate defense duration (minimum 30 minutes)
-                function validateDefenseDuration() {
-                    const startTime = document.getElementById('start_time').value;
-                    const endTime = document.getElementById('end_time').value;
-                    const groupId = document.getElementById('group_id').value;
-                    const program = groupsPrograms[groupId] || '';
-                    const minDuration = program.toLowerCase() === 'bsit' ? 60 : 40;
+function validateDefenseDuration() {
+    const startTime = document.getElementById('start_time').value;
+    const endTime = document.getElementById('end_time').value;
+    const groupId = document.getElementById('group_id').value;
+    const program = groupsPrograms[groupId] || '';
+    const minDuration = program.toUpperCase() === 'BSIT' ? 60 : 40;
 
-                    if (startTime && endTime) {
-                        const start = new Date('1970-01-01T' + startTime);
-                        const end = new Date('1970-01-01T' + endTime);
-                        const duration = (end - start) / (1000 * 60); // minutes
+    if (startTime && endTime) {
+        const start = new Date('1970-01-01T' + startTime);
+        const end = new Date('1970-01-01T' + endTime);
+        const duration = (end - start) / (1000 * 60); // minutes
 
-                        if (duration < minDuration) {
-                            alert(`Defense duration must be at least ${minDuration} minutes for ${program.toUpperCase()} program.`);
-                            return false;
-                        }
+        if (duration < minDuration) {
+            alert(`Defense duration must be at least ${minDuration} minutes for ${program.toUpperCase()} program.`);
+            return false;
+        }
 
-                        // Suggest optimal end time if duration is not in proper increments
-                        if (duration % minDuration !== 0) {
-                            const optimalDuration = Math.ceil(duration / minDuration) * minDuration;
-                            const optimalEnd = new Date(start.getTime() + optimalDuration * 60000);
-                            const optimalEndTime = optimalEnd.toTimeString().slice(0, 5);
+        // Suggest optimal end time if duration is not in proper increments
+        if (duration % minDuration !== 0) {
+            const optimalDuration = Math.ceil(duration / minDuration) * minDuration;
+            const optimalEnd = new Date(start.getTime() + optimalDuration * 60000);
+            const optimalEndTime = optimalEnd.toTimeString().slice(0, 5);
 
-                            if (confirm(`For optimal room usage, consider extending to ${optimalEndTime} (${optimalDuration} minutes total). Update end time?`)) {
-                                document.getElementById('end_time').value = optimalEndTime;
-                            }
-                        }
-                    }
-                    return true;
-                }
+            if (confirm(`For optimal room usage, consider extending to ${optimalEndTime} (${optimalDuration} minutes total). Update end time?`)) {
+                document.getElementById('end_time').value = optimalEndTime;
+            }
+        }
+    }
+    return true;
+}
 
+// Function to populate available time slots
+function populateTimeSlots() {
+    const roomId = document.getElementById('room_id').value;
+    const date = document.getElementById('defense_date').value;
+    const timeSlotSelect = document.getElementById('time_slot');
 
-                // Function to populate available time slots
-                function populateTimeSlots() {
-                    const roomId = document.getElementById('room_id').value;
-                    const date = document.getElementById('defense_date').value;
-                    const timeSlotSelect = document.getElementById('time_slot');
+    if (!roomId || !date) {
+        timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+        return;
+    }
 
-                    if (!roomId || !date) {
-                        timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
-                        return;
-                    }
+    timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
 
-                    timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+    fetch('api/get_room_availability.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
+    })
+        .then(response => response.json())
+        .then(data => {
+            const room = data.find(r => r.id == roomId);
+            const slots = generateTimeSlots(room ? room.schedules : []);
 
-                    fetch('api/get_room_availability.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            const room = data.find(r => r.id == roomId);
-                            const slots = generateTimeSlots(room ? room.schedules : []);
+            timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+            slots.forEach(slot => {
+                const option = document.createElement('option');
+                option.value = `${slot.start}|${slot.end}`;
+                option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                timeSlotSelect.appendChild(option);
+            });
 
-                            timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
-                            slots.forEach(slot => {
-                                const option = document.createElement('option');
-                                option.value = `${slot.start}|${slot.end}`;
-                                option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
-                                timeSlotSelect.appendChild(option);
-                            });
+            if (slots.length === 0) {
+                timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+        });
+}
 
-                            if (slots.length === 0) {
-                                timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
-                        });
-                }
+// Function to generate available time slots
+function generateTimeSlots(schedules) {
+    const slots = [];
+    const workStart = 9 * 60; // 9:00 AM
+    const workEnd = 17 * 60;  // 5:00 PM
 
-                // Function to generate available time slots
-                function generateTimeSlots(schedules) {
-                    const slots = [];
-                    const workStart = 9 * 60; // 9:00 AM
-                    const workEnd = 17 * 60;  // 5:00 PM
+    // Get selected group's program
+    const groupId = document.getElementById('group_id').value;
+    const program = groupsPrograms[groupId] || '';
+    const slotDuration = program.toUpperCase() === 'BSIT' ? 60 : 40;
 
-                    // Get selected group's program
-                    const groupId = document.getElementById('group_id').value;
-                    const program = groupsPrograms[groupId] || '';
-                    const slotDuration = program.toLowerCase() === 'bsit' ? 60 : 40;
+    // Sort schedules by start time
+    schedules.sort((a, b) => {
+        const timeA = timeToMinutes(a.start_time);
+        const timeB = timeToMinutes(b.start_time);
+        return timeA - timeB;
+    });
 
-                    // Sort schedules by start time
-                    schedules.sort((a, b) => {
-                        const timeA = timeToMinutes(a.start_time);
-                        const timeB = timeToMinutes(b.start_time);
-                        return timeA - timeB;
-                    });
+    let currentTime = workStart;
 
-                    let currentTime = workStart;
+    schedules.forEach(schedule => {
+        const startMinutes = timeToMinutes(schedule.start_time);
+        const endMinutes = timeToMinutes(schedule.end_time);
 
-                    schedules.forEach(schedule => {
-                        const startMinutes = timeToMinutes(schedule.start_time);
-                        const endMinutes = timeToMinutes(schedule.end_time);
+        // Add slots before this schedule
+        while (currentTime + slotDuration <= startMinutes) {
+            const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
+            if (slotEnd - currentTime >= slotDuration) {
+                slots.push({
+                    start: minutesToTime(currentTime),
+                    end: minutesToTime(slotEnd),
+                    duration: slotEnd - currentTime
+                });
+            }
+            currentTime += slotDuration;
+        }
+        currentTime = Math.max(currentTime, endMinutes);
+    });
 
-                        // Add slots before this schedule
-                        while (currentTime + slotDuration <= startMinutes) {
-                            const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
-                            if (slotEnd - currentTime >= slotDuration) {
-                                slots.push({
-                                    start: minutesToTime(currentTime),
-                                    end: minutesToTime(slotEnd),
-                                    duration: slotEnd - currentTime
-                                });
-                            }
-                            currentTime += slotDuration;
-                        }
-                        currentTime = Math.max(currentTime, endMinutes);
-                    });
+    // Add remaining slots after last schedule
+    while (currentTime + slotDuration <= workEnd) {
+        slots.push({
+            start: minutesToTime(currentTime),
+            end: minutesToTime(currentTime + slotDuration),
+            duration: slotDuration
+        });
+        currentTime += slotDuration;
+    }
 
-                    // Add remaining slots after last schedule
-                    while (currentTime + slotDuration <= workEnd) {
-                        slots.push({
-                            start: minutesToTime(currentTime),
-                            end: minutesToTime(currentTime + slotDuration),
-                            duration: slotDuration
-                        });
-                        currentTime += slotDuration;
-                    }
+    return slots;
+}
 
-                    return slots;
-                }
+// Helper functions
+function timeToMinutes(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
 
-                // Helper functions
-                function timeToMinutes(timeStr) {
-                    const [hours, minutes] = timeStr.split(':').map(Number);
-                    return hours * 60 + minutes;
-                }
+function minutesToTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
 
-                function minutesToTime(minutes) {
-                    const hours = Math.floor(minutes / 60);
-                    const mins = minutes % 60;
-                    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-                }
+// Function to populate edit modal time slots
+function populateEditTimeSlots() {
+    const roomId = document.getElementById('edit_room_id').value;
+    const date = document.getElementById('edit_defense_date').value;
+    const timeSlotSelect = document.getElementById('edit_time_slot');
+    const currentDefenseId = document.getElementById('edit_defense_id').value;
 
-                // Function to populate edit modal time slots
-                function populateEditTimeSlots() {
-                    const roomId = document.getElementById('edit_room_id').value;
-                    const date = document.getElementById('edit_defense_date').value;
-                    const timeSlotSelect = document.getElementById('edit_time_slot');
-                    const currentDefenseId = document.getElementById('edit_defense_id').value;
+    if (!roomId || !date) {
+        timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+        return;
+    }
 
-                    if (!roomId || !date) {
-                        timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
-                        return;
-                    }
+    timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
 
-                    timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+    fetch('api/get_room_availability.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}&exclude_defense_id=${encodeURIComponent(currentDefenseId)}`
+    })
+        .then(response => response.json())
+        .then(data => {
+            const room = data.find(r => r.id == roomId);
+            const slots = generateEditTimeSlots(room ? room.schedules : []);
 
-                    fetch('api/get_room_availability.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}&exclude_defense_id=${encodeURIComponent(currentDefenseId)}`
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            const room = data.find(r => r.id == roomId);
-                            const slots = generateTimeSlots(room ? room.schedules : []);
+            timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+            slots.forEach(slot => {
+                const option = document.createElement('option');
+                option.value = `${slot.start}|${slot.end}`;
+                option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                timeSlotSelect.appendChild(option);
+            });
 
-                            timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
-                            slots.forEach(slot => {
-                                const option = document.createElement('option');
-                                option.value = `${slot.start}|${slot.end}`;
-                                option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
-                                timeSlotSelect.appendChild(option);
-                            });
+            if (slots.length === 0) {
+                timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+        });
+}
 
-                            if (slots.length === 0) {
-                                timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
-                        });
-                }
+// Function to generate edit modal time slots
+function generateEditTimeSlots(schedules) {
+    const slots = [];
+    const workStart = 9 * 60; // 9:00 AM
+    const workEnd = 17 * 60;  // 5:00 PM
 
-                // Function to update edit modal hidden time inputs
-                function updateEditTimeInputs() {
-                    const timeSlot = document.getElementById('edit_time_slot').value;
-                    const durationDisplay = document.getElementById('edit_duration_display');
+    // Get selected group's program from edit modal
+    const groupId = document.getElementById('edit_group_id').value;
+    const program = groupsPrograms[groupId] || '';
+    const slotDuration = program.toUpperCase() === 'BSIT' ? 60 : 40;
 
-                    if (timeSlot) {
-                        const [startTime, endTime] = timeSlot.split('|');
-                        document.getElementById('edit_start_time').value = startTime;
-                        document.getElementById('edit_end_time').value = endTime;
+    // Sort schedules by start time
+    schedules.sort((a, b) => {
+        const timeA = timeToMinutes(a.start_time);
+        const timeB = timeToMinutes(b.start_time);
+        return timeA - timeB;
+    });
 
-                        const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
-                        durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
-                    } else {
-                        document.getElementById('edit_start_time').value = '';
-                        document.getElementById('edit_end_time').value = '';
-                        durationDisplay.textContent = 'No slot selected';
-                    }
-                }
+    let currentTime = workStart;
 
-                // Function to update hidden time inputs when slot is selected
-                function updateTimeInputs() {
-                    const timeSlot = document.getElementById('time_slot').value;
-                    const durationDisplay = document.getElementById('duration_display');
+    schedules.forEach(schedule => {
+        const startMinutes = timeToMinutes(schedule.start_time);
+        const endMinutes = timeToMinutes(schedule.end_time);
 
-                    if (timeSlot) {
-                        const [startTime, endTime] = timeSlot.split('|');
-                        document.getElementById('start_time').value = startTime;
-                        document.getElementById('end_time').value = endTime;
+        // Add slots before this schedule
+        while (currentTime + slotDuration <= startMinutes) {
+            const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
+            if (slotEnd - currentTime >= slotDuration) {
+                slots.push({
+                    start: minutesToTime(currentTime),
+                    end: minutesToTime(slotEnd),
+                    duration: slotEnd - currentTime
+                });
+            }
+            currentTime += slotDuration;
+        }
+        currentTime = Math.max(currentTime, endMinutes);
+    });
 
-                        const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
-                        durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
-                    } else {
-                        document.getElementById('start_time').value = '';
-                        document.getElementById('end_time').value = '';
-                        durationDisplay.textContent = 'No slot selected';
-                    }
-                }
+    // Add remaining slots after last schedule
+    while (currentTime + slotDuration <= workEnd) {
+        slots.push({
+            start: minutesToTime(currentTime),
+            end: minutesToTime(currentTime + slotDuration),
+            duration: slotDuration
+        });
+        currentTime += slotDuration;
+    }
 
-                // Function to check room availability
-                function checkRoomAvailability() {
-                    const selectedDate = document.getElementById('availabilityDate').value;
-                    if (!selectedDate) return;
+    return slots;
+}
 
-                    // Update selected date display
-                    const dateObj = new Date(selectedDate);
-                    const formattedDate = dateObj.toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                    });
-                    document.getElementById('selectedDate').textContent = formattedDate;
+// Function to update edit modal hidden time inputs
+function updateEditTimeInputs() {
+    const timeSlot = document.getElementById('edit_time_slot').value;
+    const durationDisplay = document.getElementById('edit_duration_display');
 
-                    // Show loading state
-                    document.getElementById('roomAvailabilityGrid').innerHTML =
-                        '<div class="col-span-3 text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i><p class="text-gray-500">Loading room availability...</p></div>';
+    if (timeSlot) {
+        const [startTime, endTime] = timeSlot.split('|');
+        document.getElementById('edit_start_time').value = startTime;
+        document.getElementById('edit_end_time').value = endTime;
 
-                    // Fetch room availability via AJAX
-                    fetch('api/get_room_availability.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: 'date=' + encodeURIComponent(selectedDate)
-                    })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Network response was not ok');
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            if (data.error) {
-                                throw new Error(data.error);
-                            }
-                            displayRoomAvailability(data);
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            document.getElementById('roomAvailabilityGrid').innerHTML =
-                                '<div class="col-span-3 text-center py-8"><p class="text-red-500">Error: ' + error.message + '</p></div>';
-                        });
-                }
-                // Function to display room availability
-                function displayRoomAvailability(rooms) {
-                    const grid = document.getElementById('roomAvailabilityGrid');
+        const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+        durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+    } else {
+        document.getElementById('edit_start_time').value = '';
+        document.getElementById('edit_end_time').value = '';
+        durationDisplay.textContent = 'No slot selected';
+    }
+}
 
-                    if (!rooms || rooms.length === 0) {
-                        grid.innerHTML = '<div class="col-span-3 text-center py-8"><p class="text-gray-500">No rooms found</p></div>';
-                        return;
-                    }
+// Function to update hidden time inputs when slot is selected
+function updateTimeInputs() {
+    const timeSlot = document.getElementById('time_slot').value;
+    const durationDisplay = document.getElementById('duration_display');
 
-                    let html = '';
-                    rooms.forEach(room => {
-                        const hasSchedules = room.schedules && room.schedules.length > 0;
-                        const statusClass = hasSchedules ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
+    if (timeSlot) {
+        const [startTime, endTime] = timeSlot.split('|');
+        document.getElementById('start_time').value = startTime;
+        document.getElementById('end_time').value = endTime;
 
-                        let statusText = 'Available all day';
-                        if (hasSchedules) {
-                            const firstSchedule = room.schedules[0];
-                            const lastSchedule = room.schedules[room.schedules.length - 1];
-                            statusText = `Available before ${firstSchedule.start_time} and after ${lastSchedule.end_time}`;
-                        }
+        const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+        durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+    } else {
+        document.getElementById('start_time').value = '';
+        document.getElementById('end_time').value = '';
+        durationDisplay.textContent = 'No slot selected';
+    }
+}
 
-                        const statusIcon = hasSchedules ? 'fa-times-circle' : 'fa-check-circle';
+// Function to check room availability
+function checkRoomAvailability() {
+    const selectedDate = document.getElementById('availabilityDate').value;
+    if (!selectedDate) return;
 
-                        const gradientClass = hasSchedules ? 'from-white via-red-50 to-rose-100 border-red-200' : 'from-white via-green-50 to-emerald-100 border-green-200';
-                        const iconGradient = hasSchedules ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-green-500 to-emerald-600';
+    // Update selected date display
+    const dateObj = new Date(selectedDate);
+    const formattedDate = dateObj.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+    document.getElementById('selectedDate').textContent = formattedDate;
 
-                        html += `
-                    <div class="defense-card bg-gradient-to-br ${gradientClass} border rounded-2xl shadow-lg p-6 relative overflow-hidden">
-                        <!-- Decorative elements -->
-                        <div class="absolute top-0 right-0 w-20 h-20 ${hasSchedules ? 'bg-red-400/10' : 'bg-green-400/10'} rounded-full -translate-y-10 translate-x-10"></div>
-                        <div class="absolute bottom-0 left-0 w-16 h-16 ${hasSchedules ? 'bg-rose-400/10' : 'bg-emerald-400/10'} rounded-full translate-y-8 -translate-x-8"></div>
-                        
-                        <div class="relative z-10">
-                            <!-- Header -->
-                            <div class="flex justify-between items-start mb-4">
-                                <div class="flex items-center">
-                                    <div class="${iconGradient} p-3 rounded-xl mr-3 shadow-lg">
-                                        <i class="fas fa-door-open text-white text-lg"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-lg font-bold text-gray-900 leading-tight">${room.room_name}</h3>
-                                        <p class="text-xs ${hasSchedules ? 'text-red-600' : 'text-green-600'} font-medium">${room.building}</p>
-                                    </div>
-                                </div>
-                                <span class="${statusClass} px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
-                                    <i class="fas ${statusIcon} mr-1 text-xs"></i>${hasSchedules ? 'Occupied' : 'Available'}
-                                </span>
-                            </div>
+    // Show loading state
+    document.getElementById('roomAvailabilityGrid').innerHTML =
+        '<div class="col-span-3 text-center py-8"><i class="fas fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i><p class="text-gray-500">Loading room availability...</p></div>';
 
-                            <!-- Details Section -->
-                            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
-                                <div class="flex items-center text-sm mb-2">
-                                    <i class="fas fa-users ${hasSchedules ? 'text-red-500' : 'text-green-500'} mr-3 w-4"></i>
-                                    <span class="text-gray-700 font-medium">Capacity: ${room.capacity || 'N/A'}</span>
-                                </div>
-                                ${(() => {
-                                const availableSlots = generateTimeSlots(room.schedules || []);
-                                if (availableSlots.length > 0) {
-                                    return `
-                                            <div class="space-y-1">
-                                                <p class="text-xs text-green-600 font-medium mb-2">Available Slots:</p>
-                                                ${availableSlots.slice(0, 4).map(slot => `
-                                                    <div class="flex items-center text-sm">
-                                                        <i class="fas fa-clock text-green-500 mr-3 w-4"></i>
-                                                        <span class="text-gray-700 font-medium">${slot.start} - ${slot.end} (${slot.duration} min)</span>
-                                                    </div>
-                                                `).join('')}
-                                                ${availableSlots.length > 4 ? `<p class="text-xs text-gray-500">+${availableSlots.length - 4} more slots</p>` : ''}
-                                            </div>
-                                        `;
-                                } else {
-                                    return `
-                                            <div class="flex items-center text-sm">
-                                                <i class="fas fa-times-circle text-red-500 mr-3 w-4"></i>
-                                                <span class="text-gray-700 font-medium">No available slots</span>
-                                            </div>
-                                        `;
-                                }
-                            })()}
-                                ${hasSchedules ? `
-                                    <div class="mt-3 pt-2 border-t border-gray-200">
-                                        <p class="text-xs text-red-600 font-semibold mb-2">In Use:</p>
-                                        ${room.schedules.map(schedule => `
-                                            <div class="flex items-center text-xs mb-3">
-                                                <div class="w-full bg-red-50 rounded-xl p-3 border border-red-200 shadow-sm hover:shadow-md transition">
-                                                    <!-- Time -->
-                                                    <div class="flex items-center mb-2">
-                                                        <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
-                                                        <span class="text-red-700 font-semibold text-sm">${schedule.start_time} - ${schedule.end_time}</span>
-                                                    </div>
+    // Fetch room availability via AJAX
+    fetch('api/get_room_availability.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'date=' + encodeURIComponent(selectedDate)
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            displayRoomAvailability(data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('roomAvailabilityGrid').innerHTML =
+                '<div class="col-span-3 text-center py-8"><p class="text-red-500">Error: ' + error.message + '</p></div>';
+        });
+}
 
-                                                    <!-- Details in one line -->
-                                                    <div class="grid grid-cols-3 gap-4 text-gray-700 text-[13px]">
-                                                        <div><span class="font-medium text-gray-900">Program:</span> ${schedule.program || 'Not specified'}</div>
-                                                        <div><span class="font-medium text-gray-900">Cluster:</span> ${schedule.cluster || 'Not specified'}</div>
-                                                        <div><span class="font-medium text-gray-900">Group:</span> ${schedule.group_name || 'Not specified'}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
+// Function to display room availability
+function displayRoomAvailability(rooms) {
+    const grid = document.getElementById('roomAvailabilityGrid');
+
+    if (!rooms || rooms.length === 0) {
+        grid.innerHTML = '<div class="col-span-3 text-center py-8"><p class="text-gray-500">No rooms found</p></div>';
+        return;
+    }
+
+    let html = '';
+    rooms.forEach(room => {
+        const hasSchedules = room.schedules && room.schedules.length > 0;
+        const statusClass = hasSchedules ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
+
+        let statusText = 'Available all day';
+        if (hasSchedules) {
+            const firstSchedule = room.schedules[0];
+            const lastSchedule = room.schedules[room.schedules.length - 1];
+            statusText = `Available before ${firstSchedule.start_time} and after ${lastSchedule.end_time}`;
+        }
+
+        const statusIcon = hasSchedules ? 'fa-times-circle' : 'fa-check-circle';
+
+        const gradientClass = hasSchedules ? 'from-white via-red-50 to-rose-100 border-red-200' : 'from-white via-green-50 to-emerald-100 border-green-200';
+        const iconGradient = hasSchedules ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-green-500 to-emerald-600';
+
+        // Generate available slots for this room (using default BSIT duration for display)
+        const availableSlots = generateRoomAvailabilitySlots(room.schedules || []);
+
+        html += `
+    <div class="defense-card bg-gradient-to-br ${gradientClass} border rounded-2xl shadow-lg p-6 relative overflow-hidden">
+        <!-- Decorative elements -->
+        <div class="absolute top-0 right-0 w-20 h-20 ${hasSchedules ? 'bg-red-400/10' : 'bg-green-400/10'} rounded-full -translate-y-10 translate-x-10"></div>
+        <div class="absolute bottom-0 left-0 w-16 h-16 ${hasSchedules ? 'bg-rose-400/10' : 'bg-emerald-400/10'} rounded-full translate-y-8 -translate-x-8"></div>
+        
+        <div class="relative z-10">
+            <!-- Header -->
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center">
+                    <div class="${iconGradient} p-3 rounded-xl mr-3 shadow-lg">
+                        <i class="fas fa-door-open text-white text-lg"></i>
                     </div>
-                `;
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 leading-tight">${room.room_name}</h3>
+                        <p class="text-xs ${hasSchedules ? 'text-red-600' : 'text-green-600'} font-medium">${room.building}</p>
+                    </div>
+                </div>
+                <span class="${statusClass} px-1.5 py-0.5 rounded-full text-xs font-normal shadow-sm flex items-center">
+                    <i class="fas ${statusIcon} mr-1 text-xs"></i>${hasSchedules ? 'Occupied' : 'Available'}
+                </span>
+            </div>
+
+            <!-- Details Section -->
+            <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/40">
+                <div class="flex items-center text-sm mb-2">
+                    <i class="fas fa-users ${hasSchedules ? 'text-red-500' : 'text-green-500'} mr-3 w-4"></i>
+                    <span class="text-gray-700 font-medium">Capacity: ${room.capacity || 'N/A'}</span>
+                </div>
+                ${(() => {
+                    if (availableSlots.length > 0) {
+                        return `
+                            <div class="space-y-1">
+                                <p class="text-xs text-green-600 font-medium mb-2">Available Slots:</p>
+                                ${availableSlots.slice(0, 4).map(slot => `
+                                    <div class="flex items-center text-sm">
+                                        <i class="fas fa-clock text-green-500 mr-3 w-4"></i>
+                                        <span class="text-gray-700 font-medium">${slot.start} - ${slot.end} (${slot.duration} min)</span>
+                                    </div>
+                                `).join('')}
+                                ${availableSlots.length > 4 ? `<p class="text-xs text-gray-500">+${availableSlots.length - 4} more slots</p>` : ''}
+                            </div>
+                        `;
+                    } else {
+                        return `
+                            <div class="flex items-center text-sm">
+                                <i class="fas fa-times-circle text-red-500 mr-3 w-4"></i>
+                                <span class="text-gray-700 font-medium">No available slots</span>
+                            </div>
+                        `;
+                    }
+                })()}
+                ${hasSchedules ? `
+                    <div class="mt-3 pt-2 border-t border-gray-200">
+                        <p class="text-xs text-red-600 font-semibold mb-2">In Use:</p>
+                        ${room.schedules.map(schedule => `
+                            <div class="flex items-center text-xs mb-3">
+                                <div class="w-full bg-red-50 rounded-xl p-3 border border-red-200 shadow-sm hover:shadow-md transition">
+                                    <!-- Time -->
+                                    <div class="flex items-center mb-2">
+                                        <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
+                                        <span class="text-red-700 font-semibold text-sm">${schedule.start_time} - ${schedule.end_time}</span>
+                                    </div>
+
+                                    <!-- Details in one line -->
+                                    <div class="grid grid-cols-3 gap-4 text-gray-700 text-[13px]">
+                                        <div><span class="font-medium text-gray-900">Program:</span> ${schedule.program || 'Not specified'}</div>
+                                        <div><span class="font-medium text-gray-900">Cluster:</span> ${schedule.cluster || 'Not specified'}</div>
+                                        <div><span class="font-medium text-gray-900">Group:</span> ${schedule.group_name || 'Not specified'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    </div>
+    `;
+    });
+
+    grid.innerHTML = html;
+}
+
+// Function to generate time slots for room availability display (uses both 60 and 40 minute slots)
+function generateRoomAvailabilitySlots(schedules) {
+    const slots = [];
+    const workStart = 9 * 60; // 9:00 AM
+    const workEnd = 17 * 60;  // 5:00 PM
+
+    // Generate both BSIT (60 min) and other program (40 min) slots for display
+    const slotDurations = [60, 40];
+
+    // Sort schedules by start time
+    schedules.sort((a, b) => {
+        const timeA = timeToMinutes(a.start_time);
+        const timeB = timeToMinutes(b.start_time);
+        return timeA - timeB;
+    });
+
+    // Generate slots for each duration
+    slotDurations.forEach(slotDuration => {
+        let currentTime = workStart;
+
+        schedules.forEach(schedule => {
+            const startMinutes = timeToMinutes(schedule.start_time);
+            const endMinutes = timeToMinutes(schedule.end_time);
+
+            // Add slots before this schedule
+            while (currentTime + slotDuration <= startMinutes) {
+                const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
+                if (slotEnd - currentTime >= slotDuration) {
+                    slots.push({
+                        start: minutesToTime(currentTime),
+                        end: minutesToTime(slotEnd),
+                        duration: slotEnd - currentTime
                     });
-
-                    grid.innerHTML = html;
                 }
+                currentTime += slotDuration;
+            }
+            currentTime = Math.max(currentTime, endMinutes);
+        });
 
+        // Add remaining slots after last schedule
+        while (currentTime + slotDuration <= workEnd) {
+            slots.push({
+                start: minutesToTime(currentTime),
+                end: minutesToTime(currentTime + slotDuration),
+                duration: slotDuration
+            });
+            currentTime += slotDuration;
+        }
+    });
+
+    // Remove duplicates and sort by start time
+    const uniqueSlots = slots.filter((slot, index, self) =>
+        index === self.findIndex(s => s.start === slot.start && s.end === slot.end)
+    );
+
+    uniqueSlots.sort((a, b) => {
+        const timeA = timeToMinutes(a.start);
+        const timeB = timeToMinutes(b.start);
+        return timeA - timeB;
+    });
+
+    return uniqueSlots;
+}
 
             </script>
             <script>

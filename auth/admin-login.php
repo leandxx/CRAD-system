@@ -50,35 +50,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <title>School Management System - Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body 
- class="bg-cover bg-center bg-no-repeat min-h-screen flex items-center justify-center font-sans" 
-  style="background-image: linear-gradient(rgba(250, 250, 250, 0.937), rgba(8, 52, 117, 0.942)), url('../assets/img/img.jpg');"
->
-  <div class="bg-white bg-opacity-80 rounded-lg shadow-lg max-w-4xl w-full mx-4 flex flex-col md:flex-row overflow-hidden">
+<body class="bg-cover bg-center bg-no-repeat min-h-screen flex items-center justify-center font-sans" 
+style="background-image: linear-gradient(rgba(250, 250, 250, 0.937), rgba(8, 52, 117, 0.942)), url('../assets/img/img.jpg');">
+  <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl max-w-5xl w-full mx-4 flex flex-col md:flex-row overflow-hidden border border-gray-200">
     
-    <!-- Left panel (Welcome section) -->
-    <div class="md:w-1/2 p-10 flex flex-col justify-center items-start relative bg-blue-50 overflow-hidden">
-      
-      <!-- Background Logo (behind text) -->
-      <div class="absolute inset-0 flex items-center justify-center opacity-10 z-0">
-        <img src="../assets/img/sms-logo.png" alt="School Logo" class="w-3/4 h-auto object-contain" />
-      </div>
+    <!-- Left Panel (soft gradient to match body) -->
+    <div class="md:w-1/2 p-10 flex flex-col justify-center items-center text-center 
+                bg-gradient-to-br from-white via-blue-50 to-blue-100 text-gray-800 relative">
+      <img src="../assets/img/sms-logo.png" alt="School Logo" class="w-32 h-32 mb-6 rounded-full shadow-lg border-4 border-white" />
 
-            <!-- Text content (above logo) -->
-        <div class="relative z-10 font-bold">
-          <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-3">Welcome to</h1>
-          <h2 class="text-4xl md:text-5xl font-extrabold text-blue-700 mb-6 leading-tight">SMS1</h2>
-          <p class="text-gray-800 mb-8 max-w-md font-semibold">
-            Empowering education through a unified academic management system that enhances learning, streamlines processes, and connects the entire academic community.
-          </p>
-          <a
-            href="../role/role-selection.php"
-            class="bg-blue-700 hover:bg-blue-800 text-white font-extrabold px-6 py-3 rounded-md shadow transition duration-300"
-          >
-            SMS
-          </a>
-        </div>
-  </div>
+      <h1 class="text-4xl md:text-5xl font-extrabold mb-3 tracking-tight text-blue-900">Welcome to</h1>
+      <h2 class="text-5xl font-extrabold mb-4 text-blue-700 drop-shadow-md">SMS1</h2>
+      <p class="text-gray-700 mb-8 max-w-md leading-relaxed font-medium">
+        Empowering education through a unified academic management system that enhances learning, streamlines processes, and connects the academic community.
+      </p>
+      <a
+        href="../role/role-selection.php"
+        class="bg-blue-700 hover:bg-blue-800 text-white font-extrabold px-6 py-3 rounded-lg shadow-md transition-all duration-300"
+      >
+        Go Back
+      </a>
+    </div>
 
     <!-- Right panel -->
     <div class="md:w-1/2 bg-white p-10 flex flex-col justify-center">

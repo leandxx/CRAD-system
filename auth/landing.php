@@ -31,8 +31,7 @@ include("../includes/connection.php");
 <nav class="navbar navbar-expand-lg fixed-top shadow-sm stylish-navbar">
   <div class="container">
     <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-      <img src="../assets/img/sms.png" alt="Logo" width="40" height="40" class="me-2">
-      School Management
+      <img src="../assets/img/sms.png" alt="Logo" width="50" height="50" class="me-2">
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
       <span class="navbar-toggler-icon"></span>
@@ -59,7 +58,7 @@ include("../includes/connection.php");
   <div class="container position-relative z-2">
     <div class="row align-items-center">
       <div class="col-md-6 hero-text">
-        <h1 class="animate__animated animate__fadeInLeft">Welcome to <br><span class="text-primary">School Management System</span></h1>
+        <h1 class="animate__animated animate__fadeInLeft">Welcome to <br><span class="text-primary">School Management System 1</span></h1>
         <p class="animate__animated animate__fadeIn animate__delay-1s">Efficiently manage student records, faculty activities, and school operations — all in one place.</p>
         <a href="../role/role-selection.php" class="btn-get-started animate__animated animate__fadeIn animate__delay-2s">Get Started</a>
       </div>

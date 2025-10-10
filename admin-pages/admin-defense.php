@@ -2478,7 +2478,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                                             <?php if (!empty($ready_redefense)): ?>
                                                                                 <button
                                                                                     id="schedule-btn-<?php echo $failed['group_id']; ?>-<?php echo $failed['id']; ?>"
-                                                                                    onclick="scheduleRedefense(<?php echo $failed['group_id']; ?>, <?php echo $failed['id']; ?>, '<?php echo addslashes($failed['group_name']); ?>', '<?php echo addslashes($failed['proposal_title']); ?>', '<?php echo $failed['defense_type']; ?>')"
+                                                                                    onclick="openRedefenseModal(<?php echo $failed['group_id']; ?>, <?php echo $failed['id']; ?>, '<?php echo addslashes($failed['group_name']); ?>', '<?php echo addslashes($failed['proposal_title']); ?>', '<?php echo $failed['defense_type']; ?>')"
                                                                                     class="flex-1 bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-lg transform hover:scale-105"
                                                                                     title="Schedule Redefense">
                                                                                     <i class="fas fa-redo mr-1"></i>Schedule Redefense
@@ -2578,82 +2578,80 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                 </div>
             </div>
 
-            <script>
+           <script>
+    // Function to check and update redefense button states
+    async function checkAndUpdateRedefenseButtonStates() {
+        const buttons = document.querySelectorAll('[id^="schedule-btn-"][disabled]');
+        console.log('Checking redefense buttons:', buttons.length, 'disabled buttons found');
+        for (const btn of buttons) {
+            const btnId = btn.id;
+            const matches = btnId.match(/schedule-btn-(\d+)-(\d+)/);
+            if (matches) {
+                const groupId = matches[1];
+                const defenseId = matches[2];
 
-                // Function to check and update redefense button states
-                async function checkAndUpdateRedefenseButtonStates() {
-                    const buttons = document.querySelectorAll('[id^="schedule-btn-"][disabled]');
-                    console.log('Checking redefense buttons:', buttons.length, 'disabled buttons found');
-                    for (const btn of buttons) {
-                        const btnId = btn.id;
-                        const matches = btnId.match(/schedule-btn-(\d+)-(\d+)/);
-                        if (matches) {
-                            const groupId = matches[1];
-                            const defenseId = matches[2];
+                // Check if payment is approved for this group
+                try {
+                    const formData = new FormData();
+                    formData.append('check_redefense_payment', '1');
+                    formData.append('group_id', groupId);
+                    formData.append('defense_id', defenseId);
 
-                            // Check if payment is approved for this group
-                            try {
-                                const formData = new FormData();
-                                formData.append('check_redefense_payment', '1');
-                                formData.append('group_id', groupId);
-                                formData.append('defense_id', defenseId);
+                    const response = await fetch(window.location.href, { method: 'POST', body: formData });
+                    const data = await response.json();
 
-                                const response = await fetch(window.location.href, { method: 'POST', body: formData });
-                                const data = await response.json();
+                    console.log('Response for group', groupId, 'defense', defenseId, ':', data);
 
-                                console.log('Response for group', groupId, 'defense', defenseId, ':', data);
+                    if (data.ready_redefense) {
+                        // Enable the button
+                        btn.disabled = false;
+                        btn.classList.remove('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                        btn.classList.add('bg-gradient-to-r', 'from-green-400', 'to-green-600', 'hover:from-green-500', 'hover:to-green-700', 'text-white', 'transition-all', 'duration-300', 'hover:shadow-lg', 'transform', 'hover:scale-105');
+                        btn.title = 'Schedule Redefense';
+                        btn.innerHTML = '<i class="fas fa-redo mr-1"></i>Schedule Redefense';
 
-                                if (data.ready_redefense) {
-                                    // Enable the button
-                                    btn.disabled = false;
-                                    btn.classList.remove('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
-                                    btn.classList.add('bg-gradient-to-r', 'from-green-400', 'to-green-600', 'hover:from-green-500', 'hover:to-green-700', 'text-white', 'transition-all', 'duration-300', 'hover:shadow-lg', 'transform', 'hover:scale-105');
-                                    btn.title = 'Schedule Redefense';
-                                    btn.innerHTML = '<i class="fas fa-redo mr-1"></i>Schedule Redefense';
+                        // Add onclick functionality
+                        btn.onclick = function () {
+                            scheduleRedefense(groupId, defenseId, data.groupName || '', data.proposalTitle || '', data.defenseType || '');
+                        };
 
-                                    // Add onclick functionality
-                                    btn.onclick = function () {
-                                        scheduleRedefense(groupId, defenseId, data.groupName || '', data.proposalTitle || '', data.defenseType || '');
-                                    };
-
-                                    // Update status indicator
-                                    const statusIndicator = document.querySelector(`[data-group="${groupId}"][data-defense="${defenseId}"].status-indicator`);
-                                    if (statusIndicator && statusIndicator.textContent.includes('Receipt Pending')) {
-                                        statusIndicator.className = 'ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center status-indicator';
-                                        statusIndicator.innerHTML = '<i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense';
-                                    }
-                                }
-                            } catch (e) {
-                                console.log('Error checking redefense payment status:', e);
-                            }
+                        // Update status indicator
+                        const statusIndicator = document.querySelector(`[data-group="${groupId}"][data-defense="${defenseId}"].status-indicator`);
+                        if (statusIndicator && statusIndicator.textContent.includes('Receipt Pending')) {
+                            statusIndicator.className = 'ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center status-indicator';
+                            statusIndicator.innerHTML = '<i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense';
                         }
                     }
+                } catch (e) {
+                    console.log('Error checking redefense payment status:', e);
                 }
+            }
+        }
+    }
 
-                // Check button states when page loads
-                document.addEventListener('DOMContentLoaded', function () {
-                    setTimeout(checkAndUpdateRedefenseButtonStates, 500);
-                    // Also check periodically in case of timing issues
-                    setTimeout(checkAndUpdateRedefenseButtonStates, 2000);
+    // Check button states when page loads
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(checkAndUpdateRedefenseButtonStates, 500);
+        // Also check periodically in case of timing issues
+        setTimeout(checkAndUpdateRedefenseButtonStates, 2000);
+    });
 
-                });
+    // Also add a manual refresh function that can be called
+    window.refreshRedefenseButtons = checkAndUpdateRedefenseButtonStates;
 
-                // Also add a manual refresh function that can be called
-                window.refreshRedefenseButtons = checkAndUpdateRedefenseButtonStates;
+    // Final Defense Scheduling Function
+    function scheduleFinalDefense(groupId, groupName, proposalTitle, defenseType, defenseId = null) {
+        // Open the proposal modal with final defense type
+        openProposalModal(groupId, groupName, proposalTitle, defenseType);
+        if (defenseId) {
+            document.getElementById('parent_defense_id').value = defenseId;
+        }
+    }
 
-                // Final Defense Scheduling Function
-                function scheduleFinalDefense(groupId, groupName, proposalTitle, defenseType, defenseId = null) {
-                    // Open the proposal modal with final defense type
-                    openProposalModal(groupId, groupName, proposalTitle, defenseType);
-                    if (defenseId) {
-                        document.getElementById('parent_defense_id').value = defenseId;
-                    }
-                }
-
-                // Unified Defense Scheduling Modal
-                function openDefenseModal(groupId, groupName, proposalTitle, defenseType = 'pre_oral', defenseId = null) {
-                    // Create modal HTML
-                    const modalHtml = `
+    // Unified Defense Scheduling Modal
+    function openDefenseModal(groupId, groupName, proposalTitle, defenseType = 'pre_oral', defenseId = null) {
+        // Create modal HTML
+        const modalHtml = `
 <div id="defenseModal" class="fixed inset-0 z-50 modal-overlay bg-black/50 flex items-center justify-center p-4">
     <div class="bg-gradient-to-br from-white via-blue-50 to-indigo-100 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar-blue transform transition-all">
         <!-- Header -->
@@ -2674,6 +2672,8 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             <input type="hidden" name="schedule_defense" value="1">
             <input type="hidden" name="defense_type" value="${defenseType}">
             <input type="hidden" name="group_id" value="${groupId}">
+            <input type="hidden" id="start_time" name="start_time">
+            <input type="hidden" id="end_time" name="end_time">
             ${defenseId ? `<input type="hidden" name="parent_defense_id" value="${defenseId}">` : ''}
 
             <!-- Selected Group -->
@@ -2706,13 +2706,12 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
             <!-- Time Slot & Duration -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                        <label class="block text-gray-700 text-sm font-medium mb-2" for="time_slot">Available Time Slots</label>
+                    <label class="block text-gray-700 text-sm font-medium mb-2" for="time_slot">Available Time Slots</label>
                     <select name="time_slot" id="time_slot" required
-                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        onchange="updateTimeInputs()">
                         <option value="">Select date and room first</option>
                     </select>
-                    <input type="hidden" name="start_time" id="start_time">
-                    <input type="hidden" name="end_time" id="end_time">
                 </div>
                 <div>
                     <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
@@ -2787,14 +2786,484 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 </div>
 `;
 
-                    // Add modal to page
-                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Store group ID for time slot generation
+        const modalGroupIdInput = document.querySelector('#defenseModal input[name="group_id"]');
+        if (modalGroupIdInput) {
+            modalGroupIdInput.id = 'modal_group_id';
+        }
+    }
+
+    // Function to populate available time slots
+    function populateTimeSlots() {
+        const roomId = document.getElementById('room_id').value;
+        const date = document.getElementById('defense_date').value;
+        const timeSlotSelect = document.getElementById('time_slot');
+
+        if (!roomId || !date) {
+            timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+            document.getElementById('duration_display').textContent = 'No slot selected';
+            return;
+        }
+
+        timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+        document.getElementById('duration_display').textContent = 'Loading...';
+
+        fetch('api/get_room_availability.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                const room = data.find(r => r.id == roomId);
+                const slots = generateTimeSlots(room ? room.schedules : []);
+
+                timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+                slots.forEach(slot => {
+                    const option = document.createElement('option');
+                    option.value = `${slot.start}|${slot.end}`;
+                    option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                    timeSlotSelect.appendChild(option);
+                });
+
+                if (slots.length === 0) {
+                    timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                    document.getElementById('duration_display').textContent = 'No slots available';
+                } else {
+                    document.getElementById('duration_display').textContent = 'Select a time slot';
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+                document.getElementById('duration_display').textContent = 'Error loading slots';
+            });
+    }
 
+    // Function to generate available time slots
+    function generateTimeSlots(schedules) {
+        const slots = [];
+        const workStart = 9 * 60; // 9:00 AM
+        const workEnd = 17 * 60;  // 5:00 PM
 
+        // Get selected group's program
+        const groupId = document.getElementById('modal_group_id') ? document.getElementById('modal_group_id').value : 
+                       document.getElementById('group_id') ? document.getElementById('group_id').value : '';
+        
+        // Default to BSIT if no group ID found
+        const program = groupId && window.groupsPrograms ? window.groupsPrograms[groupId] : 'BSIT';
+        const slotDuration = program && program.toLowerCase() === 'bsit' ? 60 : 40;
 
+        // Sort schedules by start time
+        schedules.sort((a, b) => {
+            const timeA = timeToMinutes(a.start_time);
+            const timeB = timeToMinutes(b.start_time);
+            return timeA - timeB;
+        });
 
+        let currentTime = workStart;
 
+        schedules.forEach(schedule => {
+            const startMinutes = timeToMinutes(schedule.start_time);
+            const endMinutes = timeToMinutes(schedule.end_time);
+
+            // Add slots before this schedule
+            while (currentTime + slotDuration <= startMinutes) {
+                const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
+                if (slotEnd - currentTime >= slotDuration) {
+                    slots.push({
+                        start: minutesToTime(currentTime),
+                        end: minutesToTime(slotEnd),
+                        duration: slotEnd - currentTime
+                    });
+                }
+                currentTime += slotDuration;
+            }
+            currentTime = Math.max(currentTime, endMinutes);
+        });
+
+        // Add remaining slots after last schedule
+        while (currentTime + slotDuration <= workEnd) {
+            slots.push({
+                start: minutesToTime(currentTime),
+                end: minutesToTime(currentTime + slotDuration),
+                duration: slotDuration
+            });
+            currentTime += slotDuration;
+        }
+
+        return slots;
+    }
+
+    // Helper functions
+    function timeToMinutes(timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+
+    function minutesToTime(minutes) {
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    }
+
+    // Function to update hidden time inputs when slot is selected
+    function updateTimeInputs() {
+        const timeSlot = document.getElementById('time_slot').value;
+        const durationDisplay = document.getElementById('duration_display');
+
+        if (timeSlot) {
+            const [startTime, endTime] = timeSlot.split('|');
+            document.getElementById('start_time').value = startTime;
+            document.getElementById('end_time').value = endTime;
+
+            const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+            durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+        } else {
+            document.getElementById('start_time').value = '';
+            document.getElementById('end_time').value = '';
+            durationDisplay.textContent = 'No slot selected';
+        }
+    }
+
+    // Redefense time slot functions
+    function populateRedefenseTimeSlots() {
+        const roomId = document.getElementById('redefense_room_id').value;
+        const date = document.getElementById('redefense_date').value;
+        const timeSlotSelect = document.getElementById('redefense_time_slot');
+
+        if (!roomId || !date) {
+            timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+            document.getElementById('redefense_duration_display').textContent = 'No slot selected';
+            return;
+        }
+
+        timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+        document.getElementById('redefense_duration_display').textContent = 'Loading...';
+
+        fetch('api/get_room_availability.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                const room = data.find(r => r.id == roomId);
+                const slots = generateRedefenseTimeSlots(room ? room.schedules : []);
+
+                timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+                slots.forEach(slot => {
+                    const option = document.createElement('option');
+                    option.value = `${slot.start}|${slot.end}`;
+                    option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                    timeSlotSelect.appendChild(option);
+                });
+
+                if (slots.length === 0) {
+                    timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                    document.getElementById('redefense_duration_display').textContent = 'No slots available';
+                } else {
+                    document.getElementById('redefense_duration_display').textContent = 'Select a time slot';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+                document.getElementById('redefense_duration_display').textContent = 'Error loading slots';
+            });
+    }
+
+    function generateRedefenseTimeSlots(schedules) {
+        // Use the same logic as generateTimeSlots
+        return generateTimeSlots(schedules);
+    }
+
+    function updateRedefenseTimeInputs() {
+        const timeSlot = document.getElementById('redefense_time_slot').value;
+        const durationDisplay = document.getElementById('redefense_duration_display');
+
+        if (timeSlot) {
+            const [startTime, endTime] = timeSlot.split('|');
+            document.getElementById('redefense_start_time').value = startTime;
+            document.getElementById('redefense_end_time').value = endTime;
+
+            const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+            durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+        } else {
+            document.getElementById('redefense_start_time').value = '';
+            document.getElementById('redefense_end_time').value = '';
+            durationDisplay.textContent = 'No slot selected';
+        }
+    }
+
+    // Update the redefense modal to include time inputs and proper event handlers
+    function openRedefenseModal(groupId, defenseId, groupName, proposalTitle, defenseType = 'pre_oral') {
+        // Create modal HTML for redefense
+        const modalHtml = `
+<div id="redefenseModal" class="fixed inset-0 z-50 modal-overlay bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-gradient-to-br from-white via-green-50 to-emerald-100 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar-green transform transition-all">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-green-600 to-emerald-700 text-white p-4 border-0">
+            <h3 class="text-lg font-bold flex items-center" id="redefense-modal-title">
+                <div class="bg-white/20 p-2 rounded-lg mr-3">
+                    <i class="fas fa-redo text-white text-sm"></i>
+                </div>
+                Schedule ${defenseType === 'final' ? 'Final' : 'Pre-Oral'} Redefense
+            </h3>
+            <p class="text-green-100 mt-1 text-sm">Schedule a redefense session for groups who need to retake their defense.</p>
+        </div>
+
+        <!-- Form -->
+        <form method="POST" class="p-6" onsubmit="return validateRedefenseDuration()">
+            <input type="hidden" name="schedule_redefense" value="1">
+            <input type="hidden" name="defense_type" value="${defenseType}">
+            <input type="hidden" name="group_id" value="${groupId}">
+            <input type="hidden" name="parent_defense_id" value="${defenseId}">
+            <input type="hidden" id="redefense_start_time" name="start_time">
+            <input type="hidden" id="redefense_end_time" name="end_time">
+
+            <!-- Selected Group -->
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-medium mb-2">Selected Group</label>
+                <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm">${groupName} - ${proposalTitle}</div>
+            </div>
+
+            <!-- Date & Room -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Redefense Date</label>
+                    <input type="date" name="defense_date" id="redefense_date" required min="<?php echo date('Y-m-d'); ?>"
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        onchange="populateRedefenseTimeSlots()">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Room</label>
+                    <select name="room_id" id="redefense_room_id" required
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        onchange="populateRedefenseTimeSlots()">
+                        <option value="">Select a room</option>
+                        <?php foreach ($rooms as $room): ?>
+                        <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Time Slot & Duration -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2" for="redefense_time_slot">Available Time Slots</label>
+                    <select name="time_slot" id="redefense_time_slot" required
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        onchange="updateRedefenseTimeInputs()">
+                        <option value="">Select date and room first</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
+                    <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm" id="redefense_duration_display">No slot selected</div>
+                </div>
+            </div>
+
+            <!-- Panel Members -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-medium mb-2">Panel Members</label>
+
+                <!-- Panel Tabs -->
+                <div class="panel-tabs mb-3 flex border-b">
+                    <div class="panel-tab active px-4 py-2 cursor-pointer text-sm font-medium border-b-2 border-green-600"
+                         data-tab="redefense-chairperson" onclick="switchRedefensePanelTab('chairperson')">Chairperson</div>
+                    <div class="panel-tab px-4 py-2 cursor-pointer text-sm font-medium text-gray-600 hover:text-green-600"
+                         data-tab="redefense-member" onclick="switchRedefensePanelTab('member')">Members</div>
+                </div>
+
+                <!-- Chairperson List -->
+                <div class="panel-content active" data-tab="redefense-chairperson">
+                    <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
+                        <?php
+                        $chairpersons = array_filter($accepted_panel_members, fn($m) => $m['role'] === 'chairperson');
+                        foreach ($chairpersons as $panel_member): ?>
+                        <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border hover:border-green-200 transition-all">
+                            <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|chair"
+                                   class="mr-3 rounded text-green-600 focus:ring-green-500">
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
+                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                <div class="text-xs text-purple-600 mt-1"><?php echo ucfirst($panel_member['program']); ?> Program</div>
+                            </div>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Members List -->
+                <div class="panel-content hidden" data-tab="redefense-member">
+                    <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
+                        <?php
+                        $members = array_filter($accepted_panel_members, fn($m) => $m['role'] === 'member');
+                        foreach ($members as $panel_member): ?>
+                        <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border hover:border-green-200 transition-all">
+                            <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|member"
+                                   class="mr-3 rounded text-green-600 focus:ring-green-500">
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
+                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
+                            </div>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
+                <button type="button" onclick="closeRedefenseModal()"
+                    class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
+                    <i class="fas fa-times mr-2"></i>Cancel
+                </button>
+                <button type="submit"
+                    class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
+                    <i class="fas fa-redo mr-2"></i>Schedule Redefense
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+`;
+
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    // Function to close redefense modal
+    function closeRedefenseModal() {
+        const modal = document.getElementById('redefenseModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    // Function to validate redefense duration
+    function validateRedefenseDuration() {
+        const startTime = document.getElementById('redefense_start_time').value;
+        const endTime = document.getElementById('redefense_end_time').value;
+
+        if (!startTime || !endTime) {
+            alert('Please select a time slot.');
+            return false;
+        }
+
+        return true;
+    }
+
+    // Function to switch redefense panel tabs
+    function switchRedefensePanelTab(tabName) {
+        // Remove active class from all tabs
+        document.querySelectorAll('[data-tab^="redefense-"]').forEach(tab => {
+            tab.classList.remove('active', 'border-green-600', 'text-green-600');
+            tab.classList.add('text-gray-600', 'border-transparent');
+        });
+
+        // Remove active class from all content
+        document.querySelectorAll('.panel-content[data-tab^="redefense-"]').forEach(content => {
+            content.classList.remove('active');
+            content.classList.add('hidden');
+        });
+
+        // Add active class to selected tab
+        const activeTab = document.querySelector(`[data-tab="redefense-${tabName}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active', 'border-green-600', 'text-green-600');
+            activeTab.classList.remove('text-gray-600', 'border-transparent');
+        }
+
+        // Show selected content
+        const activeContent = document.querySelector(`.panel-content[data-tab="redefense-${tabName}"]`);
+        if (activeContent) {
+            activeContent.classList.add('active');
+            activeContent.classList.remove('hidden');
+        }
+    }
+
+    // Update the scheduleRedefense function to use the new modal
+    function scheduleRedefense(groupId, defenseId, groupName, proposalTitle, defenseType) {
+        openRedefenseModal(groupId, defenseId, groupName, proposalTitle, defenseType);
+    }
+
+    // Make functions globally accessible
+    window.openRedefenseModal = openRedefenseModal;
+    window.closeRedefenseModal = closeRedefenseModal;
+    window.scheduleRedefense = scheduleRedefense;
+    window.populateRedefenseTimeSlots = populateRedefenseTimeSlots;
+    window.updateRedefenseTimeInputs = updateRedefenseTimeInputs;
+    window.switchRedefensePanelTab = switchRedefensePanelTab;
+    window.validateRedefenseDuration = validateRedefenseDuration;
+
+    // Time slot functions
+    window.populateTimeSlots = populateTimeSlots;
+    window.updateTimeInputs = updateTimeInputs;
+    window.generateTimeSlots = generateTimeSlots;
+    window.timeToMinutes = timeToMinutes;
+    window.minutesToTime = minutesToTime;
+
+    // Close defense modal function
+    function closeDefenseModal() {
+        const modal = document.getElementById('defenseModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    // Function to validate defense duration
+    function validateDefenseDuration() {
+        const startTime = document.getElementById('start_time').value;
+        const endTime = document.getElementById('end_time').value;
+
+        if (!startTime || !endTime) {
+            alert('Please select a time slot.');
+            return false;
+        }
+
+        return true;
+    }
+
+    // Function to switch panel tabs
+    function switchPanelTab(tabName) {
+        // Remove active class from all tabs
+        document.querySelectorAll('.panel-tab').forEach(tab => {
+            tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
+            tab.classList.add('text-gray-600', 'border-transparent');
+        });
+
+        // Remove active class from all content
+        document.querySelectorAll('.panel-content').forEach(content => {
+            content.classList.remove('active');
+            content.classList.add('hidden');
+        });
+
+        // Add active class to selected tab
+        const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active', 'border-blue-600', 'text-blue-600');
+            activeTab.classList.remove('text-gray-600', 'border-transparent');
+        }
+
+        // Show selected content
+        const activeContent = document.querySelector(`.panel-content[data-tab="${tabName}"]`);
+        if (activeContent) {
+            activeContent.classList.add('active');
+            activeContent.classList.remove('hidden');
+        }
+    }
+
+    // Make additional functions globally accessible
+    window.closeDefenseModal = closeDefenseModal;
+    window.switchPanelTab = switchPanelTab;
+    window.validateDefenseDuration = validateDefenseDuration;
                 async function openFinalPaymentViewer(groupId, defenseType, groupName, defenseId) {
                     try {
                         const form = new FormData();
@@ -6176,16 +6645,6 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     }
                 });
             </script>
-
-</body>
-
-</html>
-{
-if (!document.hidden) {
-checkForOverdueDefenses();
-}
-});
-</script>
 
 </body>
 

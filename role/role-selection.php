@@ -28,23 +28,29 @@ session_start();
 >
   <div class="bg-white bg-opacity-80 rounded-lg shadow-lg max-w-4xl w-full mx-4 flex flex-col md:flex-row overflow-hidden">
     
-    <!-- Left panel (same as login page) -->
-    <div class="md:w-1/2 p-10 flex flex-col justify-center items-start relative bg-blue-50">
-      <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-3">Welcome to</h1>
-      <h2 class="text-4xl md:text-5xl font-extrabold text-blue-700 mb-6 leading-tight">CRAD SYSTEM</h2>
-      <p class="text-gray-700 mb-8 max-w-md">
-        Efficiently manage research proposals, monitor statuses, assign advisers and panels, and explore AI-powered categorization — all in one place.
-      </p>
-      <a
-        href="../auth/landing.php"
-        class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3 rounded-md shadow transition duration-300"
-      >
-        SMS
-      </a>
-      <div class="absolute right-8 bottom-6 w-32 h-32">
-        <img src="../assets/img/logo.png" alt="School Logo" class="w-full h-full object-contain" />
+    <!-- Left panel (Welcome section) -->
+    <div class="md:w-1/2 p-10 flex flex-col justify-center items-start relative bg-blue-50 overflow-hidden">
+      
+      <!-- Background Logo (behind text) -->
+      <div class="absolute inset-0 flex items-center justify-center opacity-10 z-0">
+        <img src="../assets/img/sms-logo.png" alt="School Logo" class="w-3/4 h-auto object-contain" />
       </div>
-    </div>
+
+            <!-- Text content (above logo) -->
+        <div class="relative z-10 font-bold">
+          <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-3">Welcome to</h1>
+          <h2 class="text-4xl md:text-5xl font-extrabold text-blue-700 mb-6 leading-tight">SMS1</h2>
+          <p class="text-gray-800 mb-8 max-w-md font-semibold">
+            Empowering education through a unified academic management system that enhances learning, streamlines processes, and connects the entire academic community.
+          </p>
+          <a
+            href="../auth/landing.php"
+            class="bg-blue-700 hover:bg-blue-800 text-white font-extrabold px-6 py-3 rounded-md shadow transition duration-300"
+          >
+            SMS
+          </a>
+        </div>
+  </div>
 
     <!-- Right panel - Role Selection -->
     <div class="md:w-1/2 bg-white p-10 flex flex-col justify-center items-center">
@@ -54,7 +60,7 @@ session_start();
       
       <div class="flex flex-col md:flex-row gap-6 w-full justify-center">
         <!-- Admin Box -->
-        <a href="../auth/admin-login.php" class="role-box bg-blue-600 text-white flex flex-col items-center justify-center rounded-lg shadow-md p-6 text-center">
+        <a href="../auth/admin-login.php" class="role-box bg-blue-600 text-white flex flex-col items-center justify-center rounded-lg shadow-md p-6 text-center hover:scale-105 transition-transform duration-300">
           <div class="bg-blue-500 p-3 rounded-full mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -65,7 +71,7 @@ session_start();
         </a>
         
         <!-- Student Box -->
-        <a href="../auth/student-login.php" class="role-box bg-green-600 text-white flex flex-col items-center justify-center rounded-lg shadow-md p-6 text-center">
+        <a href="../auth/student-login.php" class="role-box bg-green-600 text-white flex flex-col items-center justify-center rounded-lg shadow-md p-6 text-center hover:scale-105 transition-transform duration-300">
           <div class="bg-green-500 p-3 rounded-full mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path d="M12 14l9-5-9-5-9 5 9 5z" />
@@ -83,4 +89,5 @@ session_start();
     </div>
   </div>
 </body>
+
 </html>

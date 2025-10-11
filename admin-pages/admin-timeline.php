@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $feedback = trim($_POST['feedback'] ?? '');
 
         if (!$proposal_id || $image_index < 0 || !in_array($payment_type, ['research_forum','pre_oral_defense','final_defense','pre_oral_redefense','final_redefense']) || !in_array($decision, ['approved','rejected'])) {
-            echo json_encode(['ok' => false, 'error' => 'Invalid parameters']);
+            echo json_encode(['ok' => false, 'error' => 'Invalid parxameters']);
             exit();
         }
 
@@ -2181,9 +2181,20 @@ $isoDeadline = $current_milestone
     // AJAX helpers for per-image review
     async function reviewImage(paymentType, proposalId, imageIndex, decision, feedback = '') {
       try {
+        // Normalize proposalId: allow fallback to window.currentProposal or hidden input
+        let pid = proposalId;
+        if (!pid || pid === 'undefined' || pid === 'null') {
+          if (window.currentProposal && window.currentProposal.id) pid = window.currentProposal.id;
+          else {
+            const hidden = document.getElementById('review_proposal_id');
+            if (hidden && hidden.value) pid = hidden.value;
+          }
+        }
+        if (!pid) { alert('Unable to determine proposal id for review'); return; }
+
         const form = new FormData();
         form.append('ajax_update_image_review', '1');
-        form.append('proposal_id', String(proposalId));
+        form.append('proposal_id', String(pid));
         form.append('payment_type', paymentType);
         form.append('image_index', String(imageIndex));
         form.append('decision', decision);

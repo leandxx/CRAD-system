@@ -143,8 +143,8 @@ if ($has_group) {
     if ($final_base_status === 'none' && $final_status !== 'none') { $final_base_status = $final_status; }
     if ($failed_final_r && mysqli_num_rows($failed_final_r) > 0) { $needs_final_reupload = ($final_redefense_status === 'none'); }
     
-    // Gate proposal submission strictly on approved research forum payment
-    $can_submit_proposal = ($rf_status === 'approved');
+    // Allow proposal submission regardless of Research Forum payment
+    $can_submit_proposal = true;
     
     // Handle join code generation
     if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_join_code'])) {
@@ -1132,20 +1132,7 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                             </div>
                         <?php endif; ?>
                         
-                        <?php if ($rf_status !== 'approved'): ?>
-                            <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-6 backdrop-filter backdrop-blur-sm">
-                                <div class="flex items-start">
-                                    <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-3"></i>
-                                    <div>
-                                        <h3 class="font-semibold text-yellow-800">Research Forum Payment Required</h3>
-                                        <p class="text-yellow-700">Team leader needs to upload and get the group's Research Forum payment receipt approved before you can submit a proposal.</p>
-                                        <button onclick="toggleModal('paymentModal')" class="mt-3 bg-primary-600 text-white px-4 py-2 rounded-lg">
-                                            <i class="fas fa-upload mr-2"></i> Upload Receipt
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endif; ?>
+                        <!-- Research Forum payment notice removed to allow proposal submission regardless of payment status -->
                         
                         <form action="/CRAD-system/student-pages/proposal.php" method="POST" enctype="multipart/form-data" class="space-y-4" <?php echo !$can_submit_proposal ? 'onsubmit="return false;"' : ''; ?>>
                             <div>
@@ -1169,13 +1156,10 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                                     <?php echo $has_proposal ? 'Update Proposal File (PDF only) - Optional' : 'Upload Signed Proposal (PDF only)'; ?>
                                 </label>
                                 <div class="mt-1 flex items-center">
-                                    <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center hover:bg-gray-50 transition 
-                                        <?php echo !$has_research_forum_payment ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                                    <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center hover:bg-gray-50 transition">
                                         <i class="fas fa-file-pdf text-red-500 mr-2"></i>
                                         <span class="text-sm font-medium" id="file-label">Choose PDF File</span>
-                                        <input type="file" name="proposal_file" accept=".pdf" <?php echo !$has_proposal ? 'required' : ''; ?> 
-                                            <?php echo !$has_research_forum_payment ? 'disabled' : ''; ?>
-                                            class="hidden" onchange="updateFileName(this)">
+                                        <input type="file" name="proposal_file" accept=".pdf" <?php echo !$has_proposal ? 'required' : ''; ?> class="hidden" onchange="updateFileName(this)">
                                     </label>
                                     <span class="ml-3 text-sm text-gray-500" id="file-name">
                                         <?php echo $has_proposal ? basename($proposal['file_path']) : 'No file chosen'; ?>
@@ -1279,7 +1263,6 @@ while ($row = mysqli_fetch_assoc($programs_result)) {
                         <?php if ($final_defense_open): ?>
                         <option value="final_defense">Final Defense <?php echo $has_final_defense_payment ? '(Uploaded)' : ''; ?></option>
                         <?php if ($failed_final_r && mysqli_num_rows($failed_final_r) > 0): ?>
-                        <option value="final_redefense">Final Redefense</option>
                         <?php endif; ?>
                         <?php endif; ?>
                     </select>

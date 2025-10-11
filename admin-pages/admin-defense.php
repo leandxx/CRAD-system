@@ -1486,79 +1486,89 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     <h2 class="text-2xl font-bold text-gray-800">Defense Schedule</h2>
                 </div>
 
-                <!-- Cards Grid -->
-                <div class="space-y-6 relative z-10">
-                    <?php foreach ($defense_by_program as $program => $program_data): ?>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                            <div class="p-4 border-b border-gray-200 cursor-pointer"
-                                onclick="toggleProgram('<?php echo $program; ?>')">
-                                <div class="flex items-center justify-between">
-                                    <h3 class="text-lg font-semibold text-gray-800">
-                                        <i class="fas fa-graduation-cap mr-2"></i><?php echo $program; ?>
-                                        <span class="text-sm text-gray-500 ml-2">
-                                            <?php
-                                            $total_scheduled = 0;
-                                            foreach ($program_data['advisers'] as $adviser_id => $adviser_data) {
-                                                foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
-                                                    $total_scheduled += count($cluster_data['defenses']);
-                                                }
-                                            }
-                                            echo "($total_scheduled scheduled defense" . ($total_scheduled > 1 ? 's' : '') . ")";
-                                            ?>
-                                        </span>
-                                    </h3>
-                                    <i class="fas fa-chevron-down transition-transform"
-                                        id="icon-<?php echo $program; ?>"></i>
-                                </div>
+<!-- Cards Grid -->
+<div class="space-y-6 relative z-10">
+    <?php foreach ($defense_by_program as $program => $program_data): ?>
+        <div class="bg-white rounded-xl shadow-sm border border-blue-200 hover:shadow-md transition-shadow duration-300">
+            <!-- Program Header -->
+            <div class="p-4 border-b border-blue-100 cursor-pointer bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-colors duration-300"
+                onclick="toggleProgram('<?php echo $program; ?>')">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-blue-800 flex items-center">
+                        <i class="fas fa-graduation-cap mr-2 text-blue-600"></i>
+                        <?php echo $program; ?>
+                        <span class="text-sm text-blue-500 ml-2">
+                            <?php
+                            $total_scheduled = 0;
+                            foreach ($program_data['advisers'] as $adviser_id => $adviser_data) {
+                                foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
+                                    $total_scheduled += count($cluster_data['defenses']);
+                                }
+                            }
+                            echo "($total_scheduled scheduled defense" . ($total_scheduled > 1 ? 's' : '') . ")";
+                            ?>
+                        </span>
+                    </h3>
+                    <i class="fas fa-chevron-down transition-transform text-blue-500"
+                        id="icon-<?php echo $program; ?>"></i>
+                </div>
+            </div>
+
+            <!-- Program Content -->
+            <div class="program-content" id="content-<?php echo $program; ?>" style="display: none;">
+                <?php foreach ($program_data['advisers'] as $adviser_id => $adviser_data): ?>
+                    <div class="border-b border-blue-100 last:border-b-0">
+                        <!-- Adviser Header -->
+                        <div class="p-3 bg-blue-50 cursor-pointer hover:bg-blue-100 transition-colors duration-300"
+                            onclick="toggleAdviser('<?php echo $program . '-' . $adviser_id; ?>')">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-medium text-blue-700 flex items-center">
+                                    <i class="fas fa-user-tie mr-2 text-blue-600"></i>
+                                    <?php echo $adviser_data['adviser_name']; ?>
+                                    <span class="text-sm text-blue-500 ml-2">
+                                        <?php
+                                        $adviser_scheduled = 0;
+                                        foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
+                                            $adviser_scheduled += count($cluster_data['defenses']);
+                                        }
+                                        echo "($adviser_scheduled scheduled defense" . ($adviser_scheduled > 1 ? 's' : '') . ")";
+                                        ?>
+                                    </span>
+                                </h4>
+                                <i class="fas fa-chevron-down transition-transform text-blue-500 text-sm"
+                                    id="adviser-icon-<?php echo $program . '-' . $adviser_id; ?>"></i>
                             </div>
-                            <div class="program-content" id="content-<?php echo $program; ?>" style="display: none;">
-                                <?php foreach ($program_data['advisers'] as $adviser_id => $adviser_data): ?>
-                                    <div class="border-b border-gray-100 last:border-b-0">
-                                        <div class="p-3 bg-gray-50 cursor-pointer"
-                                            onclick="toggleAdviser('<?php echo $program . '-' . $adviser_id; ?>')">
-                                            <div class="flex items-center justify-between">
-                                                <h4 class="font-medium text-gray-700">
-                                                    <i
-                                                        class="fas fa-user-tie mr-2"></i><?php echo $adviser_data['adviser_name']; ?>
-                                                    <span class="text-sm text-gray-500 ml-2">
-                                                        <?php
-                                                        $adviser_scheduled = 0;
-                                                        foreach ($adviser_data['clusters'] as $cluster => $cluster_data) {
-                                                            $adviser_scheduled += count($cluster_data['defenses']);
-                                                        }
-                                                        echo "($adviser_scheduled scheduled defense" . ($adviser_scheduled > 1 ? 's' : '') . ")";
-                                                        ?>
-                                                    </span>
-                                                </h4>
-                                                <i class="fas fa-chevron-down transition-transform text-sm"
-                                                    id="adviser-icon-<?php echo $program . '-' . $adviser_id; ?>"></i>
-                                            </div>
+                        </div>
+
+                        <!-- Adviser Content -->
+                        <div class="adviser-content"
+                            id="adviser-content-<?php echo $program . '-' . $adviser_id; ?>"
+                            style="display: none;">
+                            <?php foreach ($adviser_data['clusters'] as $cluster => $cluster_data): ?>
+                                <div class="border-b border-blue-100 last:border-b-0">
+                                    <!-- Cluster Header -->
+                                    <div class="p-3 bg-indigo-50 cursor-pointer hover:bg-indigo-100 transition-colors duration-300"
+                                        onclick="toggleCluster('<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>')">
+                                        <div class="flex items-center justify-between">
+                                            <h5 class="font-medium text-blue-600 flex items-center">
+                                                <i class="fas fa-layer-group mr-2 text-indigo-600"></i>
+                                                Cluster <?php echo $cluster; ?>
+                                                <span class="text-sm text-blue-500 ml-2">
+                                                    (<?php echo count($cluster_data['defenses']); ?> scheduled
+                                                    defense<?php echo count($cluster_data['defenses']) > 1 ? 's' : ''; ?>)
+                                                </span>
+                                            </h5>
+                                            <i class="fas fa-chevron-down transition-transform text-blue-500 text-sm"
+                                                id="cluster-icon-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>"></i>
                                         </div>
-                                        <div class="adviser-content"
-                                            id="adviser-content-<?php echo $program . '-' . $adviser_id; ?>"
-                                            style="display: none;">
-                                            <?php foreach ($adviser_data['clusters'] as $cluster => $cluster_data): ?>
-                                                <div class="border-b border-gray-100 last:border-b-0">
-                                                    <div class="p-3 bg-gray-50 cursor-pointer"
-                                                        onclick="toggleCluster('<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>')">
-                                                        <div class="flex items-center justify-between">
-                                                            <h5 class="font-medium text-gray-600">
-                                                                <i class="fas fa-layer-group mr-2"></i>Cluster
-                                                                <?php echo $cluster; ?>
-                                                                <span class="text-sm text-gray-500 ml-2">
-                                                                    (<?php echo count($cluster_data['defenses']); ?> scheduled
-                                                                    defense<?php echo count($cluster_data['defenses']) > 1 ? 's' : ''; ?>)
-                                                                </span>
-                                                            </h5>
-                                                            <i class="fas fa-chevron-down transition-transform text-sm"
-                                                                id="cluster-icon-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>"></i>
-                                                        </div>
-                                                    </div>
-                                                    <div class="cluster-content"
-                                                        id="cluster-content-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>"
-                                                        style="display: none;">
-                                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-                                                            <?php foreach ($cluster_data['defenses'] as $schedule): ?>
+                                    </div>
+
+                                    <!-- Cluster Content -->
+                                    <div class="cluster-content"
+                                        id="cluster-content-<?php echo $program . '-' . $adviser_id . '-' . $cluster; ?>"
+                                        style="display: none;">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                                            <?php foreach ($cluster_data['defenses'] as $schedule): ?>
                                                                 <!-- Scheduled Defense Card -->
                                                                 <div class="defense-card bg-gradient-to-br from-white via-blue-50 to-indigo-100 border border-blue-200 rounded-2xl shadow-lg p-6 flex flex-col justify-between relative overflow-hidden"
                                                                     data-status="<?php echo $schedule['status']; ?>"
@@ -1713,6 +1723,12 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                                                                                 onclick="populateEditForm(<?php echo htmlspecialchars(json_encode($schedule)); ?>)"
                                                                                 title="Edit">
                                                                                 <i class="fas fa-edit mr-1"></i>Edit
+                                                                            </button>
+                                                                            <button
+                                                                                onclick="viewDefenseDetails(<?php echo $schedule['id']; ?>)"
+                                                                                class="bg-white/80 hover:bg-blue-50 border border-blue-200 hover:border-blue-300 text-blue-600 hover:text-blue-700 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-300 hover:shadow-md backdrop-blur-sm"
+                                                                                title="View">
+                                                                                <i class="fas fa-eye mr-1"></i>View
                                                                             </button>
                                                                             <button
                                                                                 onclick="deleteDefense(<?php echo $schedule['id']; ?>)"
@@ -2610,1156 +2626,7 @@ $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
                     </div>
                 </div>
             </div>
-
-           <script>
-    // Function to check and update redefense button states
-    async function checkAndUpdateRedefenseButtonStates() {
-        const buttons = document.querySelectorAll('[id^="schedule-btn-"][disabled]');
-        console.log('Checking redefense buttons:', buttons.length, 'disabled buttons found');
-        for (const btn of buttons) {
-            const btnId = btn.id;
-            const matches = btnId.match(/schedule-btn-(\d+)-(\d+)/);
-            if (matches) {
-                const groupId = matches[1];
-                const defenseId = matches[2];
-
-                // Check if payment is approved for this group
-                try {
-                    const formData = new FormData();
-                    formData.append('check_redefense_payment', '1');
-                    formData.append('group_id', groupId);
-                    formData.append('defense_id', defenseId);
-
-                    const response = await fetch(window.location.href, { method: 'POST', body: formData });
-                    const data = await response.json();
-
-                    console.log('Response for group', groupId, 'defense', defenseId, ':', data);
-
-                    if (data.ready_redefense) {
-                        // Enable the button
-                        btn.disabled = false;
-                        btn.classList.remove('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
-                        btn.classList.add('bg-gradient-to-r', 'from-green-400', 'to-green-600', 'hover:from-green-500', 'hover:to-green-700', 'text-white', 'transition-all', 'duration-300', 'hover:shadow-lg', 'transform', 'hover:scale-105');
-                        btn.title = 'Schedule Redefense';
-                        btn.innerHTML = '<i class="fas fa-redo mr-1"></i>Schedule Redefense';
-
-                        // Add onclick functionality
-                        btn.onclick = function () {
-                            scheduleRedefense(groupId, defenseId, data.groupName || '', data.proposalTitle || '', data.defenseType || '');
-                        };
-
-                        // Update status indicator
-                        const statusIndicator = document.querySelector(`[data-group="${groupId}"][data-defense="${defenseId}"].status-indicator`);
-                        if (statusIndicator && statusIndicator.textContent.includes('Receipt Pending')) {
-                            statusIndicator.className = 'ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center status-indicator';
-                            statusIndicator.innerHTML = '<i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense';
-                        }
-                    }
-                } catch (e) {
-                    console.log('Error checking redefense payment status:', e);
-                }
-            }
-        }
-    }
-
-    // Check button states when page loads
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(checkAndUpdateRedefenseButtonStates, 500);
-        // Also check periodically in case of timing issues
-        setTimeout(checkAndUpdateRedefenseButtonStates, 2000);
-    });
-
-    // Also add a manual refresh function that can be called
-    window.refreshRedefenseButtons = checkAndUpdateRedefenseButtonStates;
-
-    // Final Defense Scheduling Function
-    function scheduleFinalDefense(groupId, groupName, proposalTitle, defenseType, defenseId = null) {
-        // Open the proposal modal with final defense type
-        openProposalModal(groupId, groupName, proposalTitle, defenseType);
-        if (defenseId) {
-            document.getElementById('parent_defense_id').value = defenseId;
-        }
-    }
-
-    // Unified Defense Scheduling Modal
-    function openDefenseModal(groupId, groupName, proposalTitle, defenseType = 'pre_oral', defenseId = null) {
-        // Create modal HTML
-        const modalHtml = `
-<div id="defenseModal" class="fixed inset-0 z-50 modal-overlay bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-gradient-to-br from-white via-blue-50 to-indigo-100 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar-blue transform transition-all">
-        <!-- Header -->
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 border-0">
-            <h3 class="text-lg font-bold flex items-center" id="modal-title">
-                <div class="bg-white/20 p-2 rounded-lg mr-3">
-                    <i class="fas ${defenseType === 'final' ? 'fa-graduation-cap' : 'fa-calendar-plus'} text-white text-sm"></i>
-                </div>
-                Schedule ${defenseType === 'final' ? 'Final' : 'Pre-Oral'} Defense
-            </h3>
-            <p class="text-blue-100 mt-1 text-sm">${defenseType === 'final'
-                            ? 'Schedule a final defense session for groups who have completed pre-oral defense.'
-                            : 'Schedule a new defense session for the selected group.'}</p>
-        </div>
-
-        <!-- Form -->
-        <form method="POST" class="p-6" onsubmit="return validateDefenseDuration()">
-            <input type="hidden" name="schedule_defense" value="1">
-            <input type="hidden" name="defense_type" value="${defenseType}">
-            <input type="hidden" name="group_id" value="${groupId}">
-            <input type="hidden" id="start_time" name="start_time">
-            <input type="hidden" id="end_time" name="end_time">
-            ${defenseId ? `<input type="hidden" name="parent_defense_id" value="${defenseId}">` : ''}
-
-            <!-- Selected Group -->
-            <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-medium mb-2">Selected Group</label>
-                <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm">${groupName} - ${proposalTitle}</div>
-            </div>
-
-            <!-- Date & Room -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label class="block text-gray-700 text-sm font-medium mb-2">Defense Date</label>
-                    <input type="date" name="defense_date" id="defense_date" required min="<?php echo date('Y-m-d'); ?>"
-                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        onchange="populateTimeSlots()">
-                </div>
-                <div>
-                    <label class="block text-gray-700 text-sm font-medium mb-2">Room</label>
-                    <select name="room_id" id="room_id" required
-                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        onchange="populateTimeSlots()">
-                        <option value="">Select a room</option>
-                        <?php foreach ($rooms as $room): ?>
-                        <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Time Slot & Duration -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                    <label class="block text-gray-700 text-sm font-medium mb-2" for="time_slot">Available Time Slots</label>
-                    <select name="time_slot" id="time_slot" required
-                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        onchange="updateTimeInputs()">
-                        <option value="">Select date and room first</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
-                    <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm" id="duration_display">No slot selected</div>
-                </div>
-            </div>
-
-            <!-- Panel Members -->
-            <div class="mb-6">
-                <label class="block text-gray-700 text-sm font-medium mb-2">Panel Members</label>
-
-                <!-- Panel Tabs -->
-                <div class="panel-tabs mb-3 flex border-b">
-                    <div class="panel-tab active px-4 py-2 cursor-pointer text-sm font-medium border-b-2 border-blue-600"
-                         data-tab="chairperson" onclick="switchPanelTab('chairperson')">Chairperson</div>
-                    <div class="panel-tab px-4 py-2 cursor-pointer text-sm font-medium text-gray-600 hover:text-blue-600"
-                         data-tab="member" onclick="switchPanelTab('member')">Members</div>
-                </div>
-
-                <!-- Chairperson List -->
-                <div class="panel-content active" data-tab="chairperson">
-                    <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-                        <?php
-                        $chairpersons = array_filter($accepted_panel_members, fn($m) => $m['role'] === 'chairperson');
-                        foreach ($chairpersons as $panel_member): ?>
-                        <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border hover:border-blue-200 transition-all">
-                            <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|chair"
-                                   class="mr-3 rounded text-primary focus:ring-primary">
-                            <div class="flex-1">
-                                <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
-                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
-                                <div class="text-xs text-purple-600 mt-1"><?php echo ucfirst($panel_member['program']); ?> Program</div>
-                            </div>
-                        </label>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-                <!-- Members List -->
-                <div class="panel-content hidden" data-tab="member">
-                    <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-                        <?php
-                        $members = array_filter($accepted_panel_members, fn($m) => $m['role'] === 'member');
-                        foreach ($members as $panel_member): ?>
-                        <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border hover:border-blue-200 transition-all">
-                            <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|member"
-                                   class="mr-3 rounded text-primary focus:ring-primary">
-                            <div class="flex-1">
-                                <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
-                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
-                                <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
-                            </div>
-                        </label>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Buttons -->
-            <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
-                <button type="button" onclick="closeDefenseModal()"
-                    class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
-                    <i class="fas fa-times mr-2"></i>Cancel
-                </button>
-                <button type="submit"
-                    class="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
-                    <i class="fas fa-calendar-plus mr-2"></i>Schedule Defense
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-`;
-
-        // Add modal to page
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
-        // Store group ID for time slot generation
-        const modalGroupIdInput = document.querySelector('#defenseModal input[name="group_id"]');
-        if (modalGroupIdInput) {
-            modalGroupIdInput.id = 'modal_group_id';
-        }
-    }
-
-   // Function to populate available time slots
-function populateTimeSlots() {
-    const roomId = document.getElementById('room_id').value;
-    const date = document.getElementById('defense_date').value;
-    const timeSlotSelect = document.getElementById('time_slot');
-
-    if (!roomId || !date) {
-        timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
-        document.getElementById('duration_display').textContent = 'No slot selected';
-        return;
-    }
-
-    timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
-    document.getElementById('duration_display').textContent = 'Loading...';
-
-    fetch('api/get_room_availability.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
-    })
-        .then(response => response.json())
-        .then(data => {
-            const room = data.find(r => r.id == roomId);
-            const slots = generateTimeSlots(room ? room.schedules : []);
-
-            timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
-            slots.forEach(slot => {
-                const option = document.createElement('option');
-                option.value = `${slot.start}|${slot.end}`;
-                option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
-                timeSlotSelect.appendChild(option);
-            });
-
-            if (slots.length === 0) {
-                timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
-                document.getElementById('duration_display').textContent = 'No slots available';
-            } else {
-                document.getElementById('duration_display').textContent = 'Select a time slot';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
-            document.getElementById('duration_display').textContent = 'Error loading slots';
-        });
-}
-
-// Function to generate available time slots
-function generateTimeSlots(schedules) {
-    const slots = [];
-    const workStart = 9 * 60; // 9:00 AM
-    const workEnd = 17 * 60;  // 5:00 PM
-
-    // Get selected group's program
-    const groupId = document.getElementById('modal_group_id') ? document.getElementById('modal_group_id').value : 
-                   document.getElementById('group_id') ? document.getElementById('group_id').value : '';
-    
-    // Determine slot duration based on program - BSIT gets 60 mins, others get 40 mins
-    const program = groupId && window.groupsPrograms ? window.groupsPrograms[groupId] : 'BSIT';
-    const slotDuration = program && program.toUpperCase() === 'BSIT' ? 60 : 40;
-
-    // Sort schedules by start time
-    schedules.sort((a, b) => {
-        const timeA = timeToMinutes(a.start_time);
-        const timeB = timeToMinutes(b.start_time);
-        return timeA - timeB;
-    });
-
-    let currentTime = workStart;
-
-    schedules.forEach(schedule => {
-        const startMinutes = timeToMinutes(schedule.start_time);
-        const endMinutes = timeToMinutes(schedule.end_time);
-
-        // Add slots before this schedule
-        while (currentTime + slotDuration <= startMinutes) {
-            const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
-            if (slotEnd - currentTime >= slotDuration) {
-                slots.push({
-                    start: minutesToTime(currentTime),
-                    end: minutesToTime(slotEnd),
-                    duration: slotEnd - currentTime
-                });
-            }
-            currentTime += slotDuration;
-        }
-        currentTime = Math.max(currentTime, endMinutes);
-    });
-
-    // Add remaining slots after last schedule
-    while (currentTime + slotDuration <= workEnd) {
-        slots.push({
-            start: minutesToTime(currentTime),
-            end: minutesToTime(currentTime + slotDuration),
-            duration: slotDuration
-        });
-        currentTime += slotDuration;
-    }
-
-    return slots;
-}
-
-// Helper functions
-function timeToMinutes(timeStr) {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + minutes;
-}
-
-function minutesToTime(minutes) {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-}
-
-// Function to update hidden time inputs when slot is selected
-function updateTimeInputs() {
-    const timeSlot = document.getElementById('time_slot').value;
-    const durationDisplay = document.getElementById('duration_display');
-
-    if (timeSlot) {
-        const [startTime, endTime] = timeSlot.split('|');
-        document.getElementById('start_time').value = startTime;
-        document.getElementById('end_time').value = endTime;
-
-        const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
-        durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
-    } else {
-        document.getElementById('start_time').value = '';
-        document.getElementById('end_time').value = '';
-        durationDisplay.textContent = 'No slot selected';
-    }
-}
-
-// Redefense time slot functions
-function populateRedefenseTimeSlots() {
-    const roomId = document.getElementById('redefense_room_id').value;
-    const date = document.getElementById('redefense_date').value;
-    const timeSlotSelect = document.getElementById('redefense_time_slot');
-
-    if (!roomId || !date) {
-        timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
-        document.getElementById('redefense_duration_display').textContent = 'No slot selected';
-        return;
-    }
-
-    timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
-    document.getElementById('redefense_duration_display').textContent = 'Loading...';
-
-    fetch('api/get_room_availability.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
-    })
-        .then(response => response.json())
-        .then(data => {
-            const room = data.find(r => r.id == roomId);
-            const slots = generateRedefenseTimeSlots(room ? room.schedules : []);
-
-            timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
-            slots.forEach(slot => {
-                const option = document.createElement('option');
-                option.value = `${slot.start}|${slot.end}`;
-                option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
-                timeSlotSelect.appendChild(option);
-            });
-
-            if (slots.length === 0) {
-                timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
-                document.getElementById('redefense_duration_display').textContent = 'No slots available';
-            } else {
-                document.getElementById('redefense_duration_display').textContent = 'Select a time slot';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
-            document.getElementById('redefense_duration_display').textContent = 'Error loading slots';
-        });
-}
-
-function generateRedefenseTimeSlots(schedules) {
-    const slots = [];
-    const workStart = 9 * 60; // 9:00 AM
-    const workEnd = 17 * 60;  // 5:00 PM
-
-    // Get the group ID from the redefense modal
-    const groupId = document.querySelector('input[name="group_id"]') ? document.querySelector('input[name="group_id"]').value : '';
-    
-    // Determine slot duration based on program - BSIT gets 60 mins, others get 40 mins
-    const program = groupId && window.groupsPrograms ? window.groupsPrograms[groupId] : 'BSIT';
-    const slotDuration = program && program.toUpperCase() === 'BSIT' ? 60 : 40;
-
-    // Sort schedules by start time
-    schedules.sort((a, b) => {
-        const timeA = timeToMinutes(a.start_time);
-        const timeB = timeToMinutes(b.start_time);
-        return timeA - timeB;
-    });
-
-    let currentTime = workStart;
-
-    schedules.forEach(schedule => {
-        const startMinutes = timeToMinutes(schedule.start_time);
-        const endMinutes = timeToMinutes(schedule.end_time);
-
-        // Add slots before this schedule
-        while (currentTime + slotDuration <= startMinutes) {
-            const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
-            if (slotEnd - currentTime >= slotDuration) {
-                slots.push({
-                    start: minutesToTime(currentTime),
-                    end: minutesToTime(slotEnd),
-                    duration: slotEnd - currentTime
-                });
-            }
-            currentTime += slotDuration;
-        }
-        currentTime = Math.max(currentTime, endMinutes);
-    });
-
-    // Add remaining slots after last schedule
-    while (currentTime + slotDuration <= workEnd) {
-        slots.push({
-            start: minutesToTime(currentTime),
-            end: minutesToTime(currentTime + slotDuration),
-            duration: slotDuration
-        });
-        currentTime += slotDuration;
-    }
-
-    return slots;
-}
-
-function updateRedefenseTimeInputs() {
-    const timeSlot = document.getElementById('redefense_time_slot').value;
-    const durationDisplay = document.getElementById('redefense_duration_display');
-
-    if (timeSlot) {
-        const [startTime, endTime] = timeSlot.split('|');
-        document.getElementById('redefense_start_time').value = startTime;
-        document.getElementById('redefense_end_time').value = endTime;
-
-        const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
-        durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
-    } else {
-        document.getElementById('redefense_start_time').value = '';
-        document.getElementById('redefense_end_time').value = '';
-        durationDisplay.textContent = 'No slot selected';
-    }
-}
-
-// Update the redefense modal to include time inputs and proper event handlers
-function openRedefenseModal(groupId, defenseId, groupName, proposalTitle, defenseType = 'pre_oral') {
-    // Create modal HTML for redefense
-    const modalHtml = `
-<div id="redefenseModal" class="fixed inset-0 z-50 modal-overlay bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-gradient-to-br from-white via-green-50 to-emerald-100 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar-green transform transition-all">
-        <!-- Header -->
-        <div class="bg-gradient-to-r from-green-600 to-emerald-700 text-white p-4 border-0">
-            <h3 class="text-lg font-bold flex items-center" id="redefense-modal-title">
-                <div class="bg-white/20 p-2 rounded-lg mr-3">
-                    <i class="fas fa-redo text-white text-sm"></i>
-                </div>
-                Schedule ${defenseType === 'final' ? 'Final' : 'Pre-Oral'} Redefense
-            </h3>
-            <p class="text-green-100 mt-1 text-sm">Schedule a redefense session for groups who need to retake their defense.</p>
-        </div>
-
-        <!-- Form -->
-        <form method="POST" class="p-6" onsubmit="return validateRedefenseDuration()">
-            <input type="hidden" name="schedule_redefense" value="1">
-            <input type="hidden" name="schedule_defense" value="1">
-             <input type="hidden" name="defense_type" value="${defenseType}">
-             <input type="hidden" name="group_id" value="${groupId}">
-             <input type="hidden" name="parent_defense_id" value="${defenseId}">
-             <input type="hidden" id="redefense_start_time" name="start_time">
-             <input type="hidden" id="redefense_end_time" name="end_time">
-
-            <!-- Selected Group -->
-            <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-medium mb-2">Selected Group</label>
-                <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm">${groupName} - ${proposalTitle}</div>
-            </div>
-
-            <!-- Date & Room -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label class="block text-gray-700 text-sm font-medium mb-2">Redefense Date</label>
-                    <input type="date" name="defense_date" id="redefense_date" required min="<?php echo date('Y-m-d'); ?>"
-                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                        onchange="populateRedefenseTimeSlots()">
-                </div>
-                <div>
-                    <label class="block text-gray-700 text-sm font-medium mb-2">Room</label>
-                    <select name="room_id" id="redefense_room_id" required
-                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                        onchange="populateRedefenseTimeSlots()">
-                        <option value="">Select a room</option>
-                        <?php foreach ($rooms as $room): ?>
-                        <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Time Slot & Duration -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                    <label class="block text-gray-700 text-sm font-medium mb-2" for="redefense_time_slot">Available Time Slots</label>
-                    <select name="time_slot" id="redefense_time_slot" required
-                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                        onchange="updateRedefenseTimeInputs()">
-                        <option value="">Select date and room first</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
-                    <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm" id="redefense_duration_display">No slot selected</div>
-                </div>
-            </div>
-
-            <!-- Panel Members -->
-            <div class="mb-6">
-                <label class="block text-gray-700 text-sm font-medium mb-2">Panel Members</label>
-
-                <!-- Panel Tabs -->
-                <div class="panel-tabs mb-3 flex border-b">
-                    <div class="panel-tab active px-4 py-2 cursor-pointer text-sm font-medium border-b-2 border-green-600"
-                         data-tab="redefense-chairperson" onclick="switchRedefensePanelTab('chairperson')">Chairperson</div>
-                    <div class="panel-tab px-4 py-2 cursor-pointer text-sm font-medium text-gray-600 hover:text-green-600"
-                         data-tab="redefense-member" onclick="switchRedefensePanelTab('member')">Members</div>
-                </div>
-
-                <!-- Chairperson List -->
-                <div class="panel-content active" data-tab="redefense-chairperson">
-                    <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-                        <?php
-                        $chairpersons = array_filter($accepted_panel_members, fn($m) => $m['role'] === 'chairperson');
-                        foreach ($chairpersons as $panel_member): ?>
-                        <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border hover:border-green-200 transition-all">
-                            <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|chair"
-                                   class="mr-3 rounded text-green-600 focus:ring-green-500">
-                            <div class="flex-1">
-                                <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
-                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
-                                <div class="text-xs text-purple-600 mt-1"><?php echo ucfirst($panel_member['program']); ?> Program</div>
-                            </div>
-                        </label>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-                <!-- Members List -->
-                <div class="panel-content hidden" data-tab="redefense-member">
-                    <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-                        <?php
-                        $members = array_filter($accepted_panel_members, fn($m) => $m['role'] === 'member');
-                        foreach ($members as $panel_member): ?>
-                        <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border hover:border-green-200 transition-all">
-                            <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|member"
-                                   class="mr-3 rounded text-green-600 focus:ring-green-500">
-                            <div class="flex-1">
-                                <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
-                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
-                                <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
-                            </div>
-                        </label>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Buttons -->
-            <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
-                <button type="button" onclick="closeRedefenseModal()"
-                    class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
-                    <i class="fas fa-times mr-2"></i>Cancel
-                </button>
-                <button type="submit"
-                    class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
-                    <i class="fas fa-redo mr-2"></i>Schedule Redefense
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-`;
-    // Add modal to page
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-}
-
-// Function to close redefense modal
-function closeRedefenseModal() {
-    const modal = document.getElementById('redefenseModal');
-    if (modal) {
-        modal.remove();
-    }
-}
-
-// Function to validate redefense duration
-function validateRedefenseDuration() {
-    const startTime = document.getElementById('redefense_start_time').value;
-    const endTime = document.getElementById('redefense_end_time').value;
-
-    if (!startTime || !endTime) {
-        alert('Please select a time slot.');
-        return false;
-    }
-
-    return true;
-}
-
-    // Function to switch redefense panel tabs
-    function switchRedefensePanelTab(tabName) {
-        // Remove active class from all tabs
-        document.querySelectorAll('[data-tab^="redefense-"]').forEach(tab => {
-            tab.classList.remove('active', 'border-green-600', 'text-green-600');
-            tab.classList.add('text-gray-600', 'border-transparent');
-        });
-
-        // Remove active class from all content
-        document.querySelectorAll('.panel-content[data-tab^="redefense-"]').forEach(content => {
-            content.classList.remove('active');
-            content.classList.add('hidden');
-        });
-
-        // Add active class to selected tab
-        const activeTab = document.querySelector(`[data-tab="redefense-${tabName}"]`);
-        if (activeTab) {
-            activeTab.classList.add('active', 'border-green-600', 'text-green-600');
-            activeTab.classList.remove('text-gray-600', 'border-transparent');
-        }
-
-        // Show selected content
-        const activeContent = document.querySelector(`.panel-content[data-tab="redefense-${tabName}"]`);
-        if (activeContent) {
-            activeContent.classList.add('active');
-            activeContent.classList.remove('hidden');
-        }
-    }
-
-    // Update the scheduleRedefense function to use the new modal
-    function scheduleRedefense(groupId, defenseId, groupName, proposalTitle, defenseType) {
-        openRedefenseModal(groupId, defenseId, groupName, proposalTitle, defenseType);
-    }
-
-    // Make functions globally accessible
-    window.openRedefenseModal = openRedefenseModal;
-    window.closeRedefenseModal = closeRedefenseModal;
-    window.scheduleRedefense = scheduleRedefense;
-    window.populateRedefenseTimeSlots = populateRedefenseTimeSlots;
-    window.updateRedefenseTimeInputs = updateRedefenseTimeInputs;
-    window.switchRedefensePanelTab = switchRedefensePanelTab;
-    window.validateRedefenseDuration = validateRedefenseDuration;
-
-    // Time slot functions
-    window.populateTimeSlots = populateTimeSlots;
-    window.updateTimeInputs = updateTimeInputs;
-    window.generateTimeSlots = generateTimeSlots;
-    window.timeToMinutes = timeToMinutes;
-    window.minutesToTime = minutesToTime;
-
-    // Close defense modal function
-    function closeDefenseModal() {
-        const modal = document.getElementById('defenseModal');
-        if (modal) {
-            modal.remove();
-        }
-    }
-
-    // Function to validate defense duration
-    function validateDefenseDuration() {
-        const startTime = document.getElementById('start_time').value;
-        const endTime = document.getElementById('end_time').value;
-
-        if (!startTime || !endTime) {
-            alert('Please select a time slot.');
-            return false;
-        }
-
-        return true;
-    }
-
-    // Function to switch panel tabs
-    function switchPanelTab(tabName) {
-        // Remove active class from all tabs
-        document.querySelectorAll('.panel-tab').forEach(tab => {
-            tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
-            tab.classList.add('text-gray-600', 'border-transparent');
-        });
-
-        // Remove active class from all content
-        document.querySelectorAll('.panel-content').forEach(content => {
-            content.classList.remove('active');
-            content.classList.add('hidden');
-        });
-
-        // Add active class to selected tab
-        const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
-        if (activeTab) {
-            activeTab.classList.add('active', 'border-blue-600', 'text-blue-600');
-            activeTab.classList.remove('text-gray-600', 'border-transparent');
-        }
-
-        // Show selected content
-        const activeContent = document.querySelector(`.panel-content[data-tab="${tabName}"]`);
-        if (activeContent) {
-            activeContent.classList.add('active');
-            activeContent.classList.remove('hidden');
-        }
-    }
-
-    // Make additional functions globally accessible
-    window.closeDefenseModal = closeDefenseModal;
-    window.switchPanelTab = switchPanelTab;
-    window.validateDefenseDuration = validateDefenseDuration;
-                async function openFinalPaymentViewer(groupId, defenseType, groupName, defenseId) {
-                    try {
-                        const form = new FormData();
-                        form.append('ajax_get_payment_images', '1');
-                        form.append('group_id', String(groupId));
-                        if (defenseType) form.append('defense_type', defenseType);
-                        const resp = await fetch(window.location.href, { method: 'POST', body: form });
-                        const data = await resp.json();
-                        if (!data.ok) { alert(data.error || 'Failed to load'); return; }
-                        const proposal = data.proposal;
-                        window._finalProposalCtx = proposal;
-                        window._finalDefenseCtx = { groupId, defenseType, defenseId, groupName: (groupName || '') };
-                        renderFinalViewer(proposal, defenseType, groupName || '');
-                        toggleFinalViewer(true);
-                    } catch (e) { alert('Network error'); }
-                }
-
-                async function openFailedPaymentViewer(groupId, defenseType, groupName, failedId) {
-                    try {
-                        const form = new FormData();
-                        form.append('ajax_get_payment_images', '1');
-                        form.append('group_id', String(groupId));
-                        if (defenseType) form.append('defense_type', defenseType);
-                        const resp = await fetch(window.location.href, { method: 'POST', body: form });
-                        const data = await resp.json();
-                        if (!data.ok) { alert(data.error || 'Failed to load'); return; }
-                        const proposal = data.proposal;
-                        window._failedProposalCtx = proposal;
-                        window._failedDefenseCtx = { groupId, defenseType, failedId, groupName: (groupName || '') };
-                        renderFailedViewer(proposal, defenseType, groupName || '');
-                        toggleFailedViewer(true);
-                    } catch (e) { alert('Network error'); }
-                }
-
-                function toggleFailedViewer(show) {
-                    const m = document.getElementById('failedPaymentViewer');
-                    if (!m) return;
-                    if (show) { m.classList.remove('hidden'); m.classList.add('flex'); }
-                    else {
-                        m.classList.add('hidden'); m.classList.remove('flex');
-                        try {
-                            const f = window._openScheduleAfterClose;
-                            if (f) {
-                                window._openScheduleAfterClose = null;
-                                if (typeof scheduleRedefense === 'function') {
-                                    scheduleRedefense(f.groupId, f.failedId, f.groupName || '', f.proposalTitle || '', f.baseType);
-                                }
-                            }
-                        } catch (e) { }
-                    }
-                }
-
-                function toggleFinalViewer(show) {
-                    const m = document.getElementById('finalPaymentViewer');
-                    if (!m) return;
-                    if (show) { m.classList.remove('hidden'); m.classList.add('flex'); }
-                    else {
-                        m.classList.add('hidden'); m.classList.remove('flex');
-                        try {
-                            const f = window._openFinalScheduleAfterClose;
-                            if (f) {
-                                window._openFinalScheduleAfterClose = null;
-                                if (typeof scheduleFinalDefenseAndComplete === 'function') {
-                                    scheduleFinalDefenseAndComplete(f.groupId, f.defenseId, f.groupName || '', f.proposalTitle || '');
-                                }
-                            }
-                        } catch (e) { }
-                    }
-                }
-
-                function renderFailedViewer(proposal, defenseType, groupName) {
-                    const mount = document.getElementById('failedViewerImages');
-                    if (!mount) return;
-                    mount.innerHTML = '';
-                    const paymentImages = (proposal.payment_status && proposal.payment_status.payment_images) || {};
-                    const paymentImageReview = (proposal.payment_status && proposal.payment_status.payment_image_review) || {};
-                    // Only show redefense image buckets
-                    if (groupName) {
-                        const ctx = document.createElement('div');
-                        ctx.className = 'mb-4';
-                        ctx.innerHTML = `<div class="text-sm text-gray-600">Group: <span class="font-semibold text-gray-800">${groupName}</span></div>`;
-                        mount.appendChild(ctx);
-                    }
-                    // Determine required redefense type
-                    const requiredType = (defenseType === 'final') ? 'final_redefense' : 'pre_oral_redefense';
-                    const imgs = paymentImages[requiredType] || [];
-                    if (imgs.length === 0) {
-                        const notice = document.createElement('div');
-                        notice.className = 'p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded';
-                        notice.textContent = (requiredType === 'final_redefense') ? 'No Final Redefense receipt uploaded yet.' : 'No Pre-Oral Redefense receipt uploaded yet.';
-                        mount.appendChild(notice);
-                        return;
-                    }
-                    // Indicator showing attachment count
-                    const info = document.createElement('div');
-                    info.className = 'mb-3';
-                    info.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-200"><i class=\"fas fa-paperclip mr-1\"></i>${imgs.length} attachment${imgs.length > 1 ? 's' : ''} found</span>`;
-                    mount.appendChild(info);
-                    const section = document.createElement('div');
-                    section.className = 'mb-6';
-                    const h = document.createElement('h4');
-                    h.className = 'font-semibold text-gray-800 mb-2';
-                    h.textContent = (requiredType === 'final_redefense') ? 'Final Redefense' : 'Pre-Oral Redefense';
-                    section.appendChild(h);
-                    const grid = document.createElement('div');
-                    grid.className = 'grid grid-cols-2 md:grid-cols-3 gap-3';
-                    const rv = paymentImageReview[requiredType] || {};
-                    imgs.forEach((p, idx) => {
-                        const card = document.createElement('div');
-                        card.className = 'border rounded-lg p-2';
-                        const webP = (p || '').replace('../assets/', '/CRAD-system/assets/');
-                        card.innerHTML = `
-                    <div class="relative overflow-hidden rounded">
-                      <img src="${webP}" class="w-full h-28 object-cover" />
-                      <div class="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded">${idx + 1}</div>
-                      <button class="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded" onclick="event.stopPropagation(); window.open('${webP}','_blank')"><i class="fas fa-eye"></i></button>
-                    </div>
-                    <div class="mt-2 flex items-center gap-2">
-                      <button class="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onclick="failedReviewImage('${requiredType}', ${proposal.id}, ${idx}, 'approved')"><i class="fas fa-check mr-1"></i>Approve</button>
-                      <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="failedShowReject('${requiredType}', ${proposal.id}, ${idx})"><i class="fas fa-times mr-1"></i>Reject</button>
-                      <span class="text-xs ml-auto" id="failed-img-status-${requiredType}-${idx}"></span>
-                    </div>
-                    <div id="failed-reject-${requiredType}-${idx}" class="mt-2 hidden">
-                      <div class="flex items-center gap-2">
-                        <input type="text" id="failed-reason-${requiredType}-${idx}" class="flex-1 px-2 py-1 border rounded text-xs" placeholder="Reason" />
-                        <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="failedSubmitReject('${requiredType}', ${proposal.id}, ${idx})">Confirm</button>
-                        <button class="px-2 py-1 text-xs rounded bg-gray-300 text-gray-800 hover:bg-gray-400" onclick="failedCancelReject('${requiredType}', ${idx})">Cancel</button>
-                      </div>
-                    </div>
-                  `;
-                        const st = rv[idx];
-                        if (st) {
-                            const sEl = card.querySelector(`#failed-img-status-${requiredType}-${idx}`);
-                            if (sEl) { sEl.innerHTML = (st.status === 'approved' ? '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded">Approved</span>' : '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded">Rejected</span>') + (st.feedback ? `<span class="text-gray-600 ml-2">${st.feedback}</span>` : ''); }
-                        }
-                        grid.appendChild(card);
-                    });
-                    section.appendChild(grid);
-                    mount.appendChild(section);
-                }
-
-                function renderFinalViewer(proposal, defenseType, groupName) {
-                    const mount = document.getElementById('finalViewerImages');
-                    if (!mount) return;
-                    mount.innerHTML = '';
-                    const paymentImages = (proposal.payment_status && proposal.payment_status.payment_images) || {};
-                    const paymentImageReview = (proposal.payment_status && proposal.payment_status.payment_image_review) || {};
-
-                    if (groupName) {
-                        const ctx = document.createElement('div');
-                        ctx.className = 'mb-4';
-                        ctx.innerHTML = `<div class="text-sm text-gray-600">Group: <span class="font-semibold text-gray-800">${groupName}</span></div>`;
-                        mount.appendChild(ctx);
-                    }
-
-                    // For final defense payment, show final_defense or final_redefense
-                    const requiredType = (defenseType === 'final') ? 'final_defense' : 'final_defense';
-                    const imgs = paymentImages[requiredType] || [];
-
-                    if (imgs.length === 0) {
-                        const notice = document.createElement('div');
-                        notice.className = 'p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded';
-                        notice.textContent = 'No Final Defense receipt uploaded yet.';
-                        mount.appendChild(notice);
-                        return;
-                    }
-
-                    // Indicator showing attachment count
-                    const info = document.createElement('div');
-                    info.className = 'mb-3';
-                    info.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-200"><i class=\"fas fa-paperclip mr-1\"></i>${imgs.length} attachment${imgs.length > 1 ? 's' : ''} found</span>`;
-                    mount.appendChild(info);
-
-                    const section = document.createElement('div');
-                    section.className = 'mb-6';
-                    const h = document.createElement('h4');
-                    h.className = 'font-semibold text-gray-800 mb-2';
-                    h.textContent = 'Final Defense Payment';
-                    section.appendChild(h);
-
-                    const grid = document.createElement('div');
-                    grid.className = 'grid grid-cols-2 md:grid-cols-3 gap-3';
-                    const rv = paymentImageReview[requiredType] || {};
-
-                    imgs.forEach((p, idx) => {
-                        const card = document.createElement('div');
-                        card.className = 'border rounded-lg p-2';
-                        const webP = (p || '').replace('../assets/', '/CRAD-system/assets/');
-                        card.innerHTML = `
-                    <div class="relative overflow-hidden rounded">
-                      <img src="${webP}" class="w-full h-28 object-cover" />
-                      <div class="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded">${idx + 1}</div>
-                      <button class="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded" onclick="event.stopPropagation(); window.open('${webP}','_blank')"><i class="fas fa-eye"></i></button>
-                    </div>
-                    <div class="mt-2 flex items-center gap-2">
-                      <button class="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onclick="finalReviewImage('${requiredType}', ${proposal.id}, ${idx}, 'approved')"><i class="fas fa-check mr-1"></i>Approve</button>
-                      <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="finalShowReject('${requiredType}', ${proposal.id}, ${idx})"><i class="fas fa-times mr-1"></i>Reject</button>
-                      <span class="text-xs ml-auto" id="final-img-status-${requiredType}-${idx}"></span>
-                    </div>
-                    <div id="final-reject-${requiredType}-${idx}" class="mt-2 hidden">
-                      <div class="flex items-center gap-2">
-                        <input type="text" id="final-reason-${requiredType}-${idx}" class="flex-1 px-2 py-1 border rounded text-xs" placeholder="Reason" />
-                        <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="finalSubmitReject('${requiredType}', ${proposal.id}, ${idx})">Confirm</button>
-                        <button class="px-2 py-1 text-xs rounded bg-gray-300 text-gray-800 hover:bg-gray-400" onclick="finalCancelReject('${requiredType}', ${idx})">Cancel</button>
-                      </div>
-                    </div>
-                  `;
-                        const st = rv[idx];
-                        if (st) {
-                            const sEl = card.querySelector(`#final-img-status-${requiredType}-${idx}`);
-                            if (sEl) { sEl.innerHTML = (st.status === 'approved' ? '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded">Approved</span>' : '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded">Rejected</span>') + (st.feedback ? `<span class="text-gray-600 ml-2">${st.feedback}</span>` : ''); }
-                        }
-                        grid.appendChild(card);
-                    });
-                    section.appendChild(grid);
-                    mount.appendChild(section);
-                }
-
-
-
-                async function failedReviewImage(paymentType, proposalId, imageIndex, decision, feedback = '') {
-                    try {
-                        const form = new FormData();
-                        form.append('ajax_update_image_review', '1');
-                        form.append('proposal_id', String(proposalId));
-                        form.append('payment_type', paymentType);
-                        form.append('image_index', String(imageIndex));
-                        form.append('decision', decision);
-                        form.append('feedback', feedback);
-                        const resp = await fetch(window.location.href, { method: 'POST', body: form });
-                        const data = await resp.json();
-                        if (!data.ok) { alert(data.error || 'Failed to update'); return; }
-                        const el = document.getElementById(`failed-img-status-${paymentType}-${imageIndex}`);
-                        if (el) {
-                            const tag = decision === 'approved' ? '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded">Approved</span>' : '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded">Rejected</span>';
-                            const fb = feedback ? `<span class=\"text-gray-600 ml-2\">${feedback}</span>` : '';
-                            el.innerHTML = tag + fb;
-                        }
-                        // Update local proposal cache for in-place state
-                        try {
-                            const ctx = window._failedProposalCtx;
-                            if (ctx && ctx.payment_status) {
-                                const rv = ctx.payment_status.payment_image_review || {};
-                                rv[paymentType] = rv[paymentType] || {};
-                                rv[paymentType][imageIndex] = { status: decision, feedback: feedback };
-                                ctx.payment_status.payment_image_review = rv;
-                            }
-                        } catch (e) { }
-                        // Enable scheduling after approval; defer opening until admin closes the receipts modal
-                        try {
-                            const ctx = window._failedDefenseCtx;
-                            if (ctx) {
-                                const requiredType = (ctx.defenseType === 'final') ? 'final_redefense' : 'pre_oral_redefense';
-                                if (decision === 'approved' && paymentType === requiredType) {
-                                    const btn = document.getElementById(`schedule-btn-${ctx.groupId}-${ctx.failedId}`);
-                                    if (btn) {
-                                        btn.disabled = false;
-                                        btn.classList.remove('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
-                                        btn.classList.add('bg-gradient-to-r', 'from-green-400', 'to-green-600', 'hover:from-green-500', 'hover:to-green-700', 'text-white', 'transition-all', 'duration-300', 'hover:shadow-lg', 'transform', 'hover:scale-105');
-                                        btn.title = 'Schedule Redefense';
-                                        // Add onclick functionality if it doesn't exist
-                                        const proposalTitle = (window._failedProposalCtx && window._failedProposalCtx.title) || '';
-                                        btn.onclick = function () {
-                                            scheduleRedefense(ctx.groupId, ctx.failedId, ctx.groupName || '', proposalTitle, ctx.defenseType);
-                                        };
-                                        // Update button text to remove lock icon
-                                        btn.innerHTML = '<i class="fas fa-redo mr-1"></i>Schedule Redefense';
-
-                                        // Also update any status indicators
-                                        const statusIndicators = document.querySelectorAll(`[data-group="${ctx.groupId}"][data-defense="${ctx.failedId}"] .status-indicator`);
-                                        statusIndicators.forEach(indicator => {
-                                            if (indicator.textContent.includes('Receipt Pending')) {
-                                                indicator.className = 'ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center';
-                                                indicator.innerHTML = '<i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense';
-                                            }
-                                        });
-                                    }
-                                    // Flag to open schedule modal after the admin closes this modal
-                                    const proposalCtx = window._failedProposalCtx || {};
-                                    const proposalTitle = proposalCtx.title || '';
-                                    window._openScheduleAfterClose = { groupId: ctx.groupId, failedId: ctx.failedId, groupName: ctx.groupName || '', proposalTitle: proposalTitle, baseType: ctx.defenseType };
-                                }
-                            }
-                        } catch (e) { }
-                    } catch (e) { alert('Network error'); }
-                }
-                function failedShowReject(paymentType, proposalId, imageIndex) {
-                    const pane = document.getElementById(`failed-reject-${paymentType}-${imageIndex}`);
-                    if (pane) pane.classList.remove('hidden');
-                }
-                function failedCancelReject(paymentType, imageIndex) {
-                    const pane = document.getElementById(`failed-reject-${paymentType}-${imageIndex}`);
-                    if (pane) pane.classList.add('hidden');
-                }
-                function failedSubmitReject(paymentType, proposalId, imageIndex) {
-                    const input = document.getElementById(`failed-reason-${paymentType}-${imageIndex}`);
-                    const reason = input ? input.value : '';
-                    failedReviewImage(paymentType, proposalId, imageIndex, 'rejected', reason || '');
-                    failedCancelReject(paymentType, imageIndex);
-                }
-
-                // Function to open the existing Schedule Defense Modal
-                function openScheduleModal(groupId, groupName, proposalTitle, defenseType = 'pre_oral') {
-                    // Populate the form fields
-                    document.getElementById('group_id').value = groupId;
-                    document.getElementById('defense_type').value = defenseType;
-                    document.getElementById('selected_group_display').textContent = groupName + ' - ' + proposalTitle;
-
-                    // Update modal title and description
-                    const modalTitle = document.getElementById('modal-title');
-                    const modalDescription = document.getElementById('modal-description');
-
-                    if (defenseType === 'final') {
-                        modalTitle.innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Schedule Final Defense';
-                        modalDescription.textContent = 'Schedule a final defense session for groups who have completed pre-oral defense.';
-                    } else {
-                        modalTitle.innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-calendar-plus text-white text-sm"></i></div>Schedule Pre-Oral Defense';
-                        modalDescription.textContent = 'Schedule a new defense session for the selected group.';
-                    }
-
-                    // Show the modal
-                    const modal = document.getElementById('proposalModal');
-                    modal.classList.remove('opacity-0', 'pointer-events-none');
-                    modal.classList.add('opacity-100');
-                }
-
-                // Function to close the Schedule Defense Modal
-                function closeScheduleModal() {
-                    const modal = document.getElementById('proposalModal');
-                    modal.classList.add('opacity-0', 'pointer-events-none');
-                    modal.classList.remove('opacity-100');
-                }
-
-                // Open proposal modal for defense scheduling
-                function openProposalModal(groupId, groupName, proposalTitle, defenseType = 'pre_oral') {
-                    // Set group information in the modal
-                    document.getElementById('group_id').value = groupId;
-                    document.getElementById('defense_type').value = defenseType;
-                    document.getElementById('selected_group_display').textContent = groupName + ' - ' + proposalTitle;
-
-                    // Update modal title based on defense type
-                    const modalTitle = document.querySelector('#proposalModal #modal-title');
-                    const modalDescription = document.querySelector('#proposalModal #modal-description');
-
-                    if (defenseType === 'final') {
-                        modalTitle.innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Schedule Final Defense';
-                        modalDescription.textContent = 'Schedule a final defense session for groups who have completed pre-oral defense.';
-                    } else {
-                        modalTitle.innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-calendar-plus text-white text-sm"></i></div>Schedule Pre-Oral Defense';
-                        modalDescription.textContent = 'Schedule a new defense session for the selected group.';
-                    }
-
-                    // Open the modal
-                    openModal('proposalModal');
-                }
-
-                // Make function globally accessible
-                window.openProposalModal = openProposalModal;
-
-                // Separate functions for pre-oral and final defense
-                function schedulePreOralDefense(groupId, groupName, proposalTitle) {
-                    openProposalModal(groupId, groupName, proposalTitle, 'pre_oral');
-                }
-
-                function scheduleFinalDefense(groupId, groupName, proposalTitle) {
-                    openProposalModal(groupId, groupName, proposalTitle, 'final');
-                }
-
-                // Make functions globally accessible
-                window.schedulePreOralDefense = schedulePreOralDefense;
-                window.scheduleFinalDefense = scheduleFinalDefense;
-
-
-
-                function validateDefenseDuration() {
-                    const startTime = document.getElementById('start_time').value;
-                    const endTime = document.getElementById('end_time').value;
-
-                    if (!startTime || !endTime) {
-                        alert('Please select a time slot.');
-                        return false;
-                    }
-
-                    return true;
-                }
-
-                function switchPanelTab(tabName) {
-                    // Remove active class from all tabs
-                    document.querySelectorAll('.panel-tab').forEach(tab => {
-                        tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
-                        tab.classList.add('text-gray-600', 'border-transparent');
-                    });
-
-                    // Remove active class from all content
-                    document.querySelectorAll('.panel-content').forEach(content => {
-                        content.classList.remove('active');
-                        content.classList.add('hidden');
-                    });
-
-                    // Add active class to selected tab
-                    const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
-                    if (activeTab) {
-                        activeTab.classList.add('active', 'border-blue-600', 'text-blue-600');
-                        activeTab.classList.remove('text-gray-600', 'border-transparent');
-                    }
-
-                    // Show selected content
-                    const activeContent = document.querySelector(`.panel-content[data-tab="${tabName}"]`);
-                    if (activeContent) {
-                        activeContent.classList.add('active');
-                        activeContent.classList.remove('hidden');
-                    }
-                }
-
-            </script>
+            
             <!-- Completed Defenses Cards -->
             <div id="completedCards" class="stats-card rounded-2xl p-8 animate-scale-in hidden">
                 <div class="flex items-center mb-8">
@@ -4348,7 +3215,7 @@ function validateRedefenseDuration() {
         </div>
     </div>
 
-    <!-- Edit Defense Modal -->
+   <!-- Edit Defense Modal -->
     <div id="editDefenseModal"
         class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
         <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
@@ -4356,7 +3223,7 @@ function validateRedefenseDuration() {
                 <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
             <div
-                class="inline-block bg-gradient-to-br from-white via-indigo-50 to-purple-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-4xl w-full modal-content border-0 max-h-[90vh] overflow-y-auto custom-scrollbar-indigo">
+                class="inline-block bg-gradient-to-br from-white via-indigo-50 to-purple-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-2xl w-full modal-content border-0 max-h-[90vh] overflow-y-auto custom-scrollbar-indigo">
                 <div class="bg-gradient-to-r from-indigo-600 to-purple-700 text-white p-4 border-0">
                     <h3 class="text-lg font-bold flex items-center">
                         <div class="bg-white/20 p-2 rounded-lg mr-3">
@@ -4366,225 +3233,249 @@ function validateRedefenseDuration() {
                     </h3>
                     <p class="text-indigo-100 mt-1 text-sm">Update defense schedule information below.</p>
                 </div>
-                <div class="flex-1 overflow-y-auto">
-                    <form method="POST" action="" class="p-6" id="editForm">
-                        <input type="hidden" name="defense_id" id="edit_defense_id">
 
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-medium mb-2">Group</label>
-                            <p id="edit_group_name" class="px-3 py-2 bg-gray-100 rounded-lg"></p>
+                <form method="POST" action="" class="p-6" id="editForm">
+                    <input type="hidden" name="defense_id" id="edit_defense_id">
+
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Group</label>
+                        <p id="edit_group_name" class="px-3 py-2 bg-gray-100 rounded-lg"></p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2"
+                                for="edit_defense_date">Defense Date</label>
+                            <input type="date" name="defense_date" id="edit_defense_date" required
+                                min="<?php echo date('Y-m-d'); ?>"
+                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                onchange="populateEditTimeSlots()">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2"
+                                for="edit_room_id">Room</label>
+                            <select name="room_id" id="edit_room_id" required
+                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                onchange="populateEditTimeSlots()">
+                                <option value="">Select a room</option>
+                                <?php foreach ($rooms as $room): ?>
+                                    <option value="<?php echo $room['id']; ?>">
+                                        <?php echo $room['building'] . ' - ' . $room['room_name']; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2"
+                                for="edit_time_slot">Available Time Slots</label>
+                            <select name="time_slot" id="edit_time_slot" required
+                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                onchange="updateEditTimeInputs()">
+                                <option value="">Select date and room first</option>
+                            </select>
+                            <input type="hidden" name="start_time" id="edit_start_time">
+                            <input type="hidden" name="end_time" id="edit_end_time">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
+                            <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm" id="edit_duration_display">No slot selected
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Panel Members</label>
+
+                        <!-- Panel Tabs -->
+                        <div class="panel-tabs mb-3">
+                            <div class="panel-tab active" data-tab="edit_chairperson"
+                                onclick="switchEditPanelTab('edit_chairperson')">Chairperson</div>
+                            <div class="panel-tab" data-tab="edit_member"
+                                onclick="switchEditPanelTab('edit_member')">Members</div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label class="block text-gray-700 text-sm font-medium mb-2"
-                                    for="edit_defense_date">Defense Date</label>
-                                <input type="date" name="defense_date" id="edit_defense_date" required
-                                    min="<?php echo date('Y-m-d'); ?>"
-                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                                    onchange="populateEditTimeSlots()">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 text-sm font-medium mb-2"
-                                    for="edit_room_id">Room</label>
-                                <select name="room_id" id="edit_room_id" required
-                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                                    onchange="populateEditTimeSlots()">
-                                    <option value="">Select a room</option>
-                                    <?php foreach ($rooms as $room): ?>
-                                        <option value="<?php echo $room['id']; ?>">
-                                            <?php echo $room['building'] . ' - ' . $room['room_name']; ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            <div>
-                                <label class="block text-gray-700 text-sm font-medium mb-2"
-                                    for="edit_time_slot">Available Time Slots</label>
-                                <select name="time_slot" id="edit_time_slot" required
-                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                                    onchange="updateEditTimeInputs()">
-                                    <option value="">Select date and room first</option>
-                                </select>
-                                <input type="hidden" name="start_time" id="edit_start_time">
-                                <input type="hidden" name="end_time" id="edit_end_time">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
-                                <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm" id="edit_duration_display">No slot
-                                    selected</div>
-                            </div>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-gray-700 text-sm font-medium mb-2">Panel Members</label>
-
-                            <!-- Panel Tabs -->
-                            <div class="panel-tabs mb-3">
-                                <div class="panel-tab active" data-tab="edit_chairperson"
-                                    onclick="switchEditPanelTab('edit_chairperson')">Chairperson</div>
-                                <div class="panel-tab" data-tab="edit_member"
-                                    onclick="switchEditPanelTab('edit_member')">Members</div>
-                            </div>
-
-                            <!-- Edit Chairperson Panel Content -->
-                            <div class="panel-content active" data-tab="edit_chairperson">
-                                <div class="grid grid-cols-1 gap-2 max-h-64 overflow-y-scroll p-2 border rounded-lg bg-gray-50"
-                                    id="edit-chairperson-list">
-                                    <?php
-                                    $chairpersons = array_filter($accepted_panel_members, function ($member) {
-                                        return $member['role'] === 'chairperson';
-                                    });
-                                    foreach ($chairpersons as $panel_member): ?>
-                                        <label
-                                            class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all edit-panel-member-item"
-                                            data-program="<?php echo strtolower($panel_member['program']); ?>">
-                                            <input type="checkbox" name="panel_members[]"
-                                                value="<?php echo $panel_member['id']; ?>|chair"
-                                                class="edit-panel-member mr-3 rounded text-primary focus:ring-primary"
-                                                data-id="<?php echo $panel_member['id']; ?>">
-                                            <div class="flex-1">
-                                                <div class="font-medium text-gray-900">
-                                                    <?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?>
-                                                </div>
-                                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?>
-                                                </div>
-                                                <div class="text-xs text-purple-600 mt-1">
-                                                    <?php echo ucfirst($panel_member['program']); ?> Program
-                                                </div>
+                        <!-- Edit Chairperson Panel Content -->
+                        <div class="panel-content active" data-tab="edit_chairperson">
+                            <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50"
+                                id="edit-chairperson-list">
+                                <?php
+                                $chairpersons = array_filter($accepted_panel_members, function ($member) {
+                                    return $member['role'] === 'chairperson';
+                                });
+                                foreach ($chairpersons as $panel_member): ?>
+                                    <label
+                                        class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all edit-panel-member-item"
+                                        data-program="<?php echo strtolower($panel_member['program']); ?>">
+                                        <input type="checkbox" name="panel_members[]"
+                                            value="<?php echo $panel_member['id']; ?>|chair"
+                                            class="edit-panel-member mr-3 rounded text-primary focus:ring-primary"
+                                            data-id="<?php echo $panel_member['id']; ?>">
+                                        <div class="flex-1">
+                                            <div class="font-medium text-gray-900">
+                                                <?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?>
                                             </div>
-                                        </label>
-                                    <?php endforeach; ?>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-2">Select chairperson for this defense schedule.</p>
-                                <div id="edit-no-chairpersons-message"
-                                    class="text-center p-6 border rounded-lg bg-gray-50 hidden">
-                                    <i class="fas fa-user-tie text-gray-300 text-3xl mb-3"></i>
-                                    <p class="text-gray-500 text-sm mb-2">No chairpersons found for this program.</p>
-                                </div>
-                            </div>
-
-                            <!-- Edit Members Panel Content -->
-                            <div class="panel-content" data-tab="edit_member">
-                                <div class="grid grid-cols-1 gap-2 max-h-64 overflow-y-scroll p-2 border rounded-lg bg-gray-50"
-                                    id="edit-members-list">
-                                    <?php
-                                    $members = array_filter($accepted_panel_members, function ($member) {
-                                        return $member['role'] === 'member';
-                                    });
-                                    foreach ($members as $panel_member): ?>
-                                        <label
-                                            class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all edit-panel-member-item"
-                                            data-program="<?php echo strtolower($panel_member['program']); ?>">
-                                            <input type="checkbox" name="panel_members[]"
-                                                value="<?php echo $panel_member['id']; ?>|member"
-                                                class="edit-panel-member mr-3 rounded text-primary focus:ring-primary"
-                                                data-id="<?php echo $panel_member['id']; ?>">
-                                            <div class="flex-1">
-                                                <div class="font-medium text-gray-900">
-                                                    <?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?>
-                                                </div>
-                                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?>
-                                                </div>
-                                                <div class="text-xs text-blue-600 mt-1">
-                                                    <?php echo $panel_member['specialization']; ?>
-                                                </div>
+                                            <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                            <div class="text-xs text-purple-600 mt-1">
+                                                <?php echo ucfirst($panel_member['program']); ?> Program
                                             </div>
-                                        </label>
-                                    <?php endforeach; ?>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-2">Select panel members for this defense schedule.
-                                </p>
-                                <div id="edit-no-members-message"
-                                    class="text-center p-6 border rounded-lg bg-gray-50 hidden">
-                                    <i class="fas fa-users text-gray-300 text-3xl mb-3"></i>
-                                    <p class="text-gray-500 text-sm mb-2">No panel members found for this program.</p>
-                                </div>
+                                        </div>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">Select chairperson for this defense schedule.</p>
+                            <div id="edit-no-chairpersons-message"
+                                class="text-center p-6 border rounded-lg bg-gray-50 hidden">
+                                <i class="fas fa-user-tie text-gray-300 text-3xl mb-3"></i>
+                                <p class="text-gray-500 text-sm mb-2">No chairpersons found for this program.</p>
                             </div>
                         </div>
 
-                        <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
-                            <button type="button" onclick="toggleEditModal()"
-                                class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
-                                <i class="fas fa-times mr-2"></i>Cancel
-                            </button>
-                            <button type="submit" name="edit_defense"
-                                class="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
-                                <i class="fas fa-save mr-2"></i>Update Schedule
-                            </button>
+                        <!-- Edit Members Panel Content -->
+                        <div class="panel-content" data-tab="edit_member">
+                            <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50"
+                                id="edit-members-list">
+                                <?php
+                                $members = array_filter($accepted_panel_members, function ($member) {
+                                    return $member['role'] === 'member';
+                                });
+                                foreach ($members as $panel_member): ?>
+                                    <label
+                                        class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-all edit-panel-member-item"
+                                        data-program="<?php echo strtolower($panel_member['program']); ?>">
+                                        <input type="checkbox" name="panel_members[]"
+                                            value="<?php echo $panel_member['id']; ?>|member"
+                                            class="edit-panel-member mr-3 rounded text-primary focus:ring-primary"
+                                            data-id="<?php echo $panel_member['id']; ?>">
+                                        <div class="flex-1">
+                                            <div class="font-medium text-gray-900">
+                                                <?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?>
+                                            </div>
+                                            <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                            <div class="text-xs text-blue-600 mt-1">
+                                                <?php echo $panel_member['specialization']; ?>
+                                            </div>
+                                        </div>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">Select panel members for this defense schedule.</p>
+                            <div id="edit-no-members-message" class="text-center p-6 border rounded-lg bg-gray-50 hidden">
+                                <i class="fas fa-users text-gray-300 text-3xl mb-3"></i>
+                                <p class="text-gray-500 text-sm mb-2">No panel members found for this program.</p>
+                            </div>
                         </div>
-                    </form>
-                </div>
+                    </div>
+
+                    <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
+                        <button type="button" onclick="toggleEditModal()"
+                            class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                        <button type="submit" name="edit_defense"
+                            class="bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
+                            <i class="fas fa-save mr-2"></i>Update Schedule
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
+    </div>
+
 
         <!-- Defense Details Modal -->
         <div id="detailsModal"
             class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
-            <div class="flex items-center justify-center min-h-screen py-4 px-4 text-center">
-                <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-                </div>
+            <div class="flex items-center justify-center min-h-screen px-4 py-6 text-center">
+                <!-- Background Overlay -->
+                <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" aria-hidden="true"></div>
+
+                <!-- Modal Content -->
                 <div
-                    class="inline-block bg-gradient-to-br from-white via-green-50 to-emerald-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-2xl w-full modal-content border-0 max-h-[90vh] overflow-y-auto custom-scrollbar-green">
-                    <div class="bg-gradient-to-r from-green-600 to-emerald-700 text-white p-4 border-0">
-                        <h3 class="text-lg font-bold flex items-center">
+                    class="inline-block bg-gradient-to-br from-white via-gray-50 to-gray-100 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all max-w-2xl w-full modal-content border border-gray-200 max-h-[90vh] overflow-y-auto custom-scrollbar-green">
+                    
+                    <!-- Header -->
+                    <div class="bg-gradient-to-r from-indigo-600 to-blue-700 text-white p-5 border-0 flex items-center justify-between">
+                        <div class="flex items-center">
                             <div class="bg-white/20 p-2 rounded-lg mr-3">
                                 <i class="fas fa-info-circle text-white text-sm"></i>
                             </div>
-                            Defense Details
-                        </h3>
-                        <p class="text-green-100 mt-1 text-sm">View detailed information about this defense schedule.
-                        </p>
+                            <div>
+                                <h3 class="text-lg font-bold leading-tight">Defense Details</h3>
+                                <p class="text-indigo-100 text-sm mt-0.5">Comprehensive information about this defense schedule.</p>
+                            </div>
+                        </div>
+                        <button onclick="toggleDetailsModal()" 
+                            class="text-white hover:text-gray-200 transition-colors duration-200">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
                     </div>
+
+                    <!-- Body -->
                     <div class="p-6">
-                        <h3 id="detailTitle" class="text-xl font-semibold text-gray-900 mb-2"></h3>
-                        <p id="detailGroup" class="text-gray-600 mb-6"></p>
+                        <h3 id="detailTitle" class="text-2xl font-semibold text-gray-900 mb-1"></h3>
+                        <p id="detailGroup" class="text-gray-600 mb-6 italic"></p>
 
-                        <div class="details-grid mb-6">
-                            <i class="fas fa-calendar detail-icon"></i>
-                            <div>
-                                <p class="text-sm text-gray-500">Date</p>
-                                <p id="detailDate" class="font-medium"></p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <!-- Date -->
+                            <div class="flex items-start space-x-3">
+                                <i class="fas fa-calendar text-indigo-600 mt-1"></i>
+                                <div>
+                                    <p class="text-sm text-gray-500">Date</p>
+                                    <p id="detailDate" class="font-medium text-gray-800"></p>
+                                </div>
                             </div>
 
-                            <i class="fas fa-clock detail-icon"></i>
-                            <div>
-                                <p class="text-sm text-gray-500">Time</p>
-                                <p id="detailTime" class="font-medium"></p>
+                            <!-- Time -->
+                            <div class="flex items-start space-x-3">
+                                <i class="fas fa-clock text-indigo-600 mt-1"></i>
+                                <div>
+                                    <p class="text-sm text-gray-500">Time</p>
+                                    <p id="detailTime" class="font-medium text-gray-800"></p>
+                                </div>
                             </div>
 
-                            <i class="fas fa-map-marker-alt detail-icon"></i>
-                            <div>
-                                <p class="text-sm text-gray-500">Location</p>
-                                <p id="detailLocation" class="font-medium"></p>
+                            <!-- Location -->
+                            <div class="flex items-start space-x-3">
+                                <i class="fas fa-map-marker-alt text-indigo-600 mt-1"></i>
+                                <div>
+                                    <p class="text-sm text-gray-500">Location</p>
+                                    <p id="detailLocation" class="font-medium text-gray-800"></p>
+                                </div>
                             </div>
 
-                            <i class="fas fa-users detail-icon"></i>
-                            <div>
-                                <p class="text-sm text-gray-500">Panel Members</p>
-                                <p id="detailPanel" class="font-medium"></p>
+                            <!-- Panel Members -->
+                            <div class="flex items-start space-x-3">
+                                <i class="fas fa-users text-indigo-600 mt-1"></i>
+                                <div>
+                                    <p class="text-sm text-gray-500">Panel Members</p>
+                                    <p id="detailPanel" class="font-medium text-gray-800"></p>
+                                </div>
                             </div>
 
-                            <i class="fas fa-info-circle detail-icon"></i>
-                            <div>
-                                <p class="text-sm text-gray-500">Status</p>
-                                <p id="detailStatus" class="font-medium"></p>
+                            <!-- Status -->
+                            <div class="flex items-start space-x-3 sm:col-span-2">
+                                <i class="fas fa-info-circle text-indigo-600 mt-1"></i>
+                                <div>
+                                    <p class="text-sm text-gray-500">Status</p>
+                                    <p id="detailStatus" class="font-medium text-gray-800"></p>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
-                            <button onclick="toggleDetailsModal()"
-                                class="bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
-                                <i class="fas fa-times mr-2"></i>Close
-                            </button>
-                        </div>
+                    <!-- Footer -->
+                    <div class="bg-gray-50 px-6 py-4 flex justify-end border-t border-gray-200">
+                        <button onclick="toggleDetailsModal()"
+                            class="bg-gradient-to-r from-indigo-600 to-blue-700 hover:from-indigo-700 hover:to-blue-800 text-white font-semibold py-2 px-5 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
+                            <i class="fas fa-times mr-2"></i>Close
+                        </button>
                     </div>
                 </div>
             </div>
+        </div>
 
             <!-- Delete Confirmation Modal -->
             <div id="deleteConfirmModal"
@@ -4964,32 +3855,52 @@ function validateRedefenseDuration() {
                     const defenseCard = document.querySelector(`.defense-card[data-defense-id="${defenseId}"]`);
                     if (defenseCard) {
                         // Extract details from the card
-                        const title = defenseCard.querySelector('h3').textContent;
-                        const group = defenseCard.querySelector('.text-gray-500').textContent;
-                        const date = defenseCard.querySelector('.fa-calendar').parentNode.textContent.trim();
-                        const time = defenseCard.querySelector('.fa-clock').parentNode.textContent.trim();
-                        const location = defenseCard.querySelector('.fa-map-marker-alt').parentNode.textContent.trim();
-                        const panel = defenseCard.querySelector('.fa-users').parentNode.textContent.trim();
-                        const status = defenseCard.querySelector('.px-3').textContent.trim();
+                        const groupName = defenseCard.querySelector('h3').textContent.trim();
+                        const proposalTitle = defenseCard.querySelector('.text-blue-600').textContent.trim();
+                        const defenseType = defenseCard.querySelector('.text-gray-500').textContent.trim();
+                        
+                        const detailsSection = defenseCard.querySelector('.bg-white\\/60');
+                        const date = detailsSection.querySelector('.fa-calendar').parentNode.querySelector('span').textContent.trim();
+                        const time = detailsSection.querySelector('.fa-clock').parentNode.querySelector('span').textContent.trim();
+                        const location = detailsSection.querySelector('.fa-map-marker-alt').parentNode.querySelector('span').textContent.trim();
+                        
+                        const panelSection = defenseCard.querySelector('.bg-white\\/60:nth-child(2)');
+                        const panel = panelSection.querySelector('.text-gray-700').textContent.trim();
+                        
+                        const statusEl = defenseCard.querySelector('.rounded-full');
+                        const status = statusEl ? statusEl.textContent.trim() : 'Scheduled';
 
                         // Populate the details modal
-                        document.getElementById('detailTitle').textContent = title;
-                        document.getElementById('detailGroup').textContent = group;
+                        document.getElementById('detailTitle').textContent = groupName;
+                        document.getElementById('detailGroup').innerHTML = `
+                            <div class="text-blue-600 font-medium mb-1">${proposalTitle}</div>
+                            <div class="text-gray-500 text-sm">${defenseType}</div>
+                        `;
                         document.getElementById('detailDate').textContent = date;
                         document.getElementById('detailTime').textContent = time;
                         document.getElementById('detailLocation').textContent = location;
                         document.getElementById('detailPanel').textContent = panel;
-                        document.getElementById('detailStatus').textContent = status;
 
-                        // Set status color
+                        // Set status with proper styling
                         const statusElement = document.getElementById('detailStatus');
-                        statusElement.className = 'px-3 py-1 text-xs font-medium rounded-full';
-                        if (status === 'Completed') {
-                            statusElement.classList.add('bg-green-100', 'text-green-800');
-                        } else if (status === 'Cancelled') {
-                            statusElement.classList.add('bg-red-100', 'text-red-800');
+                        statusElement.textContent = status;
+                        
+                        // Reset status classes
+                        statusElement.className = 'px-3 py-1 rounded-full text-xs font-bold shadow-sm flex items-center';
+                        
+                        // Add appropriate status styling
+                        if (status.toLowerCase().includes('completed')) {
+                            statusElement.classList.add('bg-gradient-to-r', 'from-green-400', 'to-green-600', 'text-white');
+                            statusElement.innerHTML = '<i class="fas fa-check-circle mr-1"></i>' + status;
+                        } else if (status.toLowerCase().includes('cancelled')) {
+                            statusElement.classList.add('bg-gradient-to-r', 'from-red-400', 'to-red-600', 'text-white');
+                            statusElement.innerHTML = '<i class="fas fa-times-circle mr-1"></i>' + status;
+                        } else if (status.toLowerCase().includes('failed')) {
+                            statusElement.classList.add('bg-gradient-to-r', 'from-orange-400', 'to-orange-600', 'text-white');
+                            statusElement.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>' + status;
                         } else {
-                            statusElement.classList.add('bg-blue-100', 'text-blue-800');
+                            statusElement.classList.add('bg-gradient-to-r', 'from-blue-400', 'to-blue-600', 'text-white');
+                            statusElement.innerHTML = '<i class="fas fa-clock mr-1"></i>' + status;
                         }
 
                         toggleDetailsModal();
@@ -5096,7 +4007,7 @@ function validateRedefenseDuration() {
                 }
 
               // Function to validate defense duration (minimum 30 minutes)
-function validateDefenseDuration() {
+    function validateDefenseDuration() {
     const startTime = document.getElementById('start_time').value;
     const endTime = document.getElementById('end_time').value;
     const groupId = document.getElementById('group_id').value;
@@ -5145,26 +4056,47 @@ function populateTimeSlots() {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
     })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
-            const room = data.find(r => r.id == roomId);
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            const room = data.find(r => r.id == roomId || String(r.id) === String(roomId));
             const slots = generateTimeSlots(room ? room.schedules : []);
 
             timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
-            slots.forEach(slot => {
-                const option = document.createElement('option');
-                option.value = `${slot.start}|${slot.end}`;
-                option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
-                timeSlotSelect.appendChild(option);
-            });
+            if (slots.length > 0) {
+                // Get selected group's program
+                const groupId = document.getElementById('group_id').value;
+                const program = groupsPrograms[groupId] || '';
+                const requiredDuration = program.toUpperCase() === 'BSIT' ? 60 : 40;
 
-            if (slots.length === 0) {
+                // Filter slots based on program duration
+                const filteredSlots = slots.filter(slot => slot.duration === requiredDuration);
+
+                filteredSlots.forEach(slot => {
+                    const option = document.createElement('option');
+                    option.value = `${slot.start}|${slot.end}`;
+                    option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                    timeSlotSelect.appendChild(option);
+                });
+
+                if (filteredSlots.length === 0) {
+                    timeSlotSelect.innerHTML = `<option value="">No ${requiredDuration}-minute slots available</option>`;
+                }
+            } else {
                 timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+            console.error('Fetch error:', error);
+            timeSlotSelect.innerHTML = '<option value="">Please try again later</option>';
         });
 }
 
@@ -5241,10 +4173,12 @@ function populateEditTimeSlots() {
 
     if (!roomId || !date) {
         timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+        document.getElementById('edit_duration_display').textContent = 'No slot selected';
         return;
     }
 
     timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+    document.getElementById('edit_duration_display').textContent = 'Loading...';
 
     fetch('api/get_room_availability.php', {
         method: 'POST',
@@ -5254,7 +4188,7 @@ function populateEditTimeSlots() {
         .then(response => response.json())
         .then(data => {
             const room = data.find(r => r.id == roomId);
-            const slots = generateEditTimeSlots(room ? room.schedules : []);
+            const slots = generateTimeSlots(room ? room.schedules : []);
 
             timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
             slots.forEach(slot => {
@@ -5266,11 +4200,15 @@ function populateEditTimeSlots() {
 
             if (slots.length === 0) {
                 timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                document.getElementById('edit_duration_display').textContent = 'No slots available';
+            } else {
+                document.getElementById('edit_duration_display').textContent = 'Select a time slot';
             }
         })
         .catch(error => {
             console.error('Error:', error);
             timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+            document.getElementById('edit_duration_display').textContent = 'Error loading slots';
         });
 }
 
@@ -5586,8 +4524,6 @@ function generateRoomAvailabilitySlots(schedules) {
     return uniqueSlots;
 }
 
-            </script>
-            <script>
                 /* ========= MODAL FUNCTIONS ========= */
                 function openModal(modalId) {
                     const modal = document.getElementById(modalId);
@@ -6843,6 +5779,1160 @@ function generateRoomAvailabilitySlots(schedules) {
                         checkForOverdueDefenses();
                     }
                 });
+
+    // Function to check and update redefense button states
+    async function checkAndUpdateRedefenseButtonStates() {
+        const buttons = document.querySelectorAll('[id^="schedule-btn-"][disabled]');
+        console.log('Checking redefense buttons:', buttons.length, 'disabled buttons found');
+        for (const btn of buttons) {
+            const btnId = btn.id;
+            const matches = btnId.match(/schedule-btn-(\d+)-(\d+)/);
+            if (matches) {
+                const groupId = matches[1];
+                const defenseId = matches[2];
+
+                // Check if payment is approved for this group
+                try {
+                    const formData = new FormData();
+                    formData.append('check_redefense_payment', '1');
+                    formData.append('group_id', groupId);
+                    formData.append('defense_id', defenseId);
+
+                    const response = await fetch(window.location.href, { method: 'POST', body: formData });
+                    const data = await response.json();
+
+                    console.log('Response for group', groupId, 'defense', defenseId, ':', data);
+
+                    if (data.ready_redefense) {
+                        // Enable the button
+                        btn.disabled = false;
+                        btn.classList.remove('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                        btn.classList.add('bg-gradient-to-r', 'from-green-400', 'to-green-600', 'hover:from-green-500', 'hover:to-green-700', 'text-white', 'transition-all', 'duration-300', 'hover:shadow-lg', 'transform', 'hover:scale-105');
+                        btn.title = 'Schedule Redefense';
+                        btn.innerHTML = '<i class="fas fa-redo mr-1"></i>Schedule Redefense';
+
+                        // Add onclick functionality
+                        btn.onclick = function () {
+                            scheduleRedefense(groupId, defenseId, data.groupName || '', data.proposalTitle || '', data.defenseType || '');
+                        };
+
+                        // Update status indicator
+                        const statusIndicator = document.querySelector(`[data-group="${groupId}"][data-defense="${defenseId}"].status-indicator`);
+                        if (statusIndicator && statusIndicator.textContent.includes('Receipt Pending')) {
+                            statusIndicator.className = 'ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center status-indicator';
+                            statusIndicator.innerHTML = '<i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense';
+                        }
+                    }
+                } catch (e) {
+                    console.log('Error checking redefense payment status:', e);
+                }
+            }
+        }
+    }
+
+    // Check button states when page loads
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(checkAndUpdateRedefenseButtonStates, 500);
+        // Also check periodically in case of timing issues
+        setTimeout(checkAndUpdateRedefenseButtonStates, 2000);
+    });
+
+    // Also add a manual refresh function that can be called
+    window.refreshRedefenseButtons = checkAndUpdateRedefenseButtonStates;
+
+    // Final Defense Scheduling Function
+    function scheduleFinalDefense(groupId, groupName, proposalTitle, defenseType, defenseId = null) {
+        // Open the proposal modal with final defense type
+        openProposalModal(groupId, groupName, proposalTitle, defenseType);
+        if (defenseId) {
+            document.getElementById('parent_defense_id').value = defenseId;
+        }
+    }
+
+    // Unified Defense Scheduling Modal
+    function openDefenseModal(groupId, groupName, proposalTitle, defenseType = 'pre_oral', defenseId = null) {
+        // Create modal HTML
+        const modalHtml = `
+<div id="defenseModal" class="fixed inset-0 z-50 modal-overlay bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-gradient-to-br from-white via-blue-50 to-indigo-100 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar-blue transform transition-all">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 border-0">
+            <h3 class="text-lg font-bold flex items-center" id="modal-title">
+                <div class="bg-white/20 p-2 rounded-lg mr-3">
+                    <i class="fas ${defenseType === 'final' ? 'fa-graduation-cap' : 'fa-calendar-plus'} text-white text-sm"></i>
+                </div>
+                Schedule ${defenseType === 'final' ? 'Final' : 'Pre-Oral'} Defense
+            </h3>
+            <p class="text-blue-100 mt-1 text-sm">${defenseType === 'final'
+                            ? 'Schedule a final defense session for groups who have completed pre-oral defense.'
+                            : 'Schedule a new defense session for the selected group.'}</p>
+        </div>
+
+        <!-- Form -->
+        <form method="POST" class="p-6" onsubmit="return validateDefenseDuration()">
+            <input type="hidden" name="schedule_defense" value="1">
+            <input type="hidden" name="defense_type" value="${defenseType}">
+            <input type="hidden" name="group_id" value="${groupId}">
+            <input type="hidden" id="start_time" name="start_time">
+            <input type="hidden" id="end_time" name="end_time">
+            ${defenseId ? `<input type="hidden" name="parent_defense_id" value="${defenseId}">` : ''}
+
+            <!-- Selected Group -->
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-medium mb-2">Selected Group</label>
+                <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm">${groupName} - ${proposalTitle}</div>
+            </div>
+
+            <!-- Date & Room -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Defense Date</label>
+                    <input type="date" name="defense_date" id="defense_date" required min="<?php echo date('Y-m-d'); ?>"
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        onchange="populateTimeSlots()">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Room</label>
+                    <select name="room_id" id="room_id" required
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        onchange="populateTimeSlots()">
+                        <option value="">Select a room</option>
+                        <?php foreach ($rooms as $room): ?>
+                        <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Time Slot & Duration -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2" for="time_slot">Available Time Slots</label>
+                    <select name="time_slot" id="time_slot" required
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        onchange="updateTimeInputs()">
+                        <option value="">Select date and room first</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
+                    <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm" id="duration_display">No slot selected</div>
+                </div>
+            </div>
+
+            <!-- Panel Members -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-medium mb-2">Panel Members</label>
+
+                <!-- Panel Tabs -->
+                <div class="panel-tabs mb-3 flex border-b">
+                    <div class="panel-tab active px-4 py-2 cursor-pointer text-sm font-medium border-b-2 border-blue-600"
+                         data-tab="chairperson" onclick="switchPanelTab('chairperson')">Chairperson</div>
+                    <div class="panel-tab px-4 py-2 cursor-pointer text-sm font-medium text-gray-600 hover:text-blue-600"
+                         data-tab="member" onclick="switchPanelTab('member')">Members</div>
+                </div>
+
+                <!-- Chairperson List -->
+                <div class="panel-content active" data-tab="chairperson">
+                    <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
+                        <?php
+                        $chairpersons = array_filter($accepted_panel_members, fn($m) => $m['role'] === 'chairperson');
+                        foreach ($chairpersons as $panel_member): ?>
+                        <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border hover:border-blue-200 transition-all">
+                            <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|chair"
+                                   class="mr-3 rounded text-primary focus:ring-primary">
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
+                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                <div class="text-xs text-purple-600 mt-1"><?php echo ucfirst($panel_member['program']); ?> Program</div>
+                            </div>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Members List -->
+                <div class="panel-content hidden" data-tab="member">
+                    <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
+                        <?php
+                        $members = array_filter($accepted_panel_members, fn($m) => $m['role'] === 'member');
+                        foreach ($members as $panel_member): ?>
+                        <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border hover:border-blue-200 transition-all">
+                            <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|member"
+                                   class="mr-3 rounded text-primary focus:ring-primary">
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
+                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
+                            </div>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
+                <button type="button" onclick="closeDefenseModal()"
+                    class="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 text-sm">
+                    <i class="fas fa-times mr-2"></i>Cancel
+                </button>
+                <button type="submit"
+                    class="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 hover:shadow-lg text-sm">
+                    <i class="fas fa-calendar-plus mr-2"></i>Schedule Defense
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+`;
+
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Store group ID for time slot generation
+        const modalGroupIdInput = document.querySelector('#defenseModal input[name="group_id"]');
+        if (modalGroupIdInput) {
+            modalGroupIdInput.id = 'modal_group_id';
+        }
+    }
+
+   // Function to populate available time slots
+function populateTimeSlots() {
+    const roomId = document.getElementById('room_id').value;
+    const date = document.getElementById('defense_date').value;
+    const timeSlotSelect = document.getElementById('time_slot');
+
+    if (!roomId || !date) {
+        timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+        document.getElementById('duration_display').textContent = 'No slot selected';
+        return;
+    }
+
+    timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+    document.getElementById('duration_display').textContent = 'Loading...';
+
+    fetch('api/get_room_availability.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
+    })
+        .then(response => response.json())
+        .then(data => {
+            const room = data.find(r => r.id == roomId);
+            const slots = generateTimeSlots(room ? room.schedules : []);
+
+            timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+            slots.forEach(slot => {
+                const option = document.createElement('option');
+                option.value = `${slot.start}|${slot.end}`;
+                option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                timeSlotSelect.appendChild(option);
+            });
+
+            if (slots.length === 0) {
+                timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                document.getElementById('duration_display').textContent = 'No slots available';
+            } else {
+                document.getElementById('duration_display').textContent = 'Select a time slot';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+            document.getElementById('duration_display').textContent = 'Error loading slots';
+        });
+}
+
+// Function to generate available time slots
+function generateTimeSlots(schedules) {
+    const slots = [];
+    const workStart = 9 * 60; // 9:00 AM
+    const workEnd = 17 * 60;  // 5:00 PM
+
+    // Get selected group's program
+    const groupId = document.getElementById('modal_group_id') ? document.getElementById('modal_group_id').value : 
+                   document.getElementById('group_id') ? document.getElementById('group_id').value : '';
+    
+    // Determine slot duration based on program - BSIT gets 60 mins, others get 40 mins
+    const program = groupId && window.groupsPrograms ? window.groupsPrograms[groupId] : 'BSIT';
+    const slotDuration = program && program.toUpperCase() === 'BSIT' ? 60 : 40;
+
+    // Sort schedules by start time
+    schedules.sort((a, b) => {
+        const timeA = timeToMinutes(a.start_time);
+        const timeB = timeToMinutes(b.start_time);
+        return timeA - timeB;
+    });
+
+    let currentTime = workStart;
+
+    schedules.forEach(schedule => {
+        const startMinutes = timeToMinutes(schedule.start_time);
+        const endMinutes = timeToMinutes(schedule.end_time);
+
+        // Add slots before this schedule
+        while (currentTime + slotDuration <= startMinutes) {
+            const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
+            if (slotEnd - currentTime >= slotDuration) {
+                slots.push({
+                    start: minutesToTime(currentTime),
+                    end: minutesToTime(slotEnd),
+                    duration: slotEnd - currentTime
+                });
+            }
+            currentTime += slotDuration;
+        }
+        currentTime = Math.max(currentTime, endMinutes);
+    });
+
+    // Add remaining slots after last schedule
+    while (currentTime + slotDuration <= workEnd) {
+        slots.push({
+            start: minutesToTime(currentTime),
+            end: minutesToTime(currentTime + slotDuration),
+            duration: slotDuration
+        });
+        currentTime += slotDuration;
+    }
+
+    return slots;
+}
+
+// Helper functions
+function timeToMinutes(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+function minutesToTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
+
+// Function to update hidden time inputs when slot is selected
+function updateTimeInputs() {
+    const timeSlot = document.getElementById('time_slot').value;
+    const durationDisplay = document.getElementById('duration_display');
+
+    if (timeSlot) {
+        const [startTime, endTime] = timeSlot.split('|');
+        document.getElementById('start_time').value = startTime;
+        document.getElementById('end_time').value = endTime;
+
+        const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+        durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+    } else {
+        document.getElementById('start_time').value = '';
+        document.getElementById('end_time').value = '';
+        durationDisplay.textContent = 'No slot selected';
+    }
+}
+
+// Redefense time slot functions
+function populateRedefenseTimeSlots() {
+    const roomId = document.getElementById('redefense_room_id').value;
+    const date = document.getElementById('redefense_date').value;
+    const timeSlotSelect = document.getElementById('redefense_time_slot');
+
+    if (!roomId || !date) {
+        timeSlotSelect.innerHTML = '<option value="">Select date and room first</option>';
+        document.getElementById('redefense_duration_display').textContent = 'No slot selected';
+        return;
+    }
+
+    timeSlotSelect.innerHTML = '<option value="">Loading available slots...</option>';
+    document.getElementById('redefense_duration_display').textContent = 'Loading...';
+
+    fetch('api/get_room_availability.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `date=${encodeURIComponent(date)}&room_id=${encodeURIComponent(roomId)}`
+    })
+        .then(response => response.json())
+        .then(data => {
+            const room = data.find(r => r.id == roomId);
+            const slots = generateRedefenseTimeSlots(room ? room.schedules : []);
+
+            timeSlotSelect.innerHTML = '<option value="">Select a time slot</option>';
+            slots.forEach(slot => {
+                const option = document.createElement('option');
+                option.value = `${slot.start}|${slot.end}`;
+                option.textContent = `${slot.start} - ${slot.end} (${slot.duration} min)`;
+                timeSlotSelect.appendChild(option);
+            });
+
+            if (slots.length === 0) {
+                timeSlotSelect.innerHTML = '<option value="">No available slots</option>';
+                document.getElementById('redefense_duration_display').textContent = 'No slots available';
+            } else {
+                document.getElementById('redefense_duration_display').textContent = 'Select a time slot';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            timeSlotSelect.innerHTML = '<option value="">Error loading slots</option>';
+            document.getElementById('redefense_duration_display').textContent = 'Error loading slots';
+        });
+}
+
+function generateRedefenseTimeSlots(schedules) {
+    const slots = [];
+    const workStart = 9 * 60; // 9:00 AM
+    const workEnd = 17 * 60;  // 5:00 PM
+
+    // Get the group ID from the redefense modal
+    const groupId = document.querySelector('input[name="group_id"]') ? document.querySelector('input[name="group_id"]').value : '';
+    
+    // Determine slot duration based on program - BSIT gets 60 mins, others get 40 mins
+    const program = groupId && window.groupsPrograms ? window.groupsPrograms[groupId] : 'BSIT';
+    const slotDuration = program && program.toUpperCase() === 'BSIT' ? 60 : 40;
+
+    // Sort schedules by start time
+    schedules.sort((a, b) => {
+        const timeA = timeToMinutes(a.start_time);
+        const timeB = timeToMinutes(b.start_time);
+        return timeA - timeB;
+    });
+
+    let currentTime = workStart;
+
+    schedules.forEach(schedule => {
+        const startMinutes = timeToMinutes(schedule.start_time);
+        const endMinutes = timeToMinutes(schedule.end_time);
+
+        // Add slots before this schedule
+        while (currentTime + slotDuration <= startMinutes) {
+            const slotEnd = Math.min(currentTime + slotDuration, startMinutes);
+            if (slotEnd - currentTime >= slotDuration) {
+                slots.push({
+                    start: minutesToTime(currentTime),
+                    end: minutesToTime(slotEnd),
+                    duration: slotEnd - currentTime
+                });
+            }
+            currentTime += slotDuration;
+        }
+        currentTime = Math.max(currentTime, endMinutes);
+    });
+
+    // Add remaining slots after last schedule
+    while (currentTime + slotDuration <= workEnd) {
+        slots.push({
+            start: minutesToTime(currentTime),
+            end: minutesToTime(currentTime + slotDuration),
+            duration: slotDuration
+        });
+        currentTime += slotDuration;
+    }
+
+    return slots;
+}
+
+function updateRedefenseTimeInputs() {
+    const timeSlot = document.getElementById('redefense_time_slot').value;
+    const durationDisplay = document.getElementById('redefense_duration_display');
+
+    if (timeSlot) {
+        const [startTime, endTime] = timeSlot.split('|');
+        document.getElementById('redefense_start_time').value = startTime;
+        document.getElementById('redefense_end_time').value = endTime;
+
+        const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+        durationDisplay.textContent = `${startTime} - ${endTime} (${duration} minutes)`;
+    } else {
+        document.getElementById('redefense_start_time').value = '';
+        document.getElementById('redefense_end_time').value = '';
+        durationDisplay.textContent = 'No slot selected';
+    }
+}
+
+// Update the redefense modal to include time inputs and proper event handlers
+function openRedefenseModal(groupId, defenseId, groupName, proposalTitle, defenseType = 'pre_oral') {
+    // Create modal HTML for redefense
+    const modalHtml = `
+<div id="redefenseModal" class="fixed inset-0 z-50 modal-overlay bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-gradient-to-br from-white via-rose-50 to-red-100 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar-red transform transition-all">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-red-600 to-rose-700 text-white p-4 border-0">
+            <h3 class="text-lg font-bold flex items-center" id="redefense-modal-title">
+                <div class="bg-white/20 p-2 rounded-lg mr-3">
+                    <i class="fas fa-redo text-white text-sm"></i>
+                </div>
+                Schedule ${defenseType === 'final' ? 'Final' : 'Pre-Oral'} Redefense
+            </h3>
+            <p class="text-rose-100 mt-1 text-sm">
+                Schedule a redefense session for groups who need to retake their defense.
+            </p>
+        </div>
+
+        <!-- Form -->
+        <form method="POST" class="p-6" onsubmit="return validateRedefenseDuration()">
+            <input type="hidden" name="schedule_redefense" value="1">
+            <input type="hidden" name="schedule_defense" value="1">
+             <input type="hidden" name="defense_type" value="${defenseType}">
+             <input type="hidden" name="group_id" value="${groupId}">
+             <input type="hidden" name="parent_defense_id" value="${defenseId}">
+             <input type="hidden" id="redefense_start_time" name="start_time">
+             <input type="hidden" id="redefense_end_time" name="end_time">
+
+            <!-- Selected Group -->
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-medium mb-2">Selected Group</label>
+                <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm">${groupName} - ${proposalTitle}</div>
+            </div>
+
+            <!-- Date & Room -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Redefense Date</label>
+                    <input type="date" name="defense_date" id="redefense_date" required min="<?php echo date('Y-m-d'); ?>"
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        onchange="populateRedefenseTimeSlots()">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Room</label>
+                    <select name="room_id" id="redefense_room_id" required
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        onchange="populateRedefenseTimeSlots()">
+                        <option value="">Select a room</option>
+                        <?php foreach ($rooms as $room): ?>
+                        <option value="<?php echo $room['id']; ?>"><?php echo $room['building'] . ' - ' . $room['room_name']; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Time Slot & Duration -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2" for="redefense_time_slot">Available Time Slots</label>
+                    <select name="time_slot" id="redefense_time_slot" required
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        onchange="updateRedefenseTimeInputs()">
+                        <option value="">Select date and room first</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Selected Duration</label>
+                    <div class="px-3 py-2 bg-gray-100 rounded-lg text-sm" id="redefense_duration_display">No slot selected</div>
+                </div>
+            </div>
+
+            <!-- Panel Members -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-medium mb-2">Panel Members</label>
+
+                <!-- Panel Tabs -->
+                <div class="panel-tabs mb-3 flex border-b">
+                    <div class="panel-tab active px-4 py-2 cursor-pointer text-sm font-medium border-b-2 border-green-600"
+                         data-tab="redefense-chairperson" onclick="switchRedefensePanelTab('chairperson')">Chairperson</div>
+                    <div class="panel-tab px-4 py-2 cursor-pointer text-sm font-medium text-gray-600 hover:text-green-600"
+                         data-tab="redefense-member" onclick="switchRedefensePanelTab('member')">Members</div>
+                </div>
+
+                <!-- Chairperson List -->
+                <div class="panel-content active" data-tab="redefense-chairperson">
+                    <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
+                        <?php
+                        $chairpersons = array_filter($accepted_panel_members, fn($m) => $m['role'] === 'chairperson');
+                        foreach ($chairpersons as $panel_member): ?>
+                        <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border hover:border-green-200 transition-all">
+                            <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|chair"
+                                   class="mr-3 rounded text-green-600 focus:ring-green-500">
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
+                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                <div class="text-xs text-purple-600 mt-1"><?php echo ucfirst($panel_member['program']); ?> Program</div>
+                            </div>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Members List -->
+                <div class="panel-content hidden" data-tab="redefense-member">
+                    <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
+                        <?php
+                        $members = array_filter($accepted_panel_members, fn($m) => $m['role'] === 'member');
+                        foreach ($members as $panel_member): ?>
+                        <label class="flex items-center p-3 hover:bg-white rounded-lg cursor-pointer border hover:border-green-200 transition-all">
+                            <input type="checkbox" name="panel_members[]" value="<?php echo $panel_member['id']; ?>|member"
+                                   class="mr-3 rounded text-green-600 focus:ring-green-500">
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900"><?php echo $panel_member['first_name'] . ' ' . $panel_member['last_name']; ?></div>
+                                <div class="text-sm text-gray-500"><?php echo $panel_member['email']; ?></div>
+                                <div class="text-xs text-blue-600 mt-1"><?php echo $panel_member['specialization']; ?></div>
+                            </div>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="backdrop-blur-sm p-4 border-0 space-x-3 flex justify-end">
+                <div class="flex items-center space-x-4">
+                <button type="button" onclick="closeRedefenseModal()"
+                    class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-300">
+                    <i class="fas fa-times mr-2"></i>
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="flex items-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-600 to-rose-700 border border-transparent rounded-lg hover:from-red-700 hover:to-rose-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-300 shadow-sm hover:shadow-md">
+                    <i class="fas fa-redo mr-2"></i>
+                    Schedule Redefense
+                </button>
+            </div>
+            </div>
+        </form>
+    </div>
+</div>
+`;
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// Function to close redefense modal
+function closeRedefenseModal() {
+    const modal = document.getElementById('redefenseModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Function to validate redefense duration
+function validateRedefenseDuration() {
+    const startTime = document.getElementById('redefense_start_time').value;
+    const endTime = document.getElementById('redefense_end_time').value;
+
+    if (!startTime || !endTime) {
+        alert('Please select a time slot.');
+        return false;
+    }
+
+    return true;
+}
+
+    // Function to switch redefense panel tabs
+    function switchRedefensePanelTab(tabName) {
+        // Remove active class from all tabs
+        document.querySelectorAll('[data-tab^="redefense-"]').forEach(tab => {
+            tab.classList.remove('active', 'border-green-600', 'text-green-600');
+            tab.classList.add('text-gray-600', 'border-transparent');
+        });
+
+        // Remove active class from all content
+        document.querySelectorAll('.panel-content[data-tab^="redefense-"]').forEach(content => {
+            content.classList.remove('active');
+            content.classList.add('hidden');
+        });
+
+        // Add active class to selected tab
+        const activeTab = document.querySelector(`[data-tab="redefense-${tabName}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active', 'border-green-600', 'text-green-600');
+            activeTab.classList.remove('text-gray-600', 'border-transparent');
+        }
+
+        // Show selected content
+        const activeContent = document.querySelector(`.panel-content[data-tab="redefense-${tabName}"]`);
+        if (activeContent) {
+            activeContent.classList.add('active');
+            activeContent.classList.remove('hidden');
+        }
+    }
+
+    // Update the scheduleRedefense function to use the new modal
+    function scheduleRedefense(groupId, defenseId, groupName, proposalTitle, defenseType) {
+        openRedefenseModal(groupId, defenseId, groupName, proposalTitle, defenseType);
+    }
+
+    // Make functions globally accessible
+    window.openRedefenseModal = openRedefenseModal;
+    window.closeRedefenseModal = closeRedefenseModal;
+    window.scheduleRedefense = scheduleRedefense;
+    window.populateRedefenseTimeSlots = populateRedefenseTimeSlots;
+    window.updateRedefenseTimeInputs = updateRedefenseTimeInputs;
+    window.switchRedefensePanelTab = switchRedefensePanelTab;
+    window.validateRedefenseDuration = validateRedefenseDuration;
+
+    // Time slot functions
+    window.populateTimeSlots = populateTimeSlots;
+    window.updateTimeInputs = updateTimeInputs;
+    window.generateTimeSlots = generateTimeSlots;
+    window.timeToMinutes = timeToMinutes;
+    window.minutesToTime = minutesToTime;
+
+    // Close defense modal function
+    function closeDefenseModal() {
+        const modal = document.getElementById('defenseModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    // Function to validate defense duration
+    function validateDefenseDuration() {
+        const startTime = document.getElementById('start_time').value;
+        const endTime = document.getElementById('end_time').value;
+
+        if (!startTime || !endTime) {
+            alert('Please select a time slot.');
+            return false;
+        }
+
+        return true;
+    }
+
+    // Function to switch panel tabs
+    function switchPanelTab(tabName) {
+        // Remove active class from all tabs
+        document.querySelectorAll('.panel-tab').forEach(tab => {
+            tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
+            tab.classList.add('text-gray-600', 'border-transparent');
+        });
+
+        // Remove active class from all content
+        document.querySelectorAll('.panel-content').forEach(content => {
+            content.classList.remove('active');
+            content.classList.add('hidden');
+        });
+
+        // Add active class to selected tab
+        const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active', 'border-blue-600', 'text-blue-600');
+            activeTab.classList.remove('text-gray-600', 'border-transparent');
+        }
+
+        // Show selected content
+        const activeContent = document.querySelector(`.panel-content[data-tab="${tabName}"]`);
+        if (activeContent) {
+            activeContent.classList.add('active');
+            activeContent.classList.remove('hidden');
+        }
+    }
+
+    // Make additional functions globally accessible
+    window.closeDefenseModal = closeDefenseModal;
+    window.switchPanelTab = switchPanelTab;
+    window.validateDefenseDuration = validateDefenseDuration;
+                async function openFinalPaymentViewer(groupId, defenseType, groupName, defenseId) {
+                    try {
+                        const form = new FormData();
+                        form.append('ajax_get_payment_images', '1');
+                        form.append('group_id', String(groupId));
+                        if (defenseType) form.append('defense_type', defenseType);
+                        const resp = await fetch(window.location.href, { method: 'POST', body: form });
+                        const data = await resp.json();
+                        if (!data.ok) { alert(data.error || 'Failed to load'); return; }
+                        const proposal = data.proposal;
+                        window._finalProposalCtx = proposal;
+                        window._finalDefenseCtx = { groupId, defenseType, defenseId, groupName: (groupName || '') };
+                        renderFinalViewer(proposal, defenseType, groupName || '');
+                        toggleFinalViewer(true);
+                    } catch (e) { alert('Network error'); }
+                }
+
+                async function openFailedPaymentViewer(groupId, defenseType, groupName, failedId) {
+                    try {
+                        const form = new FormData();
+                        form.append('ajax_get_payment_images', '1');
+                        form.append('group_id', String(groupId));
+                        if (defenseType) form.append('defense_type', defenseType);
+                        const resp = await fetch(window.location.href, { method: 'POST', body: form });
+                        const data = await resp.json();
+                        if (!data.ok) { alert(data.error || 'Failed to load'); return; }
+                        const proposal = data.proposal;
+                        window._failedProposalCtx = proposal;
+                        window._failedDefenseCtx = { groupId, defenseType, failedId, groupName: (groupName || '') };
+                        renderFailedViewer(proposal, defenseType, groupName || '');
+                        toggleFailedViewer(true);
+                    } catch (e) { alert('Network error'); }
+                }
+
+                function toggleFailedViewer(show) {
+                    const m = document.getElementById('failedPaymentViewer');
+                    if (!m) return;
+                    if (show) { m.classList.remove('hidden'); m.classList.add('flex'); }
+                    else {
+                        m.classList.add('hidden'); m.classList.remove('flex');
+                        try {
+                            const f = window._openScheduleAfterClose;
+                            if (f) {
+                                window._openScheduleAfterClose = null;
+                                if (typeof scheduleRedefense === 'function') {
+                                    scheduleRedefense(f.groupId, f.failedId, f.groupName || '', f.proposalTitle || '', f.baseType);
+                                }
+                            }
+                        } catch (e) { }
+                    }
+                }
+
+                function toggleFinalViewer(show) {
+                    const m = document.getElementById('finalPaymentViewer');
+                    if (!m) return;
+                    if (show) { m.classList.remove('hidden'); m.classList.add('flex'); }
+                    else {
+                        m.classList.add('hidden'); m.classList.remove('flex');
+                        try {
+                            const f = window._openFinalScheduleAfterClose;
+                            if (f) {
+                                window._openFinalScheduleAfterClose = null;
+                                if (typeof scheduleFinalDefenseAndComplete === 'function') {
+                                    scheduleFinalDefenseAndComplete(f.groupId, f.defenseId, f.groupName || '', f.proposalTitle || '');
+                                }
+                            }
+                        } catch (e) { }
+                    }
+                }
+
+                function renderFailedViewer(proposal, defenseType, groupName) {
+                    const mount = document.getElementById('failedViewerImages');
+                    if (!mount) return;
+                    mount.innerHTML = '';
+                    const paymentImages = (proposal.payment_status && proposal.payment_status.payment_images) || {};
+                    const paymentImageReview = (proposal.payment_status && proposal.payment_status.payment_image_review) || {};
+                    // Only show redefense image buckets
+                    if (groupName) {
+                        const ctx = document.createElement('div');
+                        ctx.className = 'mb-4';
+                        ctx.innerHTML = `<div class="text-sm text-gray-600">Group: <span class="font-semibold text-gray-800">${groupName}</span></div>`;
+                        mount.appendChild(ctx);
+                    }
+                    // Determine required redefense type
+                    const requiredType = (defenseType === 'final') ? 'final_redefense' : 'pre_oral_redefense';
+                    const imgs = paymentImages[requiredType] || [];
+                    if (imgs.length === 0) {
+                        const notice = document.createElement('div');
+                        notice.className = 'p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded';
+                        notice.textContent = (requiredType === 'final_redefense') ? 'No Final Redefense receipt uploaded yet.' : 'No Pre-Oral Redefense receipt uploaded yet.';
+                        mount.appendChild(notice);
+                        return;
+                    }
+                    // Indicator showing attachment count
+                    const info = document.createElement('div');
+                    info.className = 'mb-3';
+                    info.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-200"><i class=\"fas fa-paperclip mr-1\"></i>${imgs.length} attachment${imgs.length > 1 ? 's' : ''} found</span>`;
+                    mount.appendChild(info);
+                    const section = document.createElement('div');
+                    section.className = 'mb-6';
+                    const h = document.createElement('h4');
+                    h.className = 'font-semibold text-gray-800 mb-2';
+                    h.textContent = (requiredType === 'final_redefense') ? 'Final Redefense' : 'Pre-Oral Redefense';
+                    section.appendChild(h);
+                    const grid = document.createElement('div');
+                    grid.className = 'grid grid-cols-2 md:grid-cols-3 gap-3';
+                    const rv = paymentImageReview[requiredType] || {};
+                    imgs.forEach((p, idx) => {
+                        const card = document.createElement('div');
+                        card.className = 'border rounded-lg p-2';
+                        const webP = (p || '').replace('../assets/', '/CRAD-system/assets/');
+                        card.innerHTML = `
+                    <div class="relative overflow-hidden rounded">
+                      <img src="${webP}" class="w-full h-28 object-cover" />
+                      <div class="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded">${idx + 1}</div>
+                      <button class="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded" onclick="event.stopPropagation(); window.open('${webP}','_blank')"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <div class="mt-2 flex items-center gap-2">
+                      <button class="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onclick="failedReviewImage('${requiredType}', ${proposal.id}, ${idx}, 'approved')"><i class="fas fa-check mr-1"></i>Approve</button>
+                      <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="failedShowReject('${requiredType}', ${proposal.id}, ${idx})"><i class="fas fa-times mr-1"></i>Reject</button>
+                      <span class="text-xs ml-auto" id="failed-img-status-${requiredType}-${idx}"></span>
+                    </div>
+                    <div id="failed-reject-${requiredType}-${idx}" class="mt-2 hidden">
+                      <div class="flex items-center gap-2">
+                        <input type="text" id="failed-reason-${requiredType}-${idx}" class="flex-1 px-2 py-1 border rounded text-xs" placeholder="Reason" />
+                        <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="failedSubmitReject('${requiredType}', ${proposal.id}, ${idx})">Confirm</button>
+                        <button class="px-2 py-1 text-xs rounded bg-gray-300 text-gray-800 hover:bg-gray-400" onclick="failedCancelReject('${requiredType}', ${idx})">Cancel</button>
+                      </div>
+                    </div>
+                  `;
+                        const st = rv[idx];
+                        if (st) {
+                            const sEl = card.querySelector(`#failed-img-status-${requiredType}-${idx}`);
+                            if (sEl) { sEl.innerHTML = (st.status === 'approved' ? '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded">Approved</span>' : '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded">Rejected</span>') + (st.feedback ? `<span class="text-gray-600 ml-2">${st.feedback}</span>` : ''); }
+                        }
+                        grid.appendChild(card);
+                    });
+                    section.appendChild(grid);
+                    mount.appendChild(section);
+                }
+
+                function renderFinalViewer(proposal, defenseType, groupName) {
+                    const mount = document.getElementById('finalViewerImages');
+                    if (!mount) return;
+                    mount.innerHTML = '';
+                    const paymentImages = (proposal.payment_status && proposal.payment_status.payment_images) || {};
+                    const paymentImageReview = (proposal.payment_status && proposal.payment_status.payment_image_review) || {};
+
+                    if (groupName) {
+                        const ctx = document.createElement('div');
+                        ctx.className = 'mb-4';
+                        ctx.innerHTML = `<div class="text-sm text-gray-600">Group: <span class="font-semibold text-gray-800">${groupName}</span></div>`;
+                        mount.appendChild(ctx);
+                    }
+
+                    // For final defense payment, show final_defense or final_redefense
+                    const requiredType = (defenseType === 'final') ? 'final_defense' : 'final_defense';
+                    const imgs = paymentImages[requiredType] || [];
+
+                    if (imgs.length === 0) {
+                        const notice = document.createElement('div');
+                        notice.className = 'p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded';
+                        notice.textContent = 'No Final Defense receipt uploaded yet.';
+                        mount.appendChild(notice);
+                        return;
+                    }
+
+                    // Indicator showing attachment count
+                    const info = document.createElement('div');
+                    info.className = 'mb-3';
+                    info.innerHTML = `<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-200"><i class=\"fas fa-paperclip mr-1\"></i>${imgs.length} attachment${imgs.length > 1 ? 's' : ''} found</span>`;
+                    mount.appendChild(info);
+
+                    const section = document.createElement('div');
+                    section.className = 'mb-6';
+                    const h = document.createElement('h4');
+                    h.className = 'font-semibold text-gray-800 mb-2';
+                    h.textContent = 'Final Defense Payment';
+                    section.appendChild(h);
+
+                    const grid = document.createElement('div');
+                    grid.className = 'grid grid-cols-2 md:grid-cols-3 gap-3';
+                    const rv = paymentImageReview[requiredType] || {};
+
+                    imgs.forEach((p, idx) => {
+                        const card = document.createElement('div');
+                        card.className = 'border rounded-lg p-2';
+                        const webP = (p || '').replace('../assets/', '/CRAD-system/assets/');
+                        card.innerHTML = `
+                    <div class="relative overflow-hidden rounded">
+                      <img src="${webP}" class="w-full h-28 object-cover" />
+                      <div class="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded">${idx + 1}</div>
+                      <button class="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded" onclick="event.stopPropagation(); window.open('${webP}','_blank')"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <div class="mt-2 flex items-center gap-2">
+                      <button class="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onclick="finalReviewImage('${requiredType}', ${proposal.id}, ${idx}, 'approved')"><i class="fas fa-check mr-1"></i>Approve</button>
+                      <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="finalShowReject('${requiredType}', ${proposal.id}, ${idx})"><i class="fas fa-times mr-1"></i>Reject</button>
+                      <span class="text-xs ml-auto" id="final-img-status-${requiredType}-${idx}"></span>
+                    </div>
+                    <div id="final-reject-${requiredType}-${idx}" class="mt-2 hidden">
+                      <div class="flex items-center gap-2">
+                        <input type="text" id="final-reason-${requiredType}-${idx}" class="flex-1 px-2 py-1 border rounded text-xs" placeholder="Reason" />
+                        <button class="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onclick="finalSubmitReject('${requiredType}', ${proposal.id}, ${idx})">Confirm</button>
+                        <button class="px-2 py-1 text-xs rounded bg-gray-300 text-gray-800 hover:bg-gray-400" onclick="finalCancelReject('${requiredType}', ${idx})">Cancel</button>
+                      </div>
+                    </div>
+                  `;
+                        const st = rv[idx];
+                        if (st) {
+                            const sEl = card.querySelector(`#final-img-status-${requiredType}-${idx}`);
+                            if (sEl) { sEl.innerHTML = (st.status === 'approved' ? '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded">Approved</span>' : '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded">Rejected</span>') + (st.feedback ? `<span class="text-gray-600 ml-2">${st.feedback}</span>` : ''); }
+                        }
+                        grid.appendChild(card);
+                    });
+                    section.appendChild(grid);
+                    mount.appendChild(section);
+                }
+
+
+
+                async function failedReviewImage(paymentType, proposalId, imageIndex, decision, feedback = '') {
+                    try {
+                        const form = new FormData();
+                        form.append('ajax_update_image_review', '1');
+                        form.append('proposal_id', String(proposalId));
+                        form.append('payment_type', paymentType);
+                        form.append('image_index', String(imageIndex));
+                        form.append('decision', decision);
+                        form.append('feedback', feedback);
+                        const resp = await fetch(window.location.href, { method: 'POST', body: form });
+                        const data = await resp.json();
+                        if (!data.ok) { alert(data.error || 'Failed to update'); return; }
+                        const el = document.getElementById(`failed-img-status-${paymentType}-${imageIndex}`);
+                        if (el) {
+                            const tag = decision === 'approved' ? '<span class="text-green-700 bg-green-100 px-2 py-0.5 rounded">Approved</span>' : '<span class="text-red-700 bg-red-100 px-2 py-0.5 rounded">Rejected</span>';
+                            const fb = feedback ? `<span class=\"text-gray-600 ml-2\">${feedback}</span>` : '';
+                            el.innerHTML = tag + fb;
+                        }
+                        // Update local proposal cache for in-place state
+                        try {
+                            const ctx = window._failedProposalCtx;
+                            if (ctx && ctx.payment_status) {
+                                const rv = ctx.payment_status.payment_image_review || {};
+                                rv[paymentType] = rv[paymentType] || {};
+                                rv[paymentType][imageIndex] = { status: decision, feedback: feedback };
+                                ctx.payment_status.payment_image_review = rv;
+                            }
+                        } catch (e) { }
+                        // Enable scheduling after approval; defer opening until admin closes the receipts modal
+                        try {
+                            const ctx = window._failedDefenseCtx;
+                            if (ctx) {
+                                const requiredType = (ctx.defenseType === 'final') ? 'final_redefense' : 'pre_oral_redefense';
+                                if (decision === 'approved' && paymentType === requiredType) {
+                                    const btn = document.getElementById(`schedule-btn-${ctx.groupId}-${ctx.failedId}`);
+                                    if (btn) {
+                                        btn.disabled = false;
+                                        btn.classList.remove('bg-gray-300', 'text-gray-600', 'cursor-not-allowed');
+                                        btn.classList.add('bg-gradient-to-r', 'from-green-400', 'to-green-600', 'hover:from-green-500', 'hover:to-green-700', 'text-white', 'transition-all', 'duration-300', 'hover:shadow-lg', 'transform', 'hover:scale-105');
+                                        btn.title = 'Schedule Redefense';
+                                        // Add onclick functionality if it doesn't exist
+                                        const proposalTitle = (window._failedProposalCtx && window._failedProposalCtx.title) || '';
+                                        btn.onclick = function () {
+                                            scheduleRedefense(ctx.groupId, ctx.failedId, ctx.groupName || '', proposalTitle, ctx.defenseType);
+                                        };
+                                        // Update button text to remove lock icon
+                                        btn.innerHTML = '<i class="fas fa-redo mr-1"></i>Schedule Redefense';
+
+                                        // Also update any status indicators
+                                        const statusIndicators = document.querySelectorAll(`[data-group="${ctx.groupId}"][data-defense="${ctx.failedId}"] .status-indicator`);
+                                        statusIndicators.forEach(indicator => {
+                                            if (indicator.textContent.includes('Receipt Pending')) {
+                                                indicator.className = 'ml-2 bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full text-xs font-semibold flex items-center';
+                                                indicator.innerHTML = '<i class="fas fa-check mr-1 text-xs"></i>Ready for Redefense';
+                                            }
+                                        });
+                                    }
+                                    // Flag to open schedule modal after the admin closes this modal
+                                    const proposalCtx = window._failedProposalCtx || {};
+                                    const proposalTitle = proposalCtx.title || '';
+                                    window._openScheduleAfterClose = { groupId: ctx.groupId, failedId: ctx.failedId, groupName: ctx.groupName || '', proposalTitle: proposalTitle, baseType: ctx.defenseType };
+                                }
+                            }
+                        } catch (e) { }
+                    } catch (e) { alert('Network error'); }
+                }
+                function failedShowReject(paymentType, proposalId, imageIndex) {
+                    const pane = document.getElementById(`failed-reject-${paymentType}-${imageIndex}`);
+                    if (pane) pane.classList.remove('hidden');
+                }
+                function failedCancelReject(paymentType, imageIndex) {
+                    const pane = document.getElementById(`failed-reject-${paymentType}-${imageIndex}`);
+                    if (pane) pane.classList.add('hidden');
+                }
+                function failedSubmitReject(paymentType, proposalId, imageIndex) {
+                    const input = document.getElementById(`failed-reason-${paymentType}-${imageIndex}`);
+                    const reason = input ? input.value : '';
+                    failedReviewImage(paymentType, proposalId, imageIndex, 'rejected', reason || '');
+                    failedCancelReject(paymentType, imageIndex);
+                }
+
+                // Function to open the existing Schedule Defense Modal
+                function openScheduleModal(groupId, groupName, proposalTitle, defenseType = 'pre_oral') {
+                    // Populate the form fields
+                    document.getElementById('group_id').value = groupId;
+                    document.getElementById('defense_type').value = defenseType;
+                    document.getElementById('selected_group_display').textContent = groupName + ' - ' + proposalTitle;
+
+                    // Update modal title and description
+                    const modalTitle = document.getElementById('modal-title');
+                    const modalDescription = document.getElementById('modal-description');
+
+                    if (defenseType === 'final') {
+                        modalTitle.innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Schedule Final Defense';
+                        modalDescription.textContent = 'Schedule a final defense session for groups who have completed pre-oral defense.';
+                    } else {
+                        modalTitle.innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-calendar-plus text-white text-sm"></i></div>Schedule Pre-Oral Defense';
+                        modalDescription.textContent = 'Schedule a new defense session for the selected group.';
+                    }
+
+                    // Show the modal
+                    const modal = document.getElementById('proposalModal');
+                    modal.classList.remove('opacity-0', 'pointer-events-none');
+                    modal.classList.add('opacity-100');
+                }
+
+                // Function to close the Schedule Defense Modal
+                function closeScheduleModal() {
+                    const modal = document.getElementById('proposalModal');
+                    modal.classList.add('opacity-0', 'pointer-events-none');
+                    modal.classList.remove('opacity-100');
+                }
+
+                // Open proposal modal for defense scheduling
+                function openProposalModal(groupId, groupName, proposalTitle, defenseType = 'pre_oral') {
+                    // Set group information in the modal
+                    document.getElementById('group_id').value = groupId;
+                    document.getElementById('defense_type').value = defenseType;
+                    document.getElementById('selected_group_display').textContent = groupName + ' - ' + proposalTitle;
+
+                    // Update modal title based on defense type
+                    const modalTitle = document.querySelector('#proposalModal #modal-title');
+                    const modalDescription = document.querySelector('#proposalModal #modal-description');
+
+                    if (defenseType === 'final') {
+                        modalTitle.innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-graduation-cap text-white text-sm"></i></div>Schedule Final Defense';
+                        modalDescription.textContent = 'Schedule a final defense session for groups who have completed pre-oral defense.';
+                    } else {
+                        modalTitle.innerHTML = '<div class="bg-white/20 p-2 rounded-lg mr-3"><i class="fas fa-calendar-plus text-white text-sm"></i></div>Schedule Pre-Oral Defense';
+                        modalDescription.textContent = 'Schedule a new defense session for the selected group.';
+                    }
+
+                    // Open the modal
+                    openModal('proposalModal');
+                }
+
+                // Make function globally accessible
+                window.openProposalModal = openProposalModal;
+
+                // Separate functions for pre-oral and final defense
+                function schedulePreOralDefense(groupId, groupName, proposalTitle) {
+                    openProposalModal(groupId, groupName, proposalTitle, 'pre_oral');
+                }
+
+                function scheduleFinalDefense(groupId, groupName, proposalTitle) {
+                    openProposalModal(groupId, groupName, proposalTitle, 'final');
+                }
+
+                // Make functions globally accessible
+                window.schedulePreOralDefense = schedulePreOralDefense;
+                window.scheduleFinalDefense = scheduleFinalDefense;
+
+
+
+                function validateDefenseDuration() {
+                    const startTime = document.getElementById('start_time').value;
+                    const endTime = document.getElementById('end_time').value;
+
+                    if (!startTime || !endTime) {
+                        alert('Please select a time slot.');
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                function switchPanelTab(tabName) {
+                    // Remove active class from all tabs
+                    document.querySelectorAll('.panel-tab').forEach(tab => {
+                        tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
+                        tab.classList.add('text-gray-600', 'border-transparent');
+                    });
+
+                    // Remove active class from all content
+                    document.querySelectorAll('.panel-content').forEach(content => {
+                        content.classList.remove('active');
+                        content.classList.add('hidden');
+                    });
+
+                    // Add active class to selected tab
+                    const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+                    if (activeTab) {
+                        activeTab.classList.add('active', 'border-blue-600', 'text-blue-600');
+                        activeTab.classList.remove('text-gray-600', 'border-transparent');
+                    }
+
+                    // Show selected content
+                    const activeContent = document.querySelector(`.panel-content[data-tab="${tabName}"]`);
+                    if (activeContent) {
+                        activeContent.classList.add('active');
+                        activeContent.classList.remove('hidden');
+                    }
+                }
+
             </script>
 
 </body>

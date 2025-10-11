@@ -2,65 +2,62 @@
 session_start();
 include("../includes/connection.php");
 
-$alertMessage = '';
+$alertMessage = "";
+$alertType = "";
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Get form data
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
     $confirmPassword = $_POST['confirmPassword'];
     $role = $_POST['userType'];
 
-    // Email validation
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $alertMessage = 'Please enter a valid email address!';
-    }
-    // Password validation
-    elseif (
+        $alertMessage = "Please enter a valid email address!";
+        $alertType = "error";
+    } elseif (
         strlen($password) < 8 ||
         !preg_match('/[A-Z]/', $password) ||
         !preg_match('/[a-z]/', $password) ||
         !preg_match('/[0-9]/', $password) ||
         !preg_match('/[\W]/', $password)
     ) {
-        $alertMessage = 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.';
-    }
-    // Match passwords
-    elseif ($password !== $confirmPassword) {
-        $alertMessage = 'Passwords do not match!';
-    }
-    else {
-        // Check if email exists
+        $alertMessage = "Password must be at least 8 characters and include uppercase, lowercase, number, and special character.";
+        $alertType = "error";
+    } elseif ($password !== $confirmPassword) {
+        $alertMessage = "Passwords do not match!";
+        $alertType = "error";
+    } else {
         $stmt = $conn->prepare("SELECT user_id FROM user_tbl WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $stmt->store_result();
 
         if ($stmt->num_rows > 0) {
-            $alertMessage = 'Email is already registered!';
-            $stmt->close();
+            $alertMessage = "Email is already registered!";
+            $alertType = "error";
         } else {
             $stmt->close();
-            // Hash password
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-            // Insert into DB (no full_name now)
             $stmt = $conn->prepare("INSERT INTO user_tbl (email, password, role) VALUES (?, ?, ?)");
             $stmt->bind_param("sss", $email, $hashedPassword, $role);
 
             if ($stmt->execute()) {
-                echo "<script>alert('Registration successful!'); window.location.href='student-login.php';</script>";
+                $alertMessage = "Registration successful!";
+                $alertType = "success";
+                echo "<script>
+                        setTimeout(() => { 
+                            window.location.href='student-login.php';
+                        }, 1500);
+                      </script>";
             } else {
-                $alertMessage = 'Registration failed: ' . $stmt->error;
+                $alertMessage = "Registration failed: " . $stmt->error;
+                $alertType = "error";
             }
-            $stmt->close();
         }
     }
-
-    $conn->close();
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -68,154 +65,198 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/png" href="../assets/img/sms-logo.png" />
-  <title>School Management System - Register</title>
+  <title>CRAD | Register</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-  <script>
-    function togglePasswordVisibility(id) {
-      const passwordField = document.getElementById(id);
-      const type = passwordField.type === 'password' ? 'text' : 'password';
-      passwordField.type = type;
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+  <style>
+    /* Input group styling (same as admin/student) */
+    .input-group {
+      position: relative;
+      margin-bottom: 1.75rem;
     }
-  </script>
+
+    .input-group input,
+    .input-group select {
+      width: 100%;
+      padding: 1rem 1rem;
+      border: 2px solid #cbd5e1;
+      border-radius: 9999px;
+      background: transparent;
+      color: #111827;
+      transition: all 0.3s ease;
+    }
+
+    .input-group label {
+      position: absolute;
+      left: 1.2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: white;
+      padding: 0 0.4rem;
+      color: #64748b;
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+
+    .input-group input:focus,
+    .input-group select:focus {
+      border-color: #1d4ed8;
+      box-shadow: 0 0 10px rgba(29, 78, 216, 0.3);
+    }
+
+    .input-group input:focus + label,
+    .input-group input:not(:placeholder-shown) + label,
+    .input-group select:focus + label,
+    .input-group select:not(:placeholder-shown) + label {
+      top: 0;
+      left: 1rem;
+      transform: translateY(-50%) scale(0.9);
+      font-size: 0.8rem;
+      color: #1d4ed8;
+    }
+
+    .eye-icon {
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #64748b;
+      transition: color 0.2s ease;
+    }
+
+    .eye-icon:hover {
+      color: #1d4ed8;
+    }
+
+    /* Toast Alert Styles */
+    .alert {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 1.5rem;
+      border-radius: 0.75rem;
+      font-weight: 500;
+      animation: slideIn 0.4s ease forwards;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    .alert-success { background: #dcfce7; color: #166534; }
+    .alert-error { background: #fee2e2; color: #991b1b; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(100%); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+  </style>
 </head>
-<body 
-  class="bg-cover bg-center bg-no-repeat min-h-screen flex items-center justify-center font-sans" 
-  style="background-image: linear-gradient(rgba(250, 250, 250, 0.937), rgba(8, 52, 117, 0.942)), url('../assets/img/img.jpg');"
->
-  <div class="bg-white bg-opacity-80 rounded-lg shadow-lg max-w-4xl w-full mx-4 flex flex-col md:flex-row overflow-hidden">
-    <!-- Left panel with welcome text and logo -->
-    <div class="md:w-1/2 p-10 flex flex-col justify-center items-start relative bg-blue-50">
-      <h1 class="text-3xl md:text-4xl font-extrabold text-blue-900 mb-3">
-        Welcome to
-      </h1>
-      <h2 class="text-4xl md:text-5xl font-extrabold text-blue-700 mb-6 leading-tight">
-        CRAD SYSTEM
-      </h2>
-      <p class="text-gray-700 mb-8 max-w-md">
-        Efficiently manage research proposals, monitor statuses, assign advisers and panels, and explore AI-powered categorization — all in one place.
+
+<body class="bg-cover bg-center bg-no-repeat min-h-screen flex items-center justify-center font-sans"
+style="background-image: linear-gradient(rgba(250, 250, 250, 0.937), rgba(8, 52, 117, 0.942)), url('../assets/img/img.jpg');">
+
+  <?php if (!empty($alertMessage)): ?>
+    <div id="alertBox" class="alert alert-<?php echo $alertType; ?>">
+      <?php echo $alertType === "success" ? "✅" : "❌"; ?>
+      <span><?php echo htmlspecialchars($alertMessage); ?></span>
+    </div>
+  <?php endif; ?>
+
+  <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl max-w-5xl w-full mx-4 flex flex-col md:flex-row overflow-hidden border border-gray-200">
+    <!-- Left Panel -->
+    <div class="md:w-1/2 p-10 flex flex-col justify-center items-center text-center bg-gradient-to-br from-white via-blue-50 to-blue-100 text-gray-800 relative">
+      <img src="../assets/img/sms-logo.png" alt="School Logo" class="w-32 h-32 mb-6 rounded-full shadow-lg border-4 border-white" />
+      <h1 class="text-4xl md:text-5xl font-extrabold mb-3 tracking-tight text-blue-900">School Management System</h1>
+      <p class="text-gray-700 mb-8 max-w-md leading-relaxed font-medium">
+        Register to access CRAD’s smart research submission and tracking platform — designed to simplify your academic workflow.
       </p>
-      <button><a href="landing.php"
-        class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3 rounded-md shadow transition duration-300"
-      >
-        SMS
-        </a>
-      </button>
-      <div class="absolute right-8 bottom-6 w-32 h-32">
-        <img
-          src="../assets/img/logo.png"
-          alt="School Logo"
-          class="w-full h-full object-contain"
-        />
-      </div>
+      <a href="../auth/student-login.php" class="bg-blue-700 hover:bg-blue-800 text-white font-extrabold px-6 py-3 rounded-lg shadow-md transition-all duration-300">
+        Go Back
+      </a>
     </div>
 
-    <!-- Right panel with full rectangular registration form -->
-    <div class="md:w-1/2 bg-white p-10 flex flex-col justify-center">
-      <h3 class="text-2xl font-bold text-blue-900 mb-6 text-center">
-        Create your account
-      </h3>
-      
-      <form id="registrationForm" class="space-y-6" method="POST" action="">
-        <!-- Alert Message -->
-        <?php if ($alertMessage): ?>
-          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <strong class="font-bold">Error!</strong>
-            <span class="block sm:inline"><?php echo $alertMessage; ?></span>
-          </div>
-        <?php endif; ?>
+    <!-- Right Panel -->
+    <div class="md:w-1/2 bg-white p-10 flex flex-col justify-center items-center text-center">
 
-        <!-- Full Name -->
+      <h3 class="text-2xl font-bold text-blue-900 mb-6">Register Your Account</h3>
 
-<!-- Email -->
-<div>
-  <label for="email" class="block text-blue-900 font-semibold mb-1">Email</label>
-  <input
-    type="email"
-    id="email"
-    name="email"
-    class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-    required
-  />
-</div>
+      <form method="POST" class="w-full max-w-md text-left">
+
+        <!-- Email -->
+        <div class="input-group">
+          <input type="email" id="email" name="email" placeholder=" " required />
+          <label for="email">Email</label>
+        </div>
 
         <!-- Password -->
-        <div class="relative">
-          <label for="password" class="block text-blue-900 font-semibold mb-1">Password</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-          <button type="button" onclick="togglePasswordVisibility('password')" class="absolute right-3 top-9">
-            <i class="fas fa-eye"></i>
-          </button>
+        <div class="input-group">
+          <input type="password" id="password" name="password" placeholder=" " required />
+          <label for="password">Password</label>
+          <i class="fas fa-eye eye-icon" id="togglePassword"></i>
         </div>
 
         <!-- Confirm Password -->
-        <div class="relative">
-          <label for="confirmPassword" class="block text-blue-900 font-semibold mb-1">Confirm Password</label>
-          <input
-            type="password"
-            id="confirmPassword"
-            name="confirmPassword"
-            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-          <button type="button" onclick="togglePasswordVisibility('confirmPassword')" class="absolute right-3 top-9">
-            <i class="fas fa-eye"></i>
-          </button>
+        <div class="input-group">
+          <input type="password" id="confirmPassword" name="confirmPassword" placeholder=" " required />
+          <label for="confirmPassword">Confirm Password</label>
+          <i class="fas fa-eye eye-icon" id="toggleConfirmPassword"></i>
         </div>
-        <p id="passwordMismatch" class="text-red-500 text-sm hidden">Passwords do not match!</p>
 
-        <!-- User Type -->
-        <div>
-          <label for="userType" class="block text-blue-900 font-semibold mb-1">Select User Type</label>
-          <select
-            id="userType"
-            name="userType"
-            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          >
-            <option value="" disabled selected>Choose your role</option>
+        <!-- Role -->
+        <div class="input-group">
+          <select id="userType" name="userType" required>
+            <option value="" disabled selected hidden></option>
             <option value="Admin">Admin</option>
             <option value="Student">Student</option>
           </select>
+          <label for="userType">Select User Type</label>
         </div>
 
         <!-- Submit -->
-        <div>
-          <button
-            type="submit"
-            class="w-full bg-blue-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition duration-300"
-          >
-            Register
-          </button>
-        </div>
+        <button type="submit"
+          class="w-full bg-gradient-to-r from-blue-700 to-blue-800 text-white font-semibold py-2 px-4 rounded-full shadow-md hover:from-blue-800 hover:to-blue-900 transform hover:scale-[1.02] transition-all duration-300">
+          Register
+        </button>
       </form>
 
-      <!-- Login link -->
-      <p class="mt-6 text-center text-gray-600 text-sm">
+      <p class="mt-6 text-gray-600 text-sm">
         Already have an account?
-        <a href="student-login.php" class="text-blue-700 hover:underline">Log in</a>
+        <a href="student-login.php" class="text-blue-700 font-semibold hover:underline">Log in</a>
       </p>
     </div>
   </div>
 
   <script>
-    const passwordField = document.getElementById('password');
-    const confirmPasswordField = document.getElementById('confirmPassword');
-    const passwordMismatchMessage = document.getElementById('passwordMismatch');
+    // Password toggle
+    const togglePassword = document.getElementById('togglePassword');
+    const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+    const passwordInput = document.getElementById('password');
+    const confirmInput = document.getElementById('confirmPassword');
 
-    confirmPasswordField.addEventListener('input', function() {
-      if (passwordField.value !== confirmPasswordField.value) {
-        passwordMismatchMessage.classList.remove('hidden');
-      } else {
-        passwordMismatchMessage.classList.add('hidden');
-      }
+    togglePassword.addEventListener('click', () => {
+      const type = passwordInput.type === 'password' ? 'text' : 'password';
+      passwordInput.type = type;
+      togglePassword.classList.toggle('text-blue-700');
     });
+
+    toggleConfirmPassword.addEventListener('click', () => {
+      const type = confirmInput.type === 'password' ? 'text' : 'password';
+      confirmInput.type = type;
+      toggleConfirmPassword.classList.toggle('text-blue-700');
+    });
+
+    // Auto-hide alert
+    const alertBox = document.getElementById("alertBox");
+    if (alertBox) {
+      setTimeout(() => {
+        alertBox.style.opacity = "0";
+        alertBox.style.transform = "translateX(100%)";
+        setTimeout(() => alertBox.remove(), 500);
+      }, 3000);
+    }
   </script>
 </body>
 </html>

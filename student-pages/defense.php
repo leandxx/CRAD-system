@@ -24,9 +24,7 @@ $defense_schedule = null;
 $panel_members = [];
 $requirements_status = [
     'proposal_submitted' => 0,
-    'payment_completed' => 0,
-    'documents_submitted' => 0,
-    'total_required_docs' => 0
+    'payment_completed' => 0
 ];
 
 if ($has_group) {
@@ -96,13 +94,6 @@ if ($has_group) {
                     ];
                 }
             }
-            
-            // Debug: Check what defense we're showing
-            // echo '<pre>Current Defense: '; print_r($defense_schedule); echo '</pre>';
-            
-            // Debug: Check what roles are actually in the data
-            // echo '<pre>Panel Members Debug: '; print_r($panel_members); echo '</pre>';
-            // echo '<pre>Defense Schedule Debug: '; print_r($defense_schedule); echo '</pre>';
         }
     }
     
@@ -137,14 +128,6 @@ if ($has_group) {
     
     // For backward compatibility, set payment_completed if any payment is approved
     $requirements_status['payment_completed'] = ($has_research_forum_payment || $has_pre_oral_payment || $has_final_defense_payment) ? 1 : 0;
-    
-    // 3. Check required documents (if the documents table exists)
-    $docs_query = "SELECT COUNT(*) as count FROM required_documents WHERE required_for_defense = 1";
-    $docs_result = mysqli_query($conn, $docs_query);
-    if ($docs_result) {
-        $docs_data = mysqli_fetch_assoc($docs_result);
-        $requirements_status['total_required_docs'] = $docs_data['count'];
-    }
 }
 
 // Check if all requirements are met
@@ -152,8 +135,7 @@ $all_requirements_met = false;
 if ($has_group) {
     $all_requirements_met = (
         $requirements_status['proposal_submitted'] > 0 &&
-        $requirements_status['payment_completed'] > 0 &&
-        $requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']
+        $requirements_status['payment_completed'] > 0
     );
 }
 ?>
@@ -244,7 +226,7 @@ if ($has_group) {
                     Defense Requirements Status
                 </h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     <!-- Proposal Submission -->
                     <div class="requirement-status stats-card p-5 rounded-xl <?php echo ($requirements_status['proposal_submitted'] > 0) ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 glow' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'; ?> border">
                         <div class="flex items-center mb-3">
@@ -268,19 +250,6 @@ if ($has_group) {
                         </div>
                         <p class="text-sm font-medium <?php echo ($requirements_status['payment_completed'] > 0) ? 'text-green-700' : 'text-gray-600'; ?>">
                             <?php echo ($requirements_status['payment_completed'] > 0) ? 'Completed' : 'Pending'; ?>
-                        </p>
-                    </div>
-                    
-                    <!-- Documents -->
-                    <div class="requirement-status stats-card p-5 rounded-xl <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 glow' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'; ?> border">
-                        <div class="flex items-center mb-3">
-                            <div class="w-10 h-10 rounded-full <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'; ?> flex items-center justify-center mr-3 shadow-sm">
-                                <i class="fas fa-file-upload"></i>
-                            </div>
-                            <h3 class="font-medium text-gray-700">Required Documents</h3>
-                        </div>
-                        <p class="text-sm font-medium <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'text-green-700' : 'text-gray-600'; ?>">
-                            <?php echo $requirements_status['documents_submitted'] . '/' . $requirements_status['total_required_docs']; ?> Submitted
                         </p>
                     </div>
                     
@@ -512,21 +481,7 @@ if ($has_group) {
                                 </div>
                             </div>
                             
-                            <!-- Item 3 - Documents -->
-                            <div class="relative timeline-item">
-                                <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'bg-green-500 shadow-md' : 'bg-gray-300'; ?> border-4 border-white flex items-center justify-center">
-                                    <i class="fas <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'fa-check' : 'fa-clock'; ?> text-white text-xs"></i>
-                                </div>
-                                <div class="pl-2">
-                                    <h3 class="font-medium text-gray-800">Required Documents Submission</h3>
-                                    <p class="text-sm text-gray-600 mt-1">Required for defense scheduling</p>
-                                    <p class="text-xs font-medium <?php echo ($requirements_status['documents_submitted'] >= $requirements_status['total_required_docs']) ? 'text-green-600' : 'text-gray-500'; ?> mt-2">
-                                        <?php echo $requirements_status['documents_submitted'] . '/' . $requirements_status['total_required_docs']; ?> Submitted
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            <!-- Item 4 - Defense Scheduling -->
+                            <!-- Item 3 - Defense Scheduling -->
                             <div class="relative timeline-item">
                                 <div class="absolute -left-10 top-0 w-8 h-8 rounded-full <?php echo ($defense_schedule) ? 'bg-green-500 shadow-md' : ($all_requirements_met ? 'bg-yellow-500 shadow-md' : 'bg-gray-300'); ?> border-4 border-white flex items-center justify-center">
                                     <i class="fas <?php echo ($defense_schedule) ? 'fa-check' : ($all_requirements_met ? 'fa-spinner fa-pulse' : 'fa-clock'); ?> text-white text-xs"></i>
@@ -540,7 +495,7 @@ if ($has_group) {
                                 </div>
                             </div>
                             
-                            <!-- Item 5 - Current Defense (Pre-oral or Final) -->
+                            <!-- Item 4 - Current Defense (Pre-oral or Final) -->
                             <div class="relative">
                                 <?php 
                                 $defense_completed = ($defense_schedule && $defense_schedule['status'] == 'completed');
@@ -591,7 +546,7 @@ if ($has_group) {
                                 </div>
                             </div>
                             
-                            <!-- Item 6 - Final Defense (show if pre-oral exists and is completed) -->
+                            <!-- Item 5 - Final Defense (show if pre-oral exists and is completed) -->
                             <?php 
                             // $has_completed_preoral computed above
                             
@@ -639,7 +594,7 @@ if ($has_group) {
                             </div>
                             <?php endif; ?>
                             
-                            <!-- Item 7 - Graduation Ready (if any final defense completed) -->
+                            <!-- Item 6 - Graduation Ready (if any final defense completed) -->
                             <?php 
                             // Check if any final defense is completed
                             $any_final_completed_query = "SELECT * FROM defense_schedules WHERE group_id = '$group_id' AND defense_type = 'final' AND status = 'completed' LIMIT 1";

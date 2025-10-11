@@ -109,7 +109,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'Admin') {
     exit();
 }
 
-// Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['schedule_defense'])) {
         $group_id = mysqli_real_escape_string($conn, $_POST['group_id']);
@@ -154,17 +153,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // For new final defense records, check if one already exists
             if (empty($_POST['parent_defense_id']) || $_POST['parent_defense_id'] == 'NULL') {
                 $final_check = "SELECT COUNT(*) as final_exists 
-               FROM defense_schedules 
-               WHERE group_id = '$group_id' 
-               AND defense_type = 'final' 
-               AND status NOT IN ('cancelled', 'failed')
-               AND defense_date IS NOT NULL";
+                               FROM defense_schedules 
+                               WHERE group_id = '$group_id' 
+                               AND defense_type = 'final' 
+                               AND status NOT IN ('cancelled', 'failed')
+                               AND defense_date IS NOT NULL";
                 $final_result = mysqli_query($conn, $final_check);
                 $final_data = mysqli_fetch_assoc($final_result);
 
                 if ($final_data['final_exists'] > 0) {
                     $_SESSION['error_message'] = "Final defense already exists for this group. Use edit function to modify existing final defense.";
                     header("Location: admin-defense.php");
+                    exit();
                 }
             }
 
@@ -207,7 +207,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     exit();
                 }
             }
-
         }
 
         // Default status depends on end time vs now: if past, mark as passed (evaluation)
@@ -238,6 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($availability_data['conflict_count'] > 0) {
             $_SESSION['error_message'] = "Room is not available during the selected time slot. Please choose a different time or room.";
             header("Location: admin-defense.php");
+            exit();
         }
 
         // Check if this is a redefense (presence of parent_defense_id for redefense)
@@ -268,6 +268,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                               WHERE id = '$parent_id'";
             if (mysqli_query($conn, $schedule_query)) {
                 $defense_id = $parent_id; // Use the updated record's ID
+                
+                // SUCCESS MESSAGE FOR REDEFENSE
+                $_SESSION['success_message'] = "Redefense scheduled successfully!";
             } else {
                 $_SESSION['error_message'] = "Failed to update redefense schedule: " . mysqli_error($conn);
                 header("Location: admin-defense.php");
@@ -290,6 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     } else {
                         $_SESSION['error_message'] = "No pending final defense found for this group.";
                         header("Location: admin-defense.php");
+                        exit();
                     }
                 }
 
@@ -302,9 +306,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                       updated_at = NOW() 
                                   WHERE id = '$defense_id' AND defense_type = 'final' AND group_id = '$group_id'";
 
-                if (!mysqli_query($conn, $schedule_query)) {
+                if (mysqli_query($conn, $schedule_query)) {
+                    // SUCCESS MESSAGE FOR FINAL DEFENSE
+                    $_SESSION['success_message'] = "Final defense scheduled successfully!";
+                } else {
                     $_SESSION['error_message'] = "Failed to update final defense schedule: " . mysqli_error($conn);
                     header("Location: admin-defense.php");
+                    exit();
                 }
             } else {
                 // Insert completely new defense schedule (pre-oral)
@@ -316,9 +324,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if (mysqli_query($conn, $schedule_query)) {
                     $defense_id = mysqli_insert_id($conn);
+                    
+                    // SUCCESS MESSAGE FOR PRE-ORAL DEFENSE
+                    $_SESSION['success_message'] = "Pre-Oral Defense scheduled successfully!";
                 } else {
                     $_SESSION['error_message'] = "Failed to create defense schedule: " . mysqli_error($conn);
                     header("Location: admin-defense.php");
+                    exit();
                 }
             }
         }
@@ -358,17 +370,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             notifyAllUsers($conn, $notification_title, $notification_message, 'info');
         }
 
-        // Set success message based on defense type
-        if ($defense_type == 'final') {
-            $_SESSION['success_message'] = "Final defense scheduled successfully!";
-        } elseif (!empty($_POST['parent_defense_id']) && $_POST['parent_defense_id'] != 'NULL') {
-            $_SESSION['success_message'] = "Redefense scheduled successfully!";
-        } else {
-            $_SESSION['success_message'] = "Defense scheduled successfully!";
-        }
-
         $_SESSION['refresh_availability'] = true;
         header("Location: admin-defense.php");
+        exit();
     }
 
     if (isset($_POST['mark_failed'])) {
@@ -1251,6 +1255,7 @@ $confirmed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense
 $pending_defenses = $total_proposals - $scheduled_defenses;
 $completed_defenses = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM defense_schedules WHERE status IN ('completed', 'passed')"));
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -4342,6 +4347,7 @@ function validateRedefenseDuration() {
             </div>
         </div>
     </div>
+
     <!-- Edit Defense Modal -->
     <div id="editDefenseModal"
         class="fixed inset-0 z-50 modal-overlay opacity-0 pointer-events-none transition-opacity duration-200">
@@ -5089,7 +5095,7 @@ function validateRedefenseDuration() {
                     }
                 }
 
-                // Function to validate defense duration (minimum 30 minutes)
+              // Function to validate defense duration (minimum 30 minutes)
 function validateDefenseDuration() {
     const startTime = document.getElementById('start_time').value;
     const endTime = document.getElementById('end_time').value;
